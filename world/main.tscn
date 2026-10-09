@@ -1,12 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://world/biomes/pradera.tscn" id="1_pradera"]
+[ext_resource type="Script" path="res://world/world_builder.gd" id="1_world"]
+[ext_resource type="Resource" path="res://world/world_config.tres" id="1_world_cfg"]
 [ext_resource type="PackedScene" path="res://world/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://world/camera/camera_rig.tscn" id="3_camera"]
 [ext_resource type="Script" path="res://world/main.gd" id="4_main"]
 [ext_resource type="Script" path="res://world/navigation/world_navigation.gd" id="5_nav"]
 [ext_resource type="Script" path="res://world/actors/wild_spawner.gd" id="6_spawner"]
-[ext_resource type="Resource" path="res://world/biomes/pradera_encounters.tres" id="7_encounters"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="7_hud"]
+[ext_resource type="Script" path="res://world/actors/legendary_manager.gd" id="8_legendary"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.38, 0.6, 0.9, 1)
@@ -40,9 +42,12 @@ light_color = Color(1, 0.96, 0.88, 1)
 light_angular_distance = 1.5
 transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
 shadow_enabled = true
-directional_shadow_max_distance = 80.0
+directional_shadow_mode = 1
+directional_shadow_max_distance = 60.0
 
-[node name="Pradera" parent="." instance=ExtResource("1_pradera")]
+[node name="World" type="Node3D" parent="."]
+script = ExtResource("1_world")
+config = ExtResource("1_world_cfg")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
@@ -52,11 +57,19 @@ target_path = NodePath("../Player")
 
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 script = ExtResource("5_nav")
-biome_path = NodePath("../Pradera")
+world_path = NodePath("../World")
 
 [node name="Spawner" type="Node3D" parent="."]
 script = ExtResource("6_spawner")
-encounters = ExtResource("7_encounters")
-biome_path = NodePath("../Pradera")
+world_path = NodePath("../World")
 player_path = NodePath("../Player")
 navigation_path = NodePath("../Navigation")
+
+[node name="Legendaries" type="Node3D" parent="."]
+script = ExtResource("8_legendary")
+world_path = NodePath("../World")
+spawner_path = NodePath("../Spawner")
+player_path = NodePath("../Player")
+
+[node name="Hud" parent="." instance=ExtResource("7_hud")]
+player_path = NodePath("../Player")

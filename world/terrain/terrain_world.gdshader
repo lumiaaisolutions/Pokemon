@@ -26,6 +26,7 @@ uniform vec3 mountain_tint = vec3(1.0);
 // Costa y pantano
 uniform sampler2D beach_sand : source_color, filter_nearest, repeat_enable;
 uniform sampler2D swamp_ground : source_color, filter_nearest, repeat_enable;
+uniform vec3 swamp_tint = vec3(0.55, 0.62, 0.42);
 
 // Mapas del mundo (1 texel por celda): biome_map RGBA = pradera, bosque, montaña,
 // costa; extra_map R = pantano, G = orilla de agua dulce.
@@ -106,7 +107,7 @@ void fragment() {
 	vec3 color = biome_ground(biome, meters, patch, path, slope, dither);
 
 	if (extra.r + dither * 0.3 > 0.5) {
-		color = tiled(swamp_ground, meters) * forest_tint;
+		color = tiled(swamp_ground, meters) * swamp_tint;
 	}
 	if (jittered.a > best || extra.g + dither * 0.3 > 0.5) {
 		color = tiled(beach_sand, meters);

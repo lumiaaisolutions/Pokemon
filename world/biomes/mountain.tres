@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="BiomeConfig" format=3]
+
+[ext_resource type="Script" path="res://world/terrain/biome_config.gd" id="1_cfg"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/mountain_dirt.png" id="2"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/mountain_rock.png" id="3"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/dirt.png" id="4"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/mountain_rock.png" id="5"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/pine.png" id="6"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/rock_brown.png" id="7"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft_small.png" id="8"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft.png" id="9"]
+
+[resource]
+script = ExtResource("1_cfg")
+biome_name = "Montaña"
+grass_texture = ExtResource("2")
+grass_light_texture = ExtResource("3")
+path_texture = ExtResource("4")
+slope_texture = ExtResource("5")
+tree_textures = Array[Texture2D]([ExtResource("6")])
+trees_per_1000m2 = 0.8
+rock_textures = Array[Texture2D]([ExtResource("7")])
+rocks_per_1000m2 = 3.0
+decor_textures = Array[Texture2D]([ExtResource("8"), ExtResource("9")])
+decor_per_1000m2 = 4.0
+tall_grass_texture = ExtResource("9")
+tall_grass_patch_count = 12
+tall_grass_tint_bottom = Color(0.42, 0.45, 0.28, 1)
+tall_grass_tint_top = Color(0.7, 0.72, 0.48, 1)

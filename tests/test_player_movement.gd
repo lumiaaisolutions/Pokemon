@@ -7,7 +7,7 @@ const MAIN_SCENE := preload("res://world/main.tscn")
 var _failures: Array[String] = []
 var _main: Node3D
 var _player: Player
-var _biome: BiomeBuilder
+var _world: WorldBuilder
 var _rig: CameraRig
 
 
@@ -15,7 +15,7 @@ func _ready() -> void:
 	_main = MAIN_SCENE.instantiate() as Node3D
 	add_child(_main)
 	_player = _main.get_node("Player") as Player
-	_biome = _main.get_node("Pradera") as BiomeBuilder
+	_world = _main.get_node("World") as WorldBuilder
 	_rig = _main.get_node("CameraRig") as CameraRig
 	await _run()
 	for failure: String in _failures:
@@ -27,7 +27,7 @@ func _ready() -> void:
 func _run() -> void:
 	await _frames(30)
 	_check(_player.is_on_floor(), "el jugador debe empezar sobre el suelo")
-	_check(absf(_player.global_position.y - _biome.surface_height_at(0, 0)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
+	_check(absf(_player.global_position.y - _world.surface_height_at(0, 0)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
 	_check(_terrain_faces_up(), "las caras del terreno deben mirar hacia arriba")
 	_check(_rig.get_pitch_deg() >= _rig.pitch_min_deg and _rig.get_pitch_deg() <= _rig.pitch_max_deg, "el pitch de la cámara debe estar dentro de sus límites")
 
@@ -86,14 +86,14 @@ func _run() -> void:
 	for i in 600:
 		await get_tree().physics_frame
 		var p := _player.global_position
-		lowest_gap = minf(lowest_gap, p.y - _biome.surface_height_at(p.x, p.z))
+		lowest_gap = minf(lowest_gap, p.y - _world.surface_height_at(p.x, p.z))
 	Input.action_release("run")
 	Input.action_release("move_forward")
 	Input.action_release("move_left")
 	_check(lowest_gap > -0.2, "el jugador atravesó el terreno (holgura mínima %.2f m)" % lowest_gap)
 
 	# Muros: tras 10 s corriendo en diagonal debe quedar dentro del bioma.
-	var half := _biome.config.size * 0.5
+	var half := _world.config.size * 0.5
 	var p := _player.global_position
 	_check(absf(p.x) < half and absf(p.z) < half, "el jugador salió del bioma (%.1f, %.1f)" % [p.x, p.z])
 
@@ -102,7 +102,7 @@ func _run() -> void:
 	_check(_props_grounded(), "hay elementos flotando sobre el terreno")
 
 	# Props: corriendo contra un árbol no debe atravesarlo.
-	var tree := _biome.get_node("Trees/Tree0") as Node3D
+	var tree := _first_prop("Tree")
 	_player.global_position = tree.global_position + Vector3(-3.0, 0.5, 0.0)
 	_player.velocity = Vector3.ZERO
 	await _frames(20)
@@ -116,7 +116,7 @@ func _run() -> void:
 	_check(arm.get_hit_length() > arm.spring_length * 0.8, "la cámara no debe acortarse al chocar con un árbol (%.1f m)" % arm.get_hit_length())
 
 	# Muro: corriendo hacia el borde debe detenerse antes del límite.
-	_player.global_position = Vector3(half - 6.0, _biome.surface_height_at(half - 6.0, 0.0) + 0.5, 0.0)
+	_player.global_position = Vector3(half - 6.0, _world.surface_height_at(half - 6.0, 0.0) + 0.5, 0.0)
 	_player.velocity = Vector3.ZERO
 	await _frames(20)
 	Input.action_press("move_right")
@@ -126,30 +126,69 @@ func _run() -> void:
 	Input.action_release("move_right")
 	_check(_player.global_position.x < half, "el jugador cruzó el muro del borde (x=%.1f)" % _player.global_position.x)
 
+	# Stamina: correr la agota; agotado camina, y al recuperarse vuelve a correr.
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.stamina = _player.config.stamina_max
+	await _frames(10)
+	Input.action_press("move_back")
+	Input.action_press("run")
+	await _frames(int((_player.config.stamina_max / _player.config.stamina_drain + 0.5) * 60))
+	_check(_player.exhausted and _player.stamina <= 0.0, "correr más de 5 s debe agotar la stamina (%.0f)" % _player.stamina)
+	await _frames(20)
+	_check(_player.get_ground_speed() <= _player.config.walk_speed + 0.1, "agotado no debe poder correr (%.1f m/s)" % _player.get_ground_speed())
+	Input.action_release("run")
+	Input.action_release("move_back")
+	await _frames(150)
+	_check(not _player.exhausted and _player.stamina > 0.0, "al descansar debe recuperarse")
+
+	# Agua profunda: caminando hacia el lago, se detiene en la orilla.
+	var lake := _world.config.lake_center
+	var shore := lake + Vector2(_world.config.lake_radius + 9.0, 0.0)
+	_player.global_position = Vector3(shore.x, _world.surface_height_at(shore.x, shore.y) + 0.5, shore.y)
+	_player.velocity = Vector3.ZERO
+	await _frames(20)
+	Input.action_press("move_left")
+	await _frames(300)
+	Input.action_release("move_left")
+	var p2 := _player.global_position
+	_check(_world.water_depth_at(p2.x, p2.z) < Player.DEEP_WATER + 0.2, "el jugador entró al agua profunda (%.1f m)" % _world.water_depth_at(p2.x, p2.z))
+	_check(p2.x < shore.x - 2.0, "el jugador debe avanzar hasta la orilla antes de detenerse")
+
 
 func _props_grounded() -> bool:
 	var ok := true
-	for group in ["Trees", "Rocks"]:
-		for body: Node3D in _biome.get_node(group).get_children():
-			var sprite := body.get_node("Sprite") as Sprite3D
-			var radius := sprite.texture.get_width() * sprite.pixel_size * 0.5
-			var p := body.global_position
-			if p.y > _biome.ground_base_height(p.x, p.z, radius) + 0.001 or not _bottom_row_opaque(sprite.texture):
-				printerr("flota: %s en %s" % [body.name, p])
-				ok = false
-	for instance: MultiMeshInstance3D in _biome.get_node("Decor").get_children():
-		var multimesh := instance.multimesh
-		var texture := ((multimesh.mesh as QuadMesh).material as StandardMaterial3D).albedo_texture
-		if not _bottom_row_opaque(texture):
-			printerr("sprite con fila inferior transparente: %s" % instance.name)
-			ok = false
-		var radius := (multimesh.mesh as QuadMesh).size.x * 0.5
-		for i in multimesh.instance_count:
-			var p := multimesh.get_instance_transform(i).origin
-			if p.y > _biome.ground_base_height(p.x, p.z, radius) + 0.001:
-				printerr("decoración flotando: %s #%d" % [instance.name, i])
-				return false
+	for group in _world.get_children():
+		if not group.name.begins_with("Props_"):
+			continue
+		for child in group.get_children():
+			if child is StaticBody3D:
+				var body := child as StaticBody3D
+				var sprite := body.get_node("Sprite") as Sprite3D
+				var radius := sprite.texture.get_width() * sprite.pixel_size * 0.5
+				var p := body.global_position
+				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.001 or not _bottom_row_opaque(sprite.texture):
+					printerr("flota: %s en %s" % [body.name, p])
+					ok = false
+			elif child is MultiMeshInstance3D:
+				var instance := child as MultiMeshInstance3D
+				var multimesh := instance.multimesh
+				var quad := multimesh.mesh as QuadMesh
+				if not _bottom_row_opaque((quad.material as StandardMaterial3D).albedo_texture):
+					printerr("sprite con fila inferior transparente: %s" % instance.name)
+					ok = false
+				for i in multimesh.instance_count:
+					var p := multimesh.get_instance_transform(i).origin
+					if p.y > _world.ground_base_height(p.x, p.z, quad.size.x * 0.5) + 0.001:
+						printerr("decoración flotando: %s #%d" % [instance.name, i])
+						return false
 	return ok
+
+
+func _first_prop(prefix: String) -> Node3D:
+	for child in _world.get_node("Props_Pradera").get_children():
+		if child.name.begins_with(prefix):
+			return child as Node3D
+	return null
 
 
 func _bottom_row_opaque(texture: Texture2D) -> bool:
@@ -164,7 +203,7 @@ func _bottom_row_opaque(texture: Texture2D) -> bool:
 
 
 func _terrain_faces_up() -> bool:
-	var mesh := (_biome.get_node("Terrain").get_child(0) as MeshInstance3D).mesh
+	var mesh := (_world.get_node("Terrain").get_child(0) as MeshInstance3D).mesh
 	var arrays := mesh.surface_get_arrays(0)
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	for n in normals:

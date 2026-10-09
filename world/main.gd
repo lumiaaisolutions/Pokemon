@@ -18,6 +18,7 @@ func _ready() -> void:
 	companion.species = STARTER_POOL.pick_distinct(rng, 1)[0]
 	companion.role = PokemonActor.Role.COMPANION
 	companion.player = _player
+	companion.world = $World
 	companion.position = _player.position + Vector3(1.5, 0.3, 1.5)
 	add_child(companion)
 	$Spawner.wild_contact.connect(_on_wild_contact)

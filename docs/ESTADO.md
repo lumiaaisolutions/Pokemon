@@ -9,7 +9,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
 | 2 | Hecha (aprobada por Fernando el 2026-10-09) | `33a8792` | Hierba alta, salvajes con IA y compañero al azar; 0 fallos; 60 FPS |
-| 2.5 | En curso | — | Mundo de 3 biomas con agua, aparición por tipo y rareza, shiny, tamaños, persecución con stamina y legendarios |
+| 2.5 | Implementada, esperando revisión de Fernando | ver `git log` | 5 pruebas en headless con 0 fallos; 55–60 FPS a 1080p; el mundo se construye en ~4 s |
 | 2.6 | Pendiente | — | Asentamientos, rutas pavimentadas y lugares icónicos (GDD 10c) |
 | 2.7 | Pendiente | — | NPC con rutinas, viajeros, entrenadores caminando, día/noche y clima (GDD 10c) |
 | 5.7 | Pendiente | — | Interiores (GDD 10c) |
@@ -160,6 +160,15 @@ Pasos:
 4. Persecución (agresivo y territorial), área con indicador, stamina del jugador con barra en pantalla.
 5. Legendarios en lugares fijos con la regla de reaparición.
 6. Pruebas en headless y capturas.
+
+## Fase 2.5: resultado
+- Datos: 1,025 especies (`tools/build_species.py`): hábitats por tipo (los de Agua solo en agua; los nadadores por forma de pez, serpiente o tentáculos), peso = etapa × poder (roster ×20 en su bioma, salvo sus raros), tamaño ×1, ×1.5, ×2 o ×3 por altura, y hoja shiny con la paleta `overworld_shiny.pal`.
+- Mundo (`world/world_builder.gd` + `world/world_config.tres`): 480×480 m sin cargas. Pradera (centro y este), Bosque/humedal (oeste, con pantano de 10 charcas), Montaña (norte, crestas) y costa con mar (sur). El río (curva Catmull-Rom) baja de la montaña, cruza el bosque, pasa por el lago y llega al mar. Suelo con un shader por bioma (`terrain_world.gdshader`) y bordes de píxel con dither.
+- Agua sin flotar (pedido de Fernando): cada cuerpo de agua tiene cauce y ribera. El nivel sale del terreno más bajo a su alrededor, la superficie termina dentro de la ribera (borde enterrado) y tierra adentro nunca queda bajo el nivel del mar. `tests/test_world.tscn` revisa 277 puntos de borde (el peor queda 5 cm bajo el terreno).
+- Spawner por hábitat (hierba, orilla y agua), shiny 2 % con destello, legendarios (94) en lugares fijos según su tipo, uno a la vez, con la reaparición del 2 % en `GameState`.
+- Persecución: agresivos y territoriales; área de 12–35 m según velocidad y poder, con anillo en el suelo; al salir del área se rinden y regresan.
+- Stamina (barra en pantalla): correr 5 s la agota y hay que recuperar el 25 % para volver a correr. El agua profunda detiene a Nate en la orilla.
+- Rendimiento: construcción de 21 s a 4 s (alturas en caché), sombras del sol y desenfoque más baratos; de 51 a 55–60 FPS a 1080p en M1.
 
 ## Pendiente de definir
 - Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.

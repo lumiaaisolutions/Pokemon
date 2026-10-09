@@ -18,6 +18,18 @@ fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
 
+[sub_resource type="Gradient" id="Gradient_ring"]
+offsets = PackedFloat32Array(0, 0.86, 0.9, 0.97, 1)
+colors = PackedColorArray(1, 0.2, 0.15, 0, 1, 0.2, 0.15, 0.08, 1, 0.25, 0.2, 0.75, 1, 0.25, 0.2, 0.75, 1, 0.2, 0.15, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ring"]
+gradient = SubResource("Gradient_ring")
+width = 256
+height = 256
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
 [node name="PokemonActor" type="CharacterBody3D"]
 collision_layer = 4
 collision_mask = 3
@@ -43,3 +55,10 @@ cull_mask = 1
 path_desired_distance = 0.6
 target_desired_distance = 0.8
 path_height_offset = 0.0
+
+[node name="ChaseRing" type="Decal" parent="."]
+size = Vector3(40, 8, 40)
+texture_albedo = SubResource("GradientTexture2D_ring")
+upper_fade = 0.1
+lower_fade = 0.3
+cull_mask = 1

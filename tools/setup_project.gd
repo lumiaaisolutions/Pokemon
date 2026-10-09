@@ -50,6 +50,10 @@ func _setup_rendering() -> void:
 	# Bordes suaves en la geometría 3D (árboles, rocas, terreno) sin difuminar los sprites.
 	ProjectSettings.set_setting("rendering/anti_aliasing/quality/msaa_3d", Viewport.MSAA_4X)
 	ProjectSettings.set_setting("rendering/anti_aliasing/quality/screen_space_aa", Viewport.SCREEN_SPACE_AA_SMAA)
+	# Rendimiento (60 FPS a 1080p en M1): sombras y desenfoque más baratos.
+	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/size", 2048)
+	ProjectSettings.set_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_quality", 0)
+	ProjectSettings.set_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_shape", 0)
 
 
 func _setup_navigation() -> void:

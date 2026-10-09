@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WorldConfig" format=3]
+
+[ext_resource type="Script" path="res://world/terrain/world_config.gd" id="1_cfg"]
+[ext_resource type="Resource" path="res://world/biomes/meadow.tres" id="2_meadow"]
+[ext_resource type="Resource" path="res://world/biomes/forest.tres" id="3_forest"]
+[ext_resource type="Resource" path="res://world/biomes/mountain.tres" id="4_mountain"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/beach_sand.png" id="5_beach"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/grass.png" id="6_swamp_ground"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/water.png" id="7_water"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/swamp_water.png" id="8_swamp_water"]
+
+[resource]
+script = ExtResource("1_cfg")
+meadow = ExtResource("2_meadow")
+forest = ExtResource("3_forest")
+mountain = ExtResource("4_mountain")
+beach_texture = ExtResource("5_beach")
+swamp_ground_texture = ExtResource("6_swamp_ground")
+water_texture = ExtResource("7_water")
+swamp_water_texture = ExtResource("8_swamp_water")
+prop_view_distance = 170.0

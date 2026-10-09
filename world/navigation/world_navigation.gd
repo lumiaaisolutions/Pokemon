@@ -1,11 +1,12 @@
 class_name WorldNavigation
 extends NavigationRegion3D
-## Hornea la malla de navegación del bioma al iniciar (terreno + árboles, rocas y
-## muros), en segundo plano. Los actores esperan la señal `baked` para moverse.
+## Hornea la malla de navegación del mundo al iniciar (terreno + árboles, rocas y
+## muros; el agua profunda se excluye), en segundo plano. Los actores esperan la
+## señal `baked` para moverse.
 
 signal baked
 
-@export var biome_path: NodePath
+@export var world_path: NodePath
 
 var is_baked := false
 
@@ -21,10 +22,14 @@ func _ready() -> void:
 	mesh.agent_max_climb = 0.5
 	mesh.agent_max_slope = 45.0
 	navigation_mesh = mesh
-	# Espera un frame para que el bioma haya construido su terreno y props.
+	# Espera un frame para que el mundo haya construido su terreno y props.
 	await get_tree().process_frame
+	var world := get_node(world_path) as WorldBuilder
 	var source := NavigationMeshSourceGeometryData3D.new()
-	NavigationServer3D.parse_source_geometry_data(mesh, source, get_node(biome_path))
+	NavigationServer3D.parse_source_geometry_data(mesh, source, world)
+	# El agua profunda (río, lago, charcas y mar) no es transitable.
+	for outline in world.water_obstruction_outlines():
+		source.add_projected_obstruction(outline, -20.0, 80.0, true)
 	NavigationServer3D.bake_from_source_geometry_data_async(mesh, source, _on_baked)
 
 

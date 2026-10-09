@@ -25,6 +25,12 @@ enum Biome { MEADOW, FOREST, MOUNTAIN, BEACH }
 const DECOR_CHUNK := 80.0
 ## Profundidad desde la que el agua bloquea el paso.
 const DEEP_WATER := 0.6
+## Ancho de la ribera de cada cuerpo de agua (m). La superficie del agua llega hasta
+## WATER_EDGE de la ribera, donde el terreno ya está por encima del nivel.
+const RIVER_BANK := 7.0
+const LAKE_BANK := 10.0
+const POND_BANK := 3.0
+const WATER_EDGE := 0.92
 
 @export var config: WorldConfig
 
@@ -38,10 +44,15 @@ var swamp_pond_levels := PackedFloat32Array()
 var _height_noise := FastNoiseLite.new()
 var _ridge_noise := FastNoiseLite.new()
 var _warp_noise := FastNoiseLite.new()
+## Trazado del río suavizado (Catmull-Rom) a partir de config.river_points.
+var _river_pts := PackedVector2Array()
 var _river_levels := PackedFloat32Array()
 var _lake_level: float = 0.0
 var _shadow_texture: GradientTexture2D
 var _grass_materials: Array[ShaderMaterial] = []
+## Alturas de los vértices de la malla, calculadas una vez (consultas rápidas).
+var _heights := PackedFloat32Array()
+var _verts_per_side: int = 0
 
 
 func _ready() -> void:
@@ -58,6 +69,7 @@ func _ready() -> void:
 	_warp_noise.seed = config.seed + 23
 	_warp_noise.frequency = 0.01
 	_compute_water_levels()
+	_compute_heights()
 	_build_terrain()
 	_build_water()
 	_build_tall_grass()
@@ -116,23 +128,34 @@ func dominant_biome(x: float, z: float) -> Biome:
 
 
 ## Altura del terreno en los vértices de la malla (con río, lago, pantano y mar).
+## Cada cuerpo de agua tiene un cauce (fondo bajo el nivel) y una ribera que sube por
+## encima del nivel: la superficie del agua termina dentro de la ribera, así su borde
+## queda siempre bajo el terreno y nunca se ve flotando.
 func height_at(x: float, z: float) -> float:
 	var h := _base_height(x, z)
 	# Río.
 	var river := river_info(x, z)
-	var half_width := config.river_width * 0.5
-	var bed: float = river.y - 2.0
-	h = minf(h, lerpf(bed, h, smoothstep(half_width, half_width + 7.0, river.x)))
+	h = _carve(h, river.x, config.river_width * 0.5, RIVER_BANK, river.y, 2.0, 0.8)
 	# Lago.
 	var lake_d := Vector2(x, z).distance_to(config.lake_center)
-	h = minf(h, lerpf(_lake_level - 3.0, h, smoothstep(config.lake_radius, config.lake_radius + 10.0, lake_d)))
+	h = _carve(h, lake_d, config.lake_radius, LAKE_BANK, _lake_level, 3.0, 0.8)
 	# Charcas del pantano.
 	for i in swamp_ponds.size():
 		var pond := swamp_ponds[i]
 		var d := Vector2(x - pond.x, z - pond.y).length()
-		if d < pond.z + 3.0:
-			h = minf(h, lerpf(swamp_pond_levels[i] - 0.9, h, smoothstep(pond.z, pond.z + 3.0, d)))
+		if d < pond.z + POND_BANK:
+			h = _carve(h, d, pond.z, POND_BANK, swamp_pond_levels[i], 0.9, 0.8)
 	return h
+
+
+## Perfil de un cauce: fondo (level - depth) hasta radius; de radius a radius + bank sube
+## hasta al menos level + rise (ribera), y más allá queda el terreno natural.
+func _carve(h: float, d: float, radius: float, bank: float, level: float, depth: float, rise: float) -> float:
+	if d >= radius + bank:
+		return h
+	var t := smoothstep(radius, radius + bank, d)
+	var shore := maxf(h, level + rise)
+	return lerpf(level - depth, shore, t)
 
 
 ## Altura sobre la malla real (interpolada en el triángulo), para apoyar cosas.
@@ -145,12 +168,12 @@ func surface_height_at(x: float, z: float) -> float:
 	var iz := floorf(gz)
 	var fx := gx - ix
 	var fz := gz - iz
-	var x0 := ix * cs - half
-	var z0 := iz * cs - half
-	var h00 := height_at(x0, z0)
-	var h10 := height_at(x0 + cs, z0)
-	var h01 := height_at(x0, z0 + cs)
-	var h11 := height_at(x0 + cs, z0 + cs)
+	var n := _verts_per_side
+	var i00 := int(iz) * n + int(ix)
+	var h00 := _heights[i00]
+	var h10 := _heights[i00 + 1]
+	var h01 := _heights[i00 + n]
+	var h11 := _heights[i00 + n + 1]
 	# Misma diagonal que _build_terrain: triángulos (00,10,11) y (00,11,01).
 	if fx >= fz:
 		return h00 + (h10 - h00) * fx + (h11 - h10) * fz
@@ -171,7 +194,7 @@ func ground_base_height(x: float, z: float, radius: float) -> float:
 func river_info(x: float, z: float) -> Vector2:
 	var point := Vector2(x, z)
 	var best := Vector2(INF, 0.0)
-	var pts := config.river_points
+	var pts := _river_pts
 	for i in pts.size() - 1:
 		var a := pts[i]
 		var b := pts[i + 1]
@@ -183,17 +206,17 @@ func river_info(x: float, z: float) -> Vector2:
 	return best
 
 
-## Nivel del agua en (x, z), o -INF si no hay ningún cuerpo de agua ahí.
+## Nivel del agua en (x, z): el del cuerpo de agua más alto que lo cubre, o el del mar.
 func water_level_at(x: float, z: float) -> float:
 	var level := config.sea_level
 	var river := river_info(x, z)
-	if river.x < config.river_width * 0.5 + 3.0:
+	if river.x < config.river_width * 0.5 + RIVER_BANK * WATER_EDGE:
 		level = maxf(level, river.y)
-	if Vector2(x, z).distance_to(config.lake_center) < config.lake_radius + 6.0:
+	if Vector2(x, z).distance_to(config.lake_center) < config.lake_radius + LAKE_BANK * WATER_EDGE:
 		level = maxf(level, _lake_level)
 	for i in swamp_ponds.size():
 		var pond := swamp_ponds[i]
-		if Vector2(x - pond.x, z - pond.y).length() < pond.z + 2.0:
+		if Vector2(x - pond.x, z - pond.y).length() < pond.z + POND_BANK * WATER_EDGE:
 			level = maxf(level, swamp_pond_levels[i])
 	return level
 
@@ -276,31 +299,79 @@ func _base_height(x: float, z: float) -> float:
 	var mountain_h := 3.0 + into_mountain * 0.16 + ridge * ridge * 22.0 * clampf(into_mountain / 60.0, 0.0, 1.0)
 	var beach_h := lerpf(1.0, config.sea_level - 6.0, smoothstep(config.shore_z, config.shore_z + 45.0, z))
 	var h := w.x * meadow_h + w.y * forest_h + w.z * mountain_h + w.w * beach_h
+	# Tierra adentro (antes de la playa) nunca baja del nivel del mar: el mar no se
+	# cuela en hondonadas lejos de la costa.
+	var inland := 1.0 - smoothstep(config.shore_z, config.shore_z + 15.0, z)
+	h = lerpf(h, maxf(h, config.sea_level + 0.6), inland)
 	# Aplana suavemente el inicio.
 	var d := Vector2(x, z).length()
 	return h * smoothstep(config.spawn_flat_radius, config.spawn_flat_radius * 2.0, d)
 
 
+func _smooth_river() -> void:
+	var src := config.river_points
+	const STEPS := 6
+	for i in src.size() - 1:
+		var p0 := src[maxi(i - 1, 0)]
+		var p1 := src[i]
+		var p2 := src[i + 1]
+		var p3 := src[mini(i + 2, src.size() - 1)]
+		for step in STEPS:
+			var t := float(step) / STEPS
+			var t2 := t * t
+			var t3 := t2 * t
+			_river_pts.append(0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3))
+	_river_pts.append(src[src.size() - 1])
+
+
 func _compute_water_levels() -> void:
+	_smooth_river()
 	# El nivel del río baja siempre de la montaña al mar.
-	_river_levels.resize(config.river_points.size())
+	_river_levels.resize(_river_pts.size())
 	var previous := INF
-	for i in config.river_points.size():
-		var p := config.river_points[i]
-		var level := minf(_base_height(p.x, p.y) - 1.2, previous - 0.1)
+	# El nivel de cada tramo sale del terreno más bajo a lo ancho del cauce y su
+	# ribera: así el río siempre queda encajado y nunca colgado sobre el terreno.
+	var reach := config.river_width * 0.5 + RIVER_BANK
+	for i in _river_pts.size():
+		var p := _river_pts[i]
+		var dir := (_river_pts[mini(i + 1, _river_pts.size() - 1)] - _river_pts[maxi(i - 1, 0)]).normalized()
+		var normal := Vector2(-dir.y, dir.x)
+		var lowest := INF
+		var offset := -reach
+		while offset <= reach:
+			for along in [-3.0, 0.0, 3.0]:
+				var q: Vector2 = p + normal * offset + dir * along
+				lowest = minf(lowest, _base_height(q.x, q.y))
+			offset += 1.5
+		var level := minf(lowest - 1.0, previous - 0.02)
 		previous = maxf(level, config.sea_level)
 		_river_levels[i] = previous
 	_lake_level = river_info(config.lake_center.x, config.lake_center.y).y
 	# Charcas del pantano.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = config.seed + 31
-	while swamp_ponds.size() < config.swamp_pond_count:
+	var attempts := 0
+	while swamp_ponds.size() < config.swamp_pond_count and attempts < 500:
+		attempts += 1
 		var angle := rng.randf() * TAU
 		var r := sqrt(rng.randf()) * config.swamp_radius * 0.85
 		var c := config.swamp_center + Vector2(cos(angle), sin(angle)) * r
 		var radius := rng.randf_range(4.0, 9.0)
+		# Sin encimarse con otras charcas ni con el río (cada una tiene su propio nivel).
+		var clear := river_info(c.x, c.y).x > radius + POND_BANK + config.river_width * 0.5 + RIVER_BANK
+		for other in swamp_ponds:
+			if c.distance_to(Vector2(other.x, other.y)) < radius + other.z + POND_BANK * 2.0 + 1.0:
+				clear = false
+		if not clear:
+			continue
 		swamp_ponds.append(Vector3(c.x, c.y, radius))
-		swamp_pond_levels.append(_base_height(c.x, c.y) - 0.4)
+		# Nivel bajo el terreno más bajo de la charca y su ribera (encajada, no colgada).
+		var lowest := _base_height(c.x, c.y)
+		for ring in [radius * 0.5, radius, radius + POND_BANK]:
+			for k in 16:
+				var a := TAU * k / 16.0
+				lowest = minf(lowest, _base_height(c.x + cos(a) * ring, c.y + sin(a) * ring))
+		swamp_pond_levels.append(lowest - 0.3)
 
 
 func _in_swamp(x: float, z: float) -> bool:
@@ -322,15 +393,21 @@ func _water_within(x: float, z: float, radius: float) -> bool:
 	return false
 
 
+func _compute_heights() -> void:
+	var cells := int(config.size / config.cell_size)
+	var half := config.size * 0.5
+	_verts_per_side = cells + 1
+	_heights.resize(_verts_per_side * _verts_per_side)
+	for iz in _verts_per_side:
+		for ix in _verts_per_side:
+			_heights[iz * _verts_per_side + ix] = height_at(ix * config.cell_size - half, iz * config.cell_size - half)
+
+
 func _build_terrain() -> void:
 	var cells := int(config.size / config.cell_size)
 	var half := config.size * 0.5
-	var verts := cells + 1
-	var heights := PackedFloat32Array()
-	heights.resize(verts * verts)
-	for iz in verts:
-		for ix in verts:
-			heights[iz * verts + ix] = height_at(ix * config.cell_size - half, iz * config.cell_size - half)
+	var verts := _verts_per_side
+	var heights := _heights
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for iz in cells:
@@ -438,17 +515,25 @@ func _build_water() -> void:
 	# Río: cinta que sigue el trazado, al nivel de cada tramo.
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var half_width := config.river_width * 0.5 + 2.5
-	var pts := config.river_points
+	var half_width := config.river_width * 0.5 + RIVER_BANK * WATER_EDGE
+	var pts := _river_pts
 	var left := PackedVector3Array()
 	var right := PackedVector3Array()
 	for i in pts.size():
 		var dir := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
 		var normal := Vector2(-dir.y, dir.x)
-		var y := _river_levels[i]
-		left.append(Vector3(pts[i].x + normal.x * half_width, y, pts[i].y + normal.y * half_width))
-		right.append(Vector3(pts[i].x - normal.x * half_width, y, pts[i].y - normal.y * half_width))
+		# Cada borde va al nivel con el que se excavó ese punto (en curvas cerradas puede
+		# ser el de otro tramo), para que nunca quede por encima de su ribera.
+		var l := pts[i] + normal * half_width
+		var r := pts[i] - normal * half_width
+		left.append(Vector3(l.x, minf(_river_levels[i], river_info(l.x, l.y).y), l.y))
+		right.append(Vector3(r.x, minf(_river_levels[i], river_info(r.x, r.y).y), r.y))
+	var lake_reach := config.lake_radius + LAKE_BANK * WATER_EDGE - config.river_width
 	for i in pts.size() - 1:
+		# Dentro del lago y del mar ya hay agua: no se encima otra capa transparente.
+		var mid := (pts[i] + pts[i + 1]) * 0.5
+		if mid.distance_to(config.lake_center) < lake_reach or mid.y > config.shore_z + 25.0:
+			continue
 		for v: Vector3 in [left[i], left[i + 1], right[i + 1], left[i], right[i + 1], right[i]]:
 			st.add_vertex(v)
 	st.generate_normals()
@@ -459,11 +544,11 @@ func _build_water() -> void:
 	water.add_child(river)
 
 	# Lago y charcas del pantano.
-	water.add_child(_water_disc("Lake", config.lake_center, config.lake_radius + 6.0, _lake_level + 0.01, fresh))
+	water.add_child(_water_disc("Lake", config.lake_center, config.lake_radius + LAKE_BANK * WATER_EDGE, _lake_level + 0.01, fresh))
 	var swamp_material := _water_material(config.swamp_water_texture)
 	for i in swamp_ponds.size():
 		var pond := swamp_ponds[i]
-		water.add_child(_water_disc("Pond%d" % i, Vector2(pond.x, pond.y), pond.z + 2.0, swamp_pond_levels[i], swamp_material))
+		water.add_child(_water_disc("Pond%d" % i, Vector2(pond.x, pond.y), pond.z + POND_BANK * WATER_EDGE, swamp_pond_levels[i], swamp_material))
 
 
 func _water_disc(disc_name: String, center: Vector2, radius: float, level: float, material: Material) -> MeshInstance3D:
@@ -481,16 +566,46 @@ func _water_disc(disc_name: String, center: Vector2, radius: float, level: float
 	return disc
 
 
+## Bordes de cada superficie de agua con su nivel: Vector4(x, y_terreno_ignorado, z, nivel).
+## Los usan las pruebas para comprobar que el borde queda bajo el terreno.
+func water_edge_samples() -> PackedVector4Array:
+	var samples := PackedVector4Array()
+	var half_width := config.river_width * 0.5 + RIVER_BANK * WATER_EDGE
+	for i in range(1, _river_pts.size() - 1):
+		var dir := (_river_pts[i + 1] - _river_pts[i - 1]).normalized()
+		var normal := Vector2(-dir.y, dir.x)
+		for side in [-1.0, 1.0]:
+			var p: Vector2 = _river_pts[i] + normal * half_width * side
+			# Dentro del lago o del mar el borde del río queda cubierto por esa agua.
+			if p.distance_to(config.lake_center) < config.lake_radius + LAKE_BANK * WATER_EDGE or p.y > config.shore_z:
+				continue
+			samples.append(Vector4(p.x, 0.0, p.y, minf(_river_levels[i], river_info(p.x, p.y).y)))
+	for i in 32:
+		var angle := TAU * i / 32.0
+		var p := config.lake_center + Vector2(cos(angle), sin(angle)) * (config.lake_radius + LAKE_BANK * WATER_EDGE)
+		# Donde el río entra o sale del lago, el borde queda cubierto por el río.
+		if river_info(p.x, p.y).x < config.river_width * 0.5 + RIVER_BANK * WATER_EDGE:
+			continue
+		samples.append(Vector4(p.x, 0.0, p.y, _lake_level))
+	for j in swamp_ponds.size():
+		var pond := swamp_ponds[j]
+		for i in 16:
+			var angle := TAU * i / 16.0
+			var r := pond.z + POND_BANK * WATER_EDGE
+			samples.append(Vector4(pond.x + cos(angle) * r, 0.0, pond.y + sin(angle) * r, swamp_pond_levels[j]))
+	return samples
+
+
 ## Polígonos de agua profunda para que la navegación los evite (obstrucciones proyectadas).
 func water_obstruction_outlines() -> Array[PackedVector3Array]:
 	var outlines: Array[PackedVector3Array] = []
-	var pts := config.river_points
+	var pts := _river_pts
 	var half_width := config.river_width * 0.5 + 0.5
 	for i in pts.size() - 1:
 		var dir := (pts[i + 1] - pts[i]).normalized()
 		var normal := Vector2(-dir.y, dir.x) * half_width
-		var a := pts[i] - dir * 2.0
-		var b := pts[i + 1] + dir * 2.0
+		var a := pts[i] - dir * 1.0
+		var b := pts[i + 1] + dir * 1.0
 		outlines.append(PackedVector3Array([
 			Vector3(a.x + normal.x, 0, a.y + normal.y), Vector3(b.x + normal.x, 0, b.y + normal.y),
 			Vector3(b.x - normal.x, 0, b.y - normal.y), Vector3(a.x - normal.x, 0, a.y - normal.y)]))
