@@ -9,6 +9,7 @@ extends CharacterBody3D
 
 
 func _ready() -> void:
+	add_to_group(BiomeBuilder.GRASS_PUSHERS_GROUP)
 	_sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
 	_sprite.run_row_offset = 4
 	_sprite.walk_fps = config.walk_fps

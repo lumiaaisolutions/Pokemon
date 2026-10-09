@@ -5,6 +5,10 @@ extends Node3D
 ## colisión, decoración con MultiMesh y muros invisibles en el borde.
 
 const TERRAIN_SHADER := preload("res://world/terrain/terrain_pixel.gdshader")
+const TALL_GRASS_SHADER := preload("res://world/terrain/tall_grass.gdshader")
+## Grupo de nodos 3D que apartan la hierba alta al pasar (jugador y Pokémon).
+const GRASS_PUSHERS_GROUP := &"grass_pushers"
+const MAX_GRASS_ACTORS := 16
 ## Capas de colisión: 1 = terreno (la cámara choca con él), 2 = obstáculos (árboles y
 ## muros: bloquean al jugador pero no acortan el brazo de la cámara).
 const LAYER_TERRAIN := 1
@@ -17,6 +21,9 @@ const VISUAL_LAYER_SPRITES := 2
 
 var _noise := FastNoiseLite.new()
 var _shadow_texture: GradientTexture2D
+var _tall_grass_material: ShaderMaterial
+## Parches de hierba alta: (x, z, radio) por parche.
+var tall_grass_patches := PackedVector3Array()
 
 
 func _ready() -> void:
@@ -25,6 +32,7 @@ func _ready() -> void:
 	_noise.frequency = config.noise_frequency
 	_noise.fractal_octaves = 3
 	_build_terrain()
+	_build_tall_grass()
 	_build_trees()
 	_build_rocks()
 	_build_decor()
@@ -117,6 +125,87 @@ func _noise_texture(noise_seed: int, frequency: float) -> NoiseTexture2D:
 	texture.seamless = true
 	texture.noise = noise
 	return texture
+
+
+func _process(_delta: float) -> void:
+	if _tall_grass_material == null:
+		return
+	# Los actores más cercanos a la cámara apartan la hierba (el shader admite 16).
+	var camera := get_viewport().get_camera_3d()
+	var pushers := get_tree().get_nodes_in_group(GRASS_PUSHERS_GROUP)
+	if camera != null and pushers.size() > MAX_GRASS_ACTORS:
+		var cam_pos := camera.global_position
+		pushers.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+			return a.global_position.distance_squared_to(cam_pos) < b.global_position.distance_squared_to(cam_pos))
+	var actors := PackedVector4Array()
+	actors.resize(MAX_GRASS_ACTORS)
+	for i in mini(pushers.size(), MAX_GRASS_ACTORS):
+		var p := (pushers[i] as Node3D).global_position
+		actors[i] = Vector4(p.x, p.y, p.z, 1.1)
+	_tall_grass_material.set_shader_parameter("actors", actors)
+
+
+## ¿Está el punto dentro de un parche de hierba alta?
+func is_in_tall_grass(point: Vector3) -> bool:
+	for patch in tall_grass_patches:
+		if Vector2(point.x - patch.x, point.z - patch.y).length() <= patch.z:
+			return true
+	return false
+
+
+## Punto al azar dentro de un parche de hierba alta, a ras de suelo.
+func random_point_in_tall_grass(rng: RandomNumberGenerator) -> Vector3:
+	var patch := tall_grass_patches[rng.randi() % tall_grass_patches.size()]
+	var angle := rng.randf() * TAU
+	var r := sqrt(rng.randf()) * patch.z * 0.9
+	var x := patch.x + cos(angle) * r
+	var z := patch.y + sin(angle) * r
+	return Vector3(x, surface_height_at(x, z), z)
+
+
+func _build_tall_grass() -> void:
+	if config.tall_grass_texture == null:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = config.props_seed + 2000
+	tall_grass_patches.append(Vector3(config.first_patch_center.x, config.first_patch_center.y, config.tall_grass_radius_max))
+	while tall_grass_patches.size() < config.tall_grass_patch_count:
+		var radius := rng.randf_range(config.tall_grass_radius_min, config.tall_grass_radius_max)
+		var xz := _random_xz(rng, config.props_clear_radius + radius)
+		tall_grass_patches.append(Vector3(xz.x, xz.z, radius))
+
+	var size := config.tall_grass_texture.get_size() * config.pixel_size
+	var quad := QuadMesh.new()
+	quad.size = size
+	quad.center_offset = Vector3(0, size.y * 0.5, 0)
+	_tall_grass_material = ShaderMaterial.new()
+	_tall_grass_material.shader = TALL_GRASS_SHADER
+	_tall_grass_material.set_shader_parameter("blade_tex", config.tall_grass_texture)
+	quad.material = _tall_grass_material
+
+	var positions := PackedVector3Array()
+	for patch in tall_grass_patches:
+		var count := int(PI * patch.z * patch.z * config.tall_grass_density)
+		for i in count:
+			var angle := rng.randf() * TAU
+			var r := sqrt(rng.randf()) * patch.z
+			var x := patch.x + cos(angle) * r
+			var z := patch.y + sin(angle) * r
+			positions.append(Vector3(x, ground_base_height(x, z, size.x * 0.5) - config.decor_sink, z))
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = quad
+	multimesh.instance_count = positions.size()
+	for i in positions.size():
+		multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, positions[i]))
+	var instance := MultiMeshInstance3D.new()
+	instance.name = "TallGrass"
+	instance.multimesh = multimesh
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.layers = VISUAL_LAYER_SPRITES
+	# El shader desplaza vértices: margen para que no se recorte al salir de la caja.
+	instance.extra_cull_margin = 1.0
+	add_child(instance)
 
 
 func _build_trees() -> void:

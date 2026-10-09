@@ -50,5 +50,15 @@ extends Resource
 @export var props_clear_radius: float = 18.0
 @export var props_seed: int = 7
 
+@export_group("Hierba alta")
+@export var tall_grass_texture: Texture2D
+@export var tall_grass_patch_count: int = 16
+@export var tall_grass_radius_min: float = 5.0
+@export var tall_grass_radius_max: float = 10.0
+## Briznas por metro cuadrado.
+@export var tall_grass_density: float = 8.0
+## Centro del primer parche, cerca del inicio para encontrar Pokémon pronto.
+@export var first_patch_center: Vector2 = Vector2(0, -26)
+
 @export_group("Límites")
 @export var wall_height: float = 30.0
