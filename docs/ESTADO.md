@@ -7,7 +7,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | Fase | Estado | Commit | Notas |
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
-| 1 | Mundo HD-2D implementado, esperando revisión de Fernando | ver `git log` | Texturas de la Ruta 1 de B2W2; pruebas en headless con 0 fallos; 60 FPS |
+| 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
 | 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
