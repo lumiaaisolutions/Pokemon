@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://world/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://world/player/player_config.tres" id="2_cfg"]
+[ext_resource type="Script" path="res://world/actors/directional_sprite.gd" id="3_dsprite"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -30,13 +31,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CapsuleShape3D_body")
 
 [node name="Sprite" type="Sprite3D" parent="."]
-layers = 2
-cast_shadow = 0
-billboard = 2
-shaded = false
-double_sided = true
-alpha_cut = 1
-texture_filter = 0
+script = ExtResource("3_dsprite")
 
 [node name="BlobShadow" type="Decal" parent="."]
 cull_mask = 1

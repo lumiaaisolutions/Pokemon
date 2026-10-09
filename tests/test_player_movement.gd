@@ -39,7 +39,7 @@ func _run() -> void:
 	Input.action_release("move_forward")
 	_check(absf(walk_speed - _player.config.walk_speed) < 0.3, "caminar debe llegar a %.1f m/s (fue %.2f)" % [_player.config.walk_speed, walk_speed])
 	_check(_player.global_position.z < start.z - 3.0, "caminar hacia adelante debe avanzar en -Z")
-	_check(_player.get_visible_facing() == Player.Facing.UP, "alejándose de la cámara debe verse la espalda")
+	_check(_player.get_visible_facing() == DirectionalSprite.Facing.UP, "alejándose de la cámara debe verse la espalda")
 
 	# Correr.
 	Input.action_press("move_forward")
@@ -60,7 +60,7 @@ func _run() -> void:
 	Input.action_press("move_back")
 	await _frames(20)
 	Input.action_release("move_back")
-	_check(_player.get_visible_facing() == Player.Facing.DOWN, "acercándose a la cámara debe verse el frente")
+	_check(_player.get_visible_facing() == DirectionalSprite.Facing.DOWN, "acercándose a la cámara debe verse el frente")
 	await _frames(30)
 
 	# Mando: stick izquierdo a la derecha, completo y a la mitad.
@@ -70,7 +70,7 @@ func _run() -> void:
 	var pad_speed := _player.get_ground_speed()
 	_check(absf(pad_speed - _player.config.walk_speed) < 0.3, "stick completo debe caminar a %.1f m/s (fue %.2f)" % [_player.config.walk_speed, pad_speed])
 	_check(_player.global_position.x > x_before + 3.0, "el stick a la derecha debe mover en +X")
-	_check(_player.get_visible_facing() == Player.Facing.RIGHT, "moviéndose a la derecha debe verse de lado derecho")
+	_check(_player.get_visible_facing() == DirectionalSprite.Facing.RIGHT, "moviéndose a la derecha debe verse de lado derecho")
 	_joy_axis(JOY_AXIS_LEFT_X, 0.5)
 	await _frames(40)
 	var half_speed := _player.get_ground_speed()
