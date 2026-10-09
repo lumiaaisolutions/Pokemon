@@ -113,6 +113,21 @@
       "src": "world/route01/Route 1_texture_0036.png",
       "dst": "art/world/b2w2/cliff.png",
       "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/twist_mountain/Twist Mountain_texture_0023.png",
+      "dst": "art/world/b2w2/rock_brown.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+    },
+    {
+      "src": "world/twist_mountain/Twist Mountain_texture_0020.png",
+      "dst": "art/world/b2w2/tree_round.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+    },
+    {
+      "src": "world/floccesy_ranch/Floccesy Ranch_texture_0015.png",
+      "dst": "art/world/b2w2/lavender.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)"
     }
   ]
 }

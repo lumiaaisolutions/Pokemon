@@ -124,6 +124,14 @@ docs/  (GDD.md, ESTADO.md)
 - **Sin niveles:** se desbloquean habilidades y movimientos: de esquiva (para evadir ataques) y de ataque (lanzar o golpear).
 - Entra en la **Fase 5.5** (ver sección 11). Detalles por definir con Fernando: qué desbloquea cada habilidad, cómo se gana y tipos de misión.
 
+## 10b. Entrenadores NPC (pedido de Fernando, 2026-10-09)
+
+- Hay entrenadores en el mundo, cada uno con su equipo de Pokémon acorde al área o zona y a su contexto (por ejemplo, un Montañero con Pokémon de roca en la montaña). Como no hay niveles, la dificultad sube por zona: mejores especies, más Pokémon, IA más agresiva y megaevolución en entrenadores de élite.
+- **Combate al pasar frente a ellos:** cada entrenador tiene un campo de visión. Si el jugador entra en él, el entrenador lo ve (exclamación), se acerca y empieza el combate en tiempo real en ese lugar, usando la misma arena del combate salvaje.
+- **Caminan como NPC con su propia aventura:** no están fijos. Recorren rutas entre puntos de interés del mundo abierto, descansan, combaten Pokémon salvajes y avanzan por su cuenta. Usan sprites overworld de B2W2.
+- Al derrotarlos no vuelven a retar (o vuelven tras un tiempo, por definir). La recompensa no es experiencia, porque no hay niveles: por definir con Fernando (dinero, objetos o progreso de desbloqueos).
+- **Fase 5.6** (decidida por Claude a pedido de Fernando): necesita el combate (Fase 3), la captura (Fase 4) y el equipo con guardado (Fase 5), y conviene antes de la Fase 6 para que los biomas 2 y 3 se poblen con entrenadores desde el inicio. Recompensa y si vuelven a retar: por definir con Fernando al planear la fase.
+
 ## 11. Fases y criterios de "hecho"
 
 | Fase | Entregable | Hecho cuando… |
@@ -135,6 +143,7 @@ docs/  (GDD.md, ESTADO.md)
 | 4 | Captura en 1ª persona | Lanzamiento con física, esquiva, probabilidad, éxito y fallo; la criatura capturada aparece en el equipo |
 | 5 | Equipo, inventario, UI y guardado | Menú de equipo, cambio de compañero, inventario de esferas y curación, bitácora de criaturas vistas/capturadas, guardar y cargar |
 | 5.5 | Misiones y progresión | Piedra Llave en su lugar fijo, megapiedras por misiones en cualquier orden y desbloqueo de habilidades y movimientos (esquiva y ataque). Antes de esta fase, la mega se prueba con los objetos equipados en modo debug |
+| 5.6 | Entrenadores NPC | Entrenadores con equipo según su zona, campo de visión que inicia el combate, rutas propias por el mundo abierto (su "aventura") y estado de derrotado guardado |
 | 6 | Biomas 2–3 y roster completo | 3 biomas conectados, 15 criaturas con sus movimientos, 1 criatura jefe al final del bioma 3 |
 | 7 | Pulido y entrega | Audio, partículas, transiciones, export macOS (arm64), build firmada ad-hoc para uso personal |
 

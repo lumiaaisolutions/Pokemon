@@ -13,6 +13,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
 | 5.5 | Pendiente | — | Misiones, Piedra Llave, megapiedras y desbloqueos |
+| 5.6 | Pendiente | — | Entrenadores NPC (GDD 10b) |
 | 6 | Pendiente | — | — |
 | 7 | Pendiente | — | — |
 
@@ -77,7 +78,8 @@ Resultado:
 - Pinos como billboards con colisión (30 % a escala 2x). Flores, arbustos y mechones con MultiMesh sin colisión. Sprites sin sombreado (colores exactos).
 - Ambiente: tonemap lineal, niebla ligera, brillo suave y desenfoque a distancia (DOF) en la cámara.
 - Capas de colisión: 1 = terreno (la cámara choca), 2 = árboles y muros (solo bloquean al jugador).
-- Pendiente: Pinwheel Forest, Twist Mountain y Floccesy Ranch no se descargaron (al navegar se canceló la descarga). La extensión de Chrome no tiene permiso en www.spriters-resource.com (Pokémon overworld, Fase 2).
+- Descargados después (Chrome, con descargas múltiples permitidas por Fernando y URL directa `/media/assets/584/<id>.zip`): Floccesy Ranch, Pinwheel Forest y Twist Mountain. De ahí salen las rocas cafés, el árbol redondo y la lavanda de la Pradera.
+- Pendiente: la extensión de Chrome no tiene permiso en www.spriters-resource.com (Pokémon overworld, Fase 2).
 
 ## Recursos sugeridos por Fernando (para el arte del mundo, más adelante)
 - Kenney.nl (Nature Kit, Prototype Kit) y KayKit: CC0.
@@ -87,4 +89,5 @@ Resultado:
 - Cada asset se registra en `CREDITS.md` con su URL y licencia.
 
 ## Pendiente de definir
+- Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.
 - Detalle de misiones y desbloqueos (Fase 5.5).

@@ -27,11 +27,16 @@ extends Resource
 ## Metros por píxel de todos los sprites del mundo; igual que el jugador para que
 ## todo comparta el mismo tamaño de píxel.
 @export var pixel_size: float = 0.057
-@export var tree_texture: Texture2D
-@export var tree_count: int = 90
+## Tipos de árbol; cada árbol elige uno al azar.
+@export var tree_textures: Array[Texture2D] = []
+@export var tree_count: int = 110
 ## Algunos árboles se dibujan al doble de escala (múltiplo entero: el píxel se mantiene cuadrado).
 @export_range(0.0, 1.0) var big_tree_ratio: float = 0.3
 @export var tree_collision_radius: float = 0.45
+## Rocas: sprites billboard con colisión.
+@export var rock_textures: Array[Texture2D] = []
+@export var rock_count: int = 45
+@export var rock_collision_radius: float = 0.7
 ## Decoración sin colisión (flores, arbustos, mechones), dibujada con MultiMesh.
 @export var decor_textures: Array[Texture2D] = []
 @export var decor_count_each: int = 220

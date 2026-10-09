@@ -22,6 +22,7 @@ func _ready() -> void:
 	_noise.fractal_octaves = 3
 	_build_terrain()
 	_build_trees()
+	_build_rocks()
 	_build_decor()
 	_build_walls()
 
@@ -120,27 +121,46 @@ func _build_trees() -> void:
 	var trees := Node3D.new()
 	trees.name = "Trees"
 	add_child(trees)
-	var tex_size := config.tree_texture.get_size()
 	for i in config.tree_count:
-		var pos := _random_ground_point(rng)
+		var texture: Texture2D = config.tree_textures[rng.randi() % config.tree_textures.size()]
 		var scale_factor := 2.0 if rng.randf() < config.big_tree_ratio else 1.0
-		var tree := StaticBody3D.new()
-		tree.name = "Tree%d" % i
-		tree.position = pos
-		tree.collision_layer = LAYER_OBSTACLES
-
-		var sprite := _billboard(config.tree_texture, config.pixel_size * scale_factor)
-		sprite.position.y = tex_size.y * config.pixel_size * scale_factor * 0.5
-		tree.add_child(sprite)
-
-		var shape := CylinderShape3D.new()
-		shape.radius = config.tree_collision_radius * scale_factor
-		shape.height = tex_size.y * config.pixel_size * scale_factor
-		var collision := CollisionShape3D.new()
-		collision.shape = shape
-		collision.position.y = shape.height * 0.5
-		tree.add_child(collision)
+		var tree := _obstacle("Tree%d" % i, texture, scale_factor, config.tree_collision_radius, _random_ground_point(rng))
 		trees.add_child(tree)
+
+
+func _build_rocks() -> void:
+	if config.rock_textures.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = config.props_seed + 500
+	var rocks := Node3D.new()
+	rocks.name = "Rocks"
+	add_child(rocks)
+	for i in config.rock_count:
+		var texture: Texture2D = config.rock_textures[rng.randi() % config.rock_textures.size()]
+		var scale_factor := 2.0 if rng.randf() < 0.2 else 1.0
+		var rock := _obstacle("Rock%d" % i, texture, scale_factor, config.rock_collision_radius, _random_ground_point(rng))
+		rocks.add_child(rock)
+
+
+## Sprite billboard con los pies en el suelo y un cilindro de colisión en la capa de obstáculos.
+func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, pos: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = obstacle_name
+	body.position = pos
+	body.collision_layer = LAYER_OBSTACLES
+	var height := texture.get_size().y * config.pixel_size * scale_factor
+	var sprite := _billboard(texture, config.pixel_size * scale_factor)
+	sprite.position.y = height * 0.5
+	body.add_child(sprite)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius * scale_factor
+	shape.height = height
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position.y = height * 0.5
+	body.add_child(collision)
+	return body
 
 
 func _build_decor() -> void:

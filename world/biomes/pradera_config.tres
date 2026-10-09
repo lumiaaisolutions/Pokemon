@@ -12,6 +12,9 @@
 [ext_resource type="Texture2D" path="res://art/world/b2w2/tuft.png" id="10_tuft"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/tuft_small.png" id="11_tuft_small"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/plant.png" id="12_plant"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/tree_round.png" id="13_tree_round"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/rock_brown.png" id="14_rock"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/lavender.png" id="15_lavender"]
 
 [resource]
 script = ExtResource("1_cfg")
@@ -20,5 +23,6 @@ grass_texture = ExtResource("2_grass")
 grass_light_texture = ExtResource("3_grass_light")
 path_texture = ExtResource("4_sand")
 dirt_texture = ExtResource("5_dirt")
-tree_texture = ExtResource("6_pine")
-decor_textures = Array[Texture2D]([ExtResource("7_flower_bush"), ExtResource("8_flowers"), ExtResource("9_bush"), ExtResource("10_tuft"), ExtResource("11_tuft_small"), ExtResource("12_plant")])
+tree_textures = Array[Texture2D]([ExtResource("6_pine"), ExtResource("13_tree_round"), ExtResource("13_tree_round")])
+rock_textures = Array[Texture2D]([ExtResource("14_rock")])
+decor_textures = Array[Texture2D]([ExtResource("7_flower_bush"), ExtResource("8_flowers"), ExtResource("9_bush"), ExtResource("10_tuft"), ExtResource("11_tuft_small"), ExtResource("12_plant"), ExtResource("15_lavender")])
