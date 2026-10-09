@@ -7,7 +7,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | Fase | Estado | Commit | Notas |
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
-| 1 | En curso: mundo HD-2D | `362778e` (greybox) | Nate animado con su hoja de B2W2, aprobado por Fernando. Falta: mundo en pixel art de B2W2 |
+| 1 | Mundo HD-2D implementado, esperando revisión de Fernando | ver `git log` | Texturas de la Ruta 1 de B2W2; pruebas en headless con 0 fallos; 60 FPS |
 | 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
@@ -70,6 +70,14 @@ Resultado:
 - Al mundo le faltaba estructura y textura. Primero se eligió el estilo Leyendas Arceus, pero al ver a Nate animado Fernando pidió que el mundo tuviera su mismo pixel art. Decisión final: HD-2D con gráficos de B2W2 (descargas autorizadas).
 - Nate animado (hoja overworld de B2W2 de The Spriters Resource, ripeada por Dazz, "No Credit Required"): aprobado.
 - Pokémon en el mundo: sprites overworld de seguidores (4 direcciones). En combate siguen gen5 / gen5ani.
+
+## Mundo HD-2D (2026-10-09)
+- Fuente: The Models Resource, B2W2 Route 01 (asset 587527), descargado en Chrome. Godot no importa bien el `.dae` ("Multiple instance_* not supported"), así que solo se usan sus texturas.
+- Suelo: `world/terrain/terrain_pixel.gdshader`. Coordenadas del mundo a 17.5 px/m (igual que Nate); pasto, pasto claro, caminos de arena y tierra en pendientes, con bordes por dither de píxel; luz en escalones.
+- Pinos como billboards con colisión (30 % a escala 2x). Flores, arbustos y mechones con MultiMesh sin colisión. Sprites sin sombreado (colores exactos).
+- Ambiente: tonemap lineal, niebla ligera, brillo suave y desenfoque a distancia (DOF) en la cámara.
+- Capas de colisión: 1 = terreno (la cámara choca), 2 = árboles y muros (solo bloquean al jugador).
+- Pendiente: Pinwheel Forest, Twist Mountain y Floccesy Ranch no se descargaron (al navegar se canceló la descarga). La extensión de Chrome no tiene permiso en www.spriters-resource.com (Pokémon overworld, Fase 2).
 
 ## Recursos sugeridos por Fernando (para el arte del mundo, más adelante)
 - Kenney.nl (Nature Kit, Prototype Kit) y KayKit: CC0.

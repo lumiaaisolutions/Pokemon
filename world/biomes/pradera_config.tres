@@ -1,7 +1,24 @@
 [gd_resource type="Resource" script_class="BiomeConfig" format=3]
 
 [ext_resource type="Script" path="res://world/terrain/biome_config.gd" id="1_cfg"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/grass.png" id="2_grass"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/grass_light.png" id="3_grass_light"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/sand.png" id="4_sand"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/dirt.png" id="5_dirt"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/pine.png" id="6_pine"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/flower_bush_pink.png" id="7_flower_bush"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/flowers_yellow.png" id="8_flowers"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/bush.png" id="9_bush"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft.png" id="10_tuft"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft_small.png" id="11_tuft_small"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/plant.png" id="12_plant"]
 
 [resource]
 script = ExtResource("1_cfg")
 biome_name = "Pradera"
+grass_texture = ExtResource("2_grass")
+grass_light_texture = ExtResource("3_grass_light")
+path_texture = ExtResource("4_sand")
+dirt_texture = ExtResource("5_dirt")
+tree_texture = ExtResource("6_pine")
+decor_textures = Array[Texture2D]([ExtResource("7_flower_bush"), ExtResource("8_flowers"), ExtResource("9_bush"), ExtResource("10_tuft"), ExtResource("11_tuft_small"), ExtResource("12_plant")])

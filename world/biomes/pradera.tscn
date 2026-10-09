@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://world/biomes/biome_greybox.gd" id="1_biome"]
+[ext_resource type="Script" path="res://world/biomes/biome_builder.gd" id="1_biome"]
 [ext_resource type="Resource" path="res://world/biomes/pradera_config.tres" id="2_cfg"]
 
 [node name="Pradera" type="Node3D"]

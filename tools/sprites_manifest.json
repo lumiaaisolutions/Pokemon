@@ -38,6 +38,81 @@
           }
         ]
       }
+    },
+    {
+      "src": "world/route01/Route 1_texture_00100.png",
+      "dst": "art/world/b2w2/grass.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0045.png",
+      "dst": "art/world/b2w2/grass_light.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_00010.png",
+      "dst": "art/world/b2w2/sand.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0029.png",
+      "dst": "art/world/b2w2/sand_light.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0027.png",
+      "dst": "art/world/b2w2/dirt.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0024.png",
+      "dst": "art/world/b2w2/water.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0016.png",
+      "dst": "art/world/b2w2/pine.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0022.png",
+      "dst": "art/world/b2w2/flower_bush_pink.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0061.png",
+      "dst": "art/world/b2w2/flowers_yellow.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0020.png",
+      "dst": "art/world/b2w2/bush.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0013.png",
+      "dst": "art/world/b2w2/plant.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0002.png",
+      "dst": "art/world/b2w2/tuft.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0009.png",
+      "dst": "art/world/b2w2/tuft_small.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0014.png",
+      "dst": "art/world/b2w2/grass_sand_edge.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+    },
+    {
+      "src": "world/route01/Route 1_texture_0036.png",
+      "dst": "art/world/b2w2/cliff.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
     }
   ]
 }

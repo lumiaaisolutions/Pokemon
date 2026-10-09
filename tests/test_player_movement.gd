@@ -7,7 +7,7 @@ const MAIN_SCENE := preload("res://world/main.tscn")
 var _failures: Array[String] = []
 var _main: Node3D
 var _player: Player
-var _biome: BiomeGreybox
+var _biome: BiomeBuilder
 var _rig: CameraRig
 
 
@@ -15,7 +15,7 @@ func _ready() -> void:
 	_main = MAIN_SCENE.instantiate() as Node3D
 	add_child(_main)
 	_player = _main.get_node("Player") as Player
-	_biome = _main.get_node("Pradera") as BiomeGreybox
+	_biome = _main.get_node("Pradera") as BiomeBuilder
 	_rig = _main.get_node("CameraRig") as CameraRig
 	await _run()
 	for failure: String in _failures:
@@ -98,7 +98,7 @@ func _run() -> void:
 	_check(absf(p.x) < half and absf(p.z) < half, "el jugador salió del bioma (%.1f, %.1f)" % [p.x, p.z])
 
 	# Props: corriendo contra un árbol no debe atravesarlo.
-	var tree := _biome.get_node("Props/Tree0") as Node3D
+	var tree := _biome.get_node("Trees/Tree0") as Node3D
 	_player.global_position = tree.global_position + Vector3(-3.0, 0.5, 0.0)
 	_player.velocity = Vector3.ZERO
 	await _frames(20)
@@ -108,6 +108,8 @@ func _run() -> void:
 	Input.action_release("run")
 	Input.action_release("move_right")
 	_check(_player.global_position.x < tree.global_position.x - 0.3, "el jugador atravesó un árbol")
+	var arm := _rig.get_node("Pitch/SpringArm") as SpringArm3D
+	_check(arm.get_hit_length() > arm.spring_length * 0.8, "la cámara no debe acortarse al chocar con un árbol (%.1f m)" % arm.get_hit_length())
 
 	# Muro: corriendo hacia el borde debe detenerse antes del límite.
 	_player.global_position = Vector3(half - 6.0, _biome.surface_height_at(half - 6.0, 0.0) + 0.5, 0.0)

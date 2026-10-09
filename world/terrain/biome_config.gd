@@ -1,28 +1,40 @@
 class_name BiomeConfig
 extends Resource
-## Parámetros de un bioma en greybox: terreno por ruido, props y límites.
+## Parámetros de un bioma HD-2D: terreno por ruido con texturas pixel art de B2W2,
+## árboles y decoración como sprites billboard, y límites.
 
 @export var biome_name: String = ""
 
 @export_group("Terreno")
 ## Lado del terreno cuadrado en metros, centrado en el origen.
 @export var size: float = 200.0
-## Tamaño de cada celda de la malla (más grande = facetas low-poly más visibles).
-@export var cell_size: float = 4.0
-@export var height_amplitude: float = 6.0
+@export var cell_size: float = 2.0
+@export var height_amplitude: float = 5.0
 @export var noise_frequency: float = 0.012
 @export var noise_seed: int = 1
 ## Radio plano alrededor del origen para el punto de inicio.
 @export var flat_radius: float = 12.0
-@export var ground_color_low: Color = Color(0.36, 0.58, 0.27)
-@export var ground_color_high: Color = Color(0.55, 0.70, 0.33)
 
-@export_group("Props")
-@export var rock_count: int = 40
-@export var tree_count: int = 70
-@export var rock_color: Color = Color(0.52, 0.50, 0.48)
-@export var trunk_color: Color = Color(0.42, 0.29, 0.19)
-@export var leaves_color: Color = Color(0.20, 0.45, 0.22)
+@export_group("Texturas del suelo")
+@export var grass_texture: Texture2D
+@export var grass_light_texture: Texture2D
+@export var path_texture: Texture2D
+@export var dirt_texture: Texture2D
+@export var path_seed: int = 3
+@export var patch_seed: int = 5
+
+@export_group("Sprites")
+## Metros por píxel de todos los sprites del mundo; igual que el jugador para que
+## todo comparta el mismo tamaño de píxel.
+@export var pixel_size: float = 0.057
+@export var tree_texture: Texture2D
+@export var tree_count: int = 90
+## Algunos árboles se dibujan al doble de escala (múltiplo entero: el píxel se mantiene cuadrado).
+@export_range(0.0, 1.0) var big_tree_ratio: float = 0.3
+@export var tree_collision_radius: float = 0.45
+## Decoración sin colisión (flores, arbustos, mechones), dibujada con MultiMesh.
+@export var decor_textures: Array[Texture2D] = []
+@export var decor_count_each: int = 220
 ## Distancia mínima de los props al punto de inicio.
 @export var props_clear_radius: float = 18.0
 @export var props_seed: int = 7

@@ -19,6 +19,7 @@ fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
 
 [node name="Player" type="CharacterBody3D"]
+collision_mask = 3
 floor_constant_speed = true
 floor_snap_length = 0.3
 script = ExtResource("1_player")
