@@ -37,6 +37,7 @@ const LEGEND_NOTICE_TIME := 0.9
 const LEGEND_ESCAPE_DISTANCE := 45.0
 const FLY_SPEED := 14.0
 const FLY_HEIGHT := 14.0
+const ESCAPE_PLAYER_CLEARANCE := 5.0
 const CURIOUS_STOP := 2.5
 const FLEE_SAFE := 15.0
 const TERRITORY_RADIUS := 7.0
@@ -82,6 +83,8 @@ var _ignore_player: float = 0.0
 var _sparkle_time: float = 0.0
 var _sparkles: CPUParticles3D
 var _swim_target := Vector3.ZERO
+## Último destino pedido a la navegación (INF = ninguno todavía).
+var _last_target := Vector3.INF
 var _unseen_time: float = 0.0
 var _hide_after: float = 120.0
 var _wanders: int = 0
@@ -179,7 +182,8 @@ func _physics_process(delta: float) -> void:
 	var horizontal := Vector3.ZERO
 	if target_speed > 0.0:
 		# Recalcular el camino es caro: solo cuando el destino se mueve de verdad.
-		if _agent.target_position.distance_squared_to(destination) > REPATH_DISTANCE * REPATH_DISTANCE:
+		if _last_target.distance_squared_to(destination) > REPATH_DISTANCE * REPATH_DISTANCE:
+			_last_target = destination
 			_agent.target_position = destination
 		var next := _agent.get_next_path_position()
 		var to_next := next - global_position
@@ -508,6 +512,14 @@ func _choose_escape_target() -> void:
 			candidate = NavigationServer3D.map_get_closest_point(map, candidate)
 			var path := NavigationServer3D.map_get_path(map, global_position, candidate, true)
 			if path.is_empty() or path[path.size() - 1].distance_to(candidate) > 1.5:
+				continue
+			# Nunca escapar pasando junto al jugador.
+			var passes_player := false
+			for point in path:
+				if point.distance_to(player.global_position) < ESCAPE_PLAYER_CLEARANCE:
+					passes_player = true
+					break
+			if passes_player:
 				continue
 		var distance := candidate.distance_to(player.global_position)
 		if distance > best_distance:
