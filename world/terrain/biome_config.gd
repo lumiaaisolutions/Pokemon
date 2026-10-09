@@ -1,54 +1,34 @@
 class_name BiomeConfig
 extends Resource
-## Parámetros de un bioma HD-2D: terreno por ruido con texturas pixel art de B2W2,
-## árboles y decoración como sprites billboard, y límites.
+## Estilo de un bioma: texturas del suelo, árboles, rocas, decoración y hierba alta.
+## Las cantidades son por cada 1,000 m² del bioma.
 
 @export var biome_name: String = ""
 
-@export_group("Terreno")
-## Lado del terreno cuadrado en metros, centrado en el origen.
-@export var size: float = 200.0
-@export var cell_size: float = 2.0
-@export var height_amplitude: float = 5.0
-@export var noise_frequency: float = 0.012
-@export var noise_seed: int = 1
-## Radio plano alrededor del origen para el punto de inicio.
-@export var flat_radius: float = 12.0
-
-@export_group("Texturas del suelo")
+@export_group("Suelo")
 @export var grass_texture: Texture2D
 @export var grass_light_texture: Texture2D
 @export var path_texture: Texture2D
-@export var dirt_texture: Texture2D
-@export var path_seed: int = 3
-@export var patch_seed: int = 5
+## Textura en pendientes fuertes.
+@export var slope_texture: Texture2D
+## Multiplica el color del suelo (p. ej. más oscuro en el bosque).
+@export var ground_tint: Color = Color.WHITE
 
-@export_group("Sprites")
-## Metros por píxel de todos los sprites del mundo; igual que el jugador para que
-## todo comparta el mismo tamaño de píxel.
-@export var pixel_size: float = 0.057
-## Tipos de árbol; cada árbol elige uno al azar.
+@export_group("Árboles y rocas")
 @export var tree_textures: Array[Texture2D] = []
-@export var tree_count: int = 110
-## Algunos árboles se dibujan al doble de escala (múltiplo entero: el píxel se mantiene cuadrado).
+@export var trees_per_1000m2: float = 2.5
 @export_range(0.0, 1.0) var big_tree_ratio: float = 0.3
 @export var tree_collision_radius: float = 0.45
-## Rocas: sprites billboard con colisión.
 @export var rock_textures: Array[Texture2D] = []
-@export var rock_count: int = 45
+@export var rocks_per_1000m2: float = 1.0
 @export var rock_collision_radius: float = 0.7
-## Decoración sin colisión (flores, arbustos, mechones), dibujada con MultiMesh.
+## Multiplica el color de árboles y rocas.
+@export var prop_tint: Color = Color.WHITE
+
+@export_group("Decoración")
 @export var decor_textures: Array[Texture2D] = []
-@export var decor_count_each: int = 220
-## Cuánto se hunden en el suelo los obstáculos y la decoración, para que nunca
-## parezcan flotar sobre una pendiente.
-@export var obstacle_sink: float = 0.15
-@export var decor_sink: float = 0.05
-## Opacidad de la sombra de contacto bajo árboles y rocas.
-@export_range(0.0, 1.0) var contact_shadow_alpha: float = 0.45
-## Distancia mínima de los props al punto de inicio.
-@export var props_clear_radius: float = 18.0
-@export var props_seed: int = 7
+## Cantidad de cada decoración por cada 1,000 m².
+@export var decor_per_1000m2: float = 5.0
 
 @export_group("Hierba alta")
 @export var tall_grass_texture: Texture2D
@@ -57,8 +37,5 @@ extends Resource
 @export var tall_grass_radius_max: float = 10.0
 ## Briznas por metro cuadrado.
 @export var tall_grass_density: float = 8.0
-## Centro del primer parche, cerca del inicio para encontrar Pokémon pronto.
-@export var first_patch_center: Vector2 = Vector2(0, -26)
-
-@export_group("Límites")
-@export var wall_height: float = 30.0
+@export var tall_grass_tint_bottom: Color = Color(0.32, 0.5, 0.3)
+@export var tall_grass_tint_top: Color = Color(0.62, 0.82, 0.5)

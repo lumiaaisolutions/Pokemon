@@ -22,6 +22,7 @@ height_m = 0.6
 size_scale = 1.0
 habitats = Array[int]([4])
 spawn_weight = 1.1249
+swims = true
 is_legendary = false
 is_mythical = false
 temperament = 2

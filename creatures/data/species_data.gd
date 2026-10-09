@@ -33,6 +33,8 @@ enum Habitat { MEADOW, FOREST, MOUNTAIN, FRESHWATER, SEA, SWAMP }
 @export var habitats: Array[Habitat] = []
 ## Peso relativo de aparición (etapa × poder). 0 = no aparece en hierba (legendarios).
 @export var spawn_weight: float = 1.0
+## Nada en el agua (tipo Agua con forma de pez o tentáculos); si no, aparece en la orilla.
+@export var swims: bool = false
 @export var is_legendary: bool = false
 @export var is_mythical: bool = false
 

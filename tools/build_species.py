@@ -55,6 +55,8 @@ TYPE_HABITATS = {
 WATER_HABITATS = {FRESHWATER, SEA, SWAMP}
 # habitat_id de PokeAPI (solo Gen 1–3): 7 = mar, 9 = orilla de agua dulce.
 POKEAPI_SEA, POKEAPI_WATERS_EDGE = "7", "9"
+# shape_id de PokeAPI que nadan (si son de tipo Agua): 2 = serpiente, 3 = pez, 10 = tentáculos.
+SWIMMING_SHAPES = {"2", "3", "10"}
 
 # Rareza: peso = etapa × poder (decisión de Fernando, 2026-10-09).
 STAGE_FACTOR = {1: 1.0, 2: 0.35, 3: 0.1}
@@ -247,6 +249,7 @@ height_m = {sp['height']}
 size_scale = {sp['size']}
 habitats = Array[int]([{habitats}])
 spawn_weight = {sp['weight']}
+swims = {str(sp['swims']).lower()}
 is_legendary = {str(sp['legendary']).lower()}
 is_mythical = {str(sp['mythical']).lower()}
 temperament = {sp['temperament']}
@@ -318,6 +321,7 @@ def main() -> int:
             "weight": round(spawn_weight(stage, base_total, legendary or mythical or identifier in SPECIAL)
                             * (ROSTER_WEIGHT_BOOST if identifier in ROSTER_HABITAT and identifier not in ROSTER_RARE else 1.0), 4),
             "legendary": legendary, "mythical": mythical, "temperament": temperament,
+            "swims": WATER in types[sid] and row["shape_id"] in SWIMMING_SHAPES,
         }
 
     ids = sorted(species_rows, key=int)

@@ -134,6 +134,32 @@ docs/  (GDD.md, ESTADO.md)
 - Al derrotarlos no vuelven a retar (o vuelven tras un tiempo, por definir). La recompensa no es experiencia, porque no hay niveles: por definir con Fernando (dinero, objetos o progreso de desbloqueos).
 - **Fase 5.6** (decidida por Claude a pedido de Fernando): necesita el combate (Fase 3), la captura (Fase 4) y el equipo con guardado (Fase 5), y conviene antes de la Fase 6 para que los biomas 2 y 3 se poblen con entrenadores desde el inicio. Recompensa y si vuelven a retar: por definir con Fernando al planear la fase.
 
+## 10c. Catálogo del mundo (aprobado por Fernando, 2026-10-09)
+
+Orden por capas (decisión de Fernando): primero el mundo exterior, luego la vida (NPC, día/noche, clima), después el combate y la captura, y al final los interiores y las actividades.
+
+| Capa | Contenido |
+|---|---|
+| 2.5 | Tres biomas conectados (Pradera, Bosque/humedal y Montaña), río, lago, pantano y costa; aparición por tipo y bioma con rareza; shiny 2 %; tamaño por altura; persecución con stamina; legendarios en lugares fijos |
+| 2.6 Asentamientos y lugares icónicos (exterior) | **Pradera:** pueblo inicial con el laboratorio del profesor (selección de huevo), casas, Centro Pokémon y tienda; rancho con granero y corrales. **Bosque:** aldea de cabañas, casas en los árboles, campamento de casas de campaña con fogata, puentes sobre el río y el pantano, bosque ancestral con árbol sagrado y santuario. **Montaña:** pueblo minero, refugio de montañista, mirador, volcán con lava, aguas termales y ruinas, torre antigua, cumbre nevada. **Costa:** ciudad portuaria con calles pavimentadas, edificios, gimnasio, muelle, faro en acantilado, naufragio, mercado de pescadores y parque de atracciones con noria. **Zonas nuevas:** isla y archipiélago (con Surf), desierto o cantera, pueblo fantasma en el pantano. Rutas con distinto pavimento (tierra en rutas, adoquín en pueblos, baldosa o asfalto en la ciudad, madera en puentes y muelles). Edificios con modelos de B2W2 (The Models Resource); si Godot no importa uno, se reconstruye con volúmenes y sus texturas originales |
+| 2.7 Vida del mundo | NPC con rutinas (trabajo, tienda, Centro Pokémon, cultivos, mercado, pesca, pláticas) según la hora; viajeros entre pueblos que acampan; entrenadores que recorren rutas, entrenan y combaten salvajes (su reto llega en la 5.6); cada NPC con su Pokémon compañero; ciclo día/noche; clima (lluvia, niebla, nieve) que cambia las apariciones (Fantasma y Siniestro de noche; Agua y Eléctrico con lluvia; Hielo con nieve) |
+| 3 y 4 | Combate en tiempo real y captura (ciclo principal) |
+| 5 | UI, inventario y guardado; selección de inicial con huevos; Pokédex con hábitats (dónde y a qué hora vive cada Pokémon) |
+| 5.5 | Misiones, evolución por desbloqueos, megapiedras, reputación de pueblos y fotografía de Pokémon con misiones |
+| 5.6 | Entrenadores NPC: reto al verte y combate |
+| 5.7 Interiores | Casas y edificios, cuevas de montaña, gruta de cristal, mina abandonada (fósiles), alcantarillas bajo la ciudad, templo sumergido, museo y laboratorio de fósiles, guardería y crianza, torre de batalla y estadio, estación de tren y ferry a las islas |
+| 5.8 Actividades | Pesca con minijuego, Surf y monturas (agua, escalada y carrera), eventos de horda y migraciones, equipo villano con bases (alcantarillas y mina) y misiones, objetos en el suelo, árboles de bayas y rocas rompibles |
+
+Ideas adicionales propuestas por Claude (pendientes de aprobar):
+- Zona Safari con reglas propias de captura.
+- Concursos Pokémon y salón de belleza en la ciudad.
+- Bazar nómada que cambia de lugar cada día.
+- Estaciones del año (como Sawsbuck) que cambian el color del mundo y las apariciones.
+- Puntos de vuelo con Pokémon volador para viajar rápido.
+- Base de guardabosques que da misiones de rescate de Pokémon.
+- Jardín botánico con plantas raras y Pokémon Planta.
+- Mapa con niebla que se revela al explorar.
+
 ## 11. Fases y criterios de "hecho"
 
 | Fase | Entregable | Hecho cuando… |

@@ -10,6 +10,10 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
 | 2 | Hecha (aprobada por Fernando el 2026-10-09) | `33a8792` | Hierba alta, salvajes con IA y compañero al azar; 0 fallos; 60 FPS |
 | 2.5 | En curso | — | Mundo de 3 biomas con agua, aparición por tipo y rareza, shiny, tamaños, persecución con stamina y legendarios |
+| 2.6 | Pendiente | — | Asentamientos, rutas pavimentadas y lugares icónicos (GDD 10c) |
+| 2.7 | Pendiente | — | NPC con rutinas, viajeros, entrenadores caminando, día/noche y clima (GDD 10c) |
+| 5.7 | Pendiente | — | Interiores (GDD 10c) |
+| 5.8 | Pendiente | — | Actividades: pesca, Surf, hordas, equipo villano, bayas (GDD 10c) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |

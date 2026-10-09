@@ -138,6 +138,32 @@
       "dst": "art/world/b2w2/lavender.png",
       "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)",
       "crop": true
+    },
+    {
+      "src": "world/twist_mountain/Twist Mountain_texture_0015.png",
+      "dst": "art/world/b2w2/mountain_dirt.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+    },
+    {
+      "src": "world/twist_mountain/Twist Mountain_texture_0007.png",
+      "dst": "art/world/b2w2/mountain_rock.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+    },
+    {
+      "src": "world/floccesy_ranch/Floccesy Ranch_texture_0024.png",
+      "dst": "art/world/b2w2/beach_sand.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)"
+    },
+    {
+      "src": "world/floccesy_ranch/Floccesy Ranch_texture_0025.png",
+      "dst": "art/world/b2w2/swamp_water.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)"
+    },
+    {
+      "src": "world/pinwheel_forest/Pinwheel Forest_texture_0019.png",
+      "dst": "art/world/b2w2/pine_forest.png",
+      "_fuente": "The Models Resource, Pokémon B2W2, Pinwheel Forest (asset 587518)",
+      "crop": true
     }
   ]
 }
