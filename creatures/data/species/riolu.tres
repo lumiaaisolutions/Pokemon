@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/riolu/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 447
+identifier = "riolu"
+display_name = "Riolu"
+types = Array[int]([1])
+hp = 40
+attack = 70
+defense = 40
+sp_attack = 35
+sp_defense = 40
+speed = 60
+temperament = 3
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

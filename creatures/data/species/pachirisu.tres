@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/pachirisu/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 417
+identifier = "pachirisu"
+display_name = "Pachirisu"
+types = Array[int]([12])
+hp = 60
+attack = 45
+defense = 70
+sp_attack = 45
+sp_defense = 90
+speed = 95
+temperament = 0
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

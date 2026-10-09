@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/rhyhorn/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 111
+identifier = "rhyhorn"
+display_name = "Rhyhorn"
+types = Array[int]([4, 5])
+hp = 80
+attack = 85
+defense = 95
+sp_attack = 30
+sp_defense = 30
+speed = 25
+temperament = 0
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

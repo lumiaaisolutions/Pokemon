@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/pawmi/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 921
+identifier = "pawmi"
+display_name = "Pawmi"
+types = Array[int]([12])
+hp = 45
+attack = 50
+defense = 20
+sp_attack = 40
+sp_defense = 25
+speed = 60
+temperament = 3
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 1

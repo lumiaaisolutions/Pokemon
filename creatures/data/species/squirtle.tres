@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/squirtle/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 7
+identifier = "squirtle"
+display_name = "Squirtle"
+types = Array[int]([10])
+hp = 44
+attack = 48
+defense = 65
+sp_attack = 50
+sp_defense = 64
+speed = 43
+temperament = 1
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

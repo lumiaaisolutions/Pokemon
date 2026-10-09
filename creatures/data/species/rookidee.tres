@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/rookidee/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 821
+identifier = "rookidee"
+display_name = "Rookidee"
+types = Array[int]([2])
+hp = 38
+attack = 47
+defense = 35
+sp_attack = 33
+sp_defense = 35
+speed = 57
+temperament = 0
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 0

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/carnivine/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 455
+identifier = "carnivine"
+display_name = "Carnivine"
+types = Array[int]([11])
+hp = 74
+attack = 100
+defense = 72
+sp_attack = 90
+sp_defense = 72
+speed = 46
+temperament = 3
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 3

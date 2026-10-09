@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/glimmet/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 969
+identifier = "glimmet"
+display_name = "Glimmet"
+types = Array[int]([5, 3])
+hp = 48
+attack = 35
+defense = 42
+sp_attack = 105
+sp_defense = 60
+speed = 60
+temperament = 1
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 1

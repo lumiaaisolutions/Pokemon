@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/flamigo/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 973
+identifier = "flamigo"
+display_name = "Flamigo"
+types = Array[int]([2, 1])
+hp = 82
+attack = 115
+defense = 74
+sp_attack = 75
+sp_defense = 64
+speed = 90
+temperament = 3
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 1

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/wooper/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 194
+identifier = "wooper"
+display_name = "Wooper"
+types = Array[int]([10, 4])
+hp = 55
+attack = 45
+defense = 45
+sp_attack = 25
+sp_defense = 25
+speed = 15
+temperament = 0
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

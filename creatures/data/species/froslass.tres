@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/froslass/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 478
+identifier = "froslass"
+display_name = "Froslass"
+types = Array[int]([14, 7])
+hp = 70
+attack = 80
+defense = 70
+sp_attack = 80
+sp_defense = 70
+speed = 110
+temperament = 2
+rarity = 1
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

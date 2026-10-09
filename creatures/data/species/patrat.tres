@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/patrat/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 504
+identifier = "patrat"
+display_name = "Patrat"
+types = Array[int]([0])
+hp = 45
+attack = 55
+defense = 39
+sp_attack = 35
+sp_defense = 39
+speed = 42
+temperament = 0
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/bouffalant/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 626
+identifier = "bouffalant"
+display_name = "Bouffalant"
+types = Array[int]([0])
+hp = 95
+attack = 110
+defense = 95
+sp_attack = 40
+sp_defense = 95
+speed = 55
+temperament = 3
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2

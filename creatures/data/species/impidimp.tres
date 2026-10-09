@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/impidimp/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 859
+identifier = "impidimp"
+display_name = "Impidimp"
+types = Array[int]([16, 17])
+hp = 45
+attack = 45
+defense = 30
+sp_attack = 55
+sp_defense = 40
+speed = 50
+temperament = 1
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 0

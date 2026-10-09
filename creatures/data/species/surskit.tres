@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/surskit/overworld.png" id="2_ow"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 283
+identifier = "surskit"
+display_name = "Surskit"
+types = Array[int]([6, 10])
+hp = 40
+attack = 30
+defense = 32
+sp_attack = 50
+sp_defense = 52
+speed = 65
+temperament = 1
+rarity = 0
+overworld_sheet = ExtResource("2_ow")
+foot_offset_px = 2
