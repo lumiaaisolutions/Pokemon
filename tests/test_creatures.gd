@@ -107,7 +107,10 @@ func _run() -> void:
 	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
 	var guard := _spawner.spawn_species(_species("aggron"), _ground(4.0, 0.0), false, false)
 	await _frames(30)
-	_check(guard.state == PokemonActor.State.CHASE, "el territorial debe perseguir si el jugador entra a su zona")
+	# Persigue o pelea con Nate, o con su compañero si este salió a defenderlo.
+	var defends: bool = guard.state == PokemonActor.State.CHASE or (guard.state == PokemonActor.State.FIGHT \
+			and (guard.fight_target == _player or guard.fight_target == _main.companion))
+	_check(defends, "el territorial debe perseguir o atacar si el jugador entra a su zona (estado %d)" % guard.state)
 	_clear_wild()
 	await _frames(2)
 
@@ -130,7 +133,7 @@ func _run() -> void:
 	# Manadas: misma línea evolutiva, como mucho un líder evolucionado.
 	var packs_ok := 0
 	for i in 6:
-		var leader := _spawner._spawn_pack(_species("pidgey"), _ground(20.0, 4.0 * i))
+		var leader := _spawner._spawn_pack(_species("pidgey"), _ground(20.0, 4.0 * i), SpeciesData.Habitat.MEADOW)
 		await _frames(2)
 		var members := get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP).filter(func(a: PokemonActor) -> bool: return a.group_id == leader.group_id)
 		var evolved := members.filter(func(a: PokemonActor) -> bool: return a.species.evolution_stage > 1)

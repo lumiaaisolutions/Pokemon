@@ -23,8 +23,33 @@ func _ready() -> void:
 	add_child(companion)
 	$Spawner.wild_contact.connect(_on_wild_contact)
 	_player.blacked_out.connect(_on_blacked_out)
+	companion.stunned.connect(_on_companion_stunned)
 	GameState.respawn_point = _player.global_position
 	_warm_up_shaders()
+
+
+## Segundos que tarda el compañero en volver de su Pokéball tras debilitarse.
+const COMPANION_RECALL_TIME := 30.0
+
+
+## El compañero cayó: si protegía a Nate desmayado, es desmayo definitivo; si no,
+## vuelve a su Pokéball y regresa en COMPANION_RECALL_TIME con la mitad de la vida.
+func _on_companion_stunned(_actor: PokemonActor) -> void:
+	if _player.mode == Player.Mode.DOWNED:
+		_player.black_out()
+		return
+	PixelBurst.spawn(self, companion.global_position + Vector3.UP * 0.5, PixelBurst.Kind.SMOKE, 0.8)
+	companion.visible = false
+	companion.process_mode = Node.PROCESS_MODE_DISABLED
+	await get_tree().create_timer(COMPANION_RECALL_TIME).timeout
+	_return_companion(0.5)
+
+
+func _return_companion(ratio: float) -> void:
+	companion.process_mode = Node.PROCESS_MODE_INHERIT
+	companion.visible = true
+	companion.global_position = _player.global_position + Vector3(1.5, 0.3, 1.5)
+	companion.recover(ratio)
 
 
 ## Desmayo definitivo: pantalla negra, pierde dinero y reaparece con todo lleno.
@@ -33,7 +58,7 @@ func _on_blacked_out() -> void:
 	($Hud as Hud).show_blackout("¡Nate se desmayó!\nPerdió $%d en el camino..." % lost, 1.5)
 	await get_tree().create_timer(0.7).timeout
 	_player.respawn_at(GameState.respawn_point)
-	companion.global_position = GameState.respawn_point + Vector3(1.5, 0.3, 1.5)
+	_return_companion(1.0)
 
 
 ## Dibuja una vez, frente a la cámara, cada efecto que aparece durante el juego

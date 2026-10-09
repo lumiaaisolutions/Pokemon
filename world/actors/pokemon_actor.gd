@@ -9,9 +9,11 @@ extends CharacterBody3D
 signal contact_with_player(actor: PokemonActor)
 ## Avisa al spawner cuando se esconde o desaparece (libera su cupo).
 signal vanished(actor: PokemonActor)
+## Quedó debilitado (aturdido): durante STUN_TIME se le puede capturar.
+signal stunned(actor: PokemonActor)
 
 enum Role { WILD, COMPANION }
-enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY }
+enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY, FIGHT, STUNNED }
 
 const PIXEL_SIZE := 0.057
 const GRAVITY := 20.0
@@ -38,6 +40,22 @@ const LEGEND_ESCAPE_DISTANCE := 45.0
 const FLY_SPEED := 14.0
 const FLY_HEIGHT := 14.0
 const ESCAPE_PLAYER_CLEARANCE := 5.0
+## Peleas en el mundo.
+const STUN_TIME := 5.0
+const ATTACK_WINDUP := 0.45
+const ATTACK_COOLDOWN_MIN := 1.4
+const ATTACK_COOLDOWN_MAX := 2.4
+const MELEE_RANGE := 1.8
+const RANGED_MIN := 5.0
+const RANGED_MAX := 9.0
+## Cada cuánto busca pelea con otros salvajes (rivalidades), en segundos.
+const RIVAL_SCAN_INTERVAL := 1.5
+const RIVAL_RADIUS := 9.0
+## Enemigos clásicos: siempre pelean al encontrarse.
+const CLASSIC_ENEMIES := {
+	"zangoose": ["seviper"], "seviper": ["zangoose"], "heatmor": ["durant"], "durant": ["heatmor"],
+	"mightyena": ["poochyena"], "absol": ["mightyena"],
+}
 const CURIOUS_STOP := 2.5
 const FLEE_SAFE := 15.0
 const TERRITORY_RADIUS := 7.0
@@ -89,6 +107,16 @@ var _unseen_time: float = 0.0
 var _hide_after: float = 120.0
 var _wanders: int = 0
 var _hide_target := Vector3.ZERO
+## Vida en el mundo (no es la del combate de la Fase 3, que la usará como referencia).
+var hp: float = 50.0
+var hp_max: float = 50.0
+## Con quién pelea (otro PokemonActor o el jugador).
+var fight_target: Node3D
+var _attack_cooldown: float = 0.0
+var _windup: float = 0.0
+var _rival_scan: float = 0.0
+var _health_bar: HealthBar3D
+var _dizzy: DizzyStars
 var _escape_target := Vector3.ZERO
 var _fly_start := Vector3.ZERO
 var _question: Sprite3D
@@ -126,6 +154,11 @@ func _ready() -> void:
 	if legendary:
 		_question = _make_question_mark()
 		add_child(_question)
+	hp_max = 20.0 + species.hp * 0.6
+	hp = hp_max
+	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.25)
+	add_child(_health_bar)
+	_rival_scan = _rng.randf() * RIVAL_SCAN_INTERVAL
 	_enter(State.FOLLOW if role == Role.COMPANION else State.IDLE)
 
 
@@ -163,6 +196,10 @@ func _physics_process(delta: float) -> void:
 	if legendary and state == State.FLY:
 		_fly(delta)
 		return
+	if state == State.STUNNED:
+		_process_stunned(delta)
+		return
+	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	if swimming:
 		_swim(delta)
 		_check_contact()
@@ -242,6 +279,15 @@ func _think_wild() -> Array:
 	if player != null:
 		to_player = global_position.distance_to(player.global_position)
 	var sees_player := to_player <= DETECT_RADIUS and _ignore_player <= 0.0
+	if state == State.FIGHT:
+		return _think_fight()
+	_rival_scan -= get_physics_process_delta_time()
+	if _rival_scan <= 0.0 and (state == State.IDLE or state == State.WANDER):
+		_rival_scan = RIVAL_SCAN_INTERVAL
+		var rival := _find_rival()
+		if rival != null:
+			start_fight(rival)
+			return [global_position, 0.0]
 	if state == State.HIDE:
 		if global_position.distance_to(_hide_target) < 1.2 or _state_time > 6.0:
 			vanish()
@@ -306,6 +352,9 @@ func _think_wild() -> Array:
 				_ignore_player = 6.0
 				_enter(State.RETURN)
 				return [home, walk_speed()]
+			# Al alcanzarlo, lo ataca (el combate completo llega en la Fase 3).
+			if global_position.distance_to(player.global_position) <= attack_range() + 0.5:
+				start_fight(player)
 			return [player.global_position, run_speed()]
 		State.RETURN:
 			if global_position.distance_to(home) < 1.5 or _state_time > 20.0:
@@ -315,9 +364,31 @@ func _think_wild() -> Array:
 	return [global_position, 0.0]
 
 
+## Máximo de salvajes peleando a la vez con el compañero cuando protege a Nate.
+const GUARD_MAX_ATTACKERS := 2
+const DEFEND_RADIUS := 12.0
+const GUARD_RADIUS := 8.0
+
+
 ## Devuelve [destino, velocidad] para el rol compañero.
 func _think_companion() -> Array:
 	if player == null:
+		return [global_position, 0.0]
+	if state == State.FIGHT:
+		# No se aleja de Nate: si el rival huye lejos, vuelve.
+		if fight_target != null and is_instance_valid(fight_target) and fight_target.global_position.distance_to(player.global_position) > DEFEND_RADIUS * 1.5:
+			fight_target = null
+			_enter(State.FOLLOW)
+		else:
+			return _think_fight()
+	var threat := _threat_to_player()
+	if threat != null:
+		start_fight(threat)
+		return [global_position, 0.0]
+	if player is Player and (player as Player).mode == Player.Mode.DOWNED:
+		# Guardia: junto a Nate desmayado.
+		if global_position.distance_to(player.global_position) > 2.0:
+			return [player.global_position, run_speed()]
 		return [global_position, 0.0]
 	var distance := global_position.distance_to(player.global_position)
 	# Si el jugador nada, el compañero lo espera en la orilla.
@@ -422,6 +493,240 @@ func _tell_pack(new_state: State) -> void:
 			mate._enter(State.FLEE)
 		elif new_state == State.CHASE and mate.species.temperament != SpeciesData.Temperament.SHY:
 			mate._enter(State.CHASE)
+
+
+# --- Peleas en el mundo -----------------------------------------------------
+
+## Pelea a distancia si su ataque especial supera al físico; si no, cuerpo a cuerpo.
+func is_ranged() -> bool:
+	return species.sp_attack > species.attack
+
+
+func attack_range() -> float:
+	return RANGED_MAX if is_ranged() else MELEE_RANGE
+
+
+## Empieza (o cambia) a pelear con target: otro Pokémon o el jugador.
+func start_fight(target: Node3D) -> void:
+	if target == null or target == self or state == State.STUNNED or legendary:
+		return
+	fight_target = target
+	_enter(State.FIGHT)
+
+
+## Recibe un golpe: baja la vida, parpadea y responde (o huye si es tímido).
+func receive_hit(damage: float, from: Node3D) -> void:
+	if state == State.STUNNED:
+		return
+	hp = maxf(hp - damage, 0.0)
+	_health_bar.set_ratio(hp / hp_max)
+	_flash(Color(1, 0.4, 0.4))
+	_unseen_time = 0.0
+	if hp <= 0.0:
+		_stun()
+		return
+	if role == Role.COMPANION:
+		if fight_target == null or not is_instance_valid(fight_target):
+			start_fight(from)
+		return
+	var crowded := from is PokemonActor and (from as PokemonActor).role == Role.COMPANION \
+			and (from as PokemonActor).attackers_count() >= GUARD_MAX_ATTACKERS and fight_target != from
+	if (species.temperament == SpeciesData.Temperament.SHY and state != State.FIGHT) or crowded:
+		_enter(State.FLEE)
+	elif state != State.FIGHT or fight_target != from:
+		start_fight(from)
+
+
+## Daño de un ataque de attacker contra defender (estadísticas, tipo y azar).
+static func compute_damage(attacker: SpeciesData, defender: SpeciesData, physical: bool, rng: RandomNumberGenerator) -> float:
+	var attack_stat := float(attacker.attack if physical else attacker.sp_attack)
+	var defense_stat := float(defender.defense if physical else defender.sp_defense)
+	var type: PokemonTypes.Type = attacker.types[0]
+	var stab := 1.5
+	var effectiveness := TypeChart.effectiveness(type, defender.types)
+	return 6.0 * (attack_stat / maxf(defense_stat, 1.0)) * stab * effectiveness * rng.randf_range(0.85, 1.0)
+
+
+## Daño al jugador (en medios corazones): de 1 a 6 según el ataque del Pokémon.
+func damage_to_player() -> float:
+	return clampf(1.0 + maxf(species.attack, species.sp_attack) / 45.0, 1.0, 6.0)
+
+
+func _think_fight() -> Array:
+	if not _fight_target_valid():
+		fight_target = null
+		_enter(State.IDLE if role == Role.WILD else State.FOLLOW)
+		return [global_position, 0.0]
+	var target_pos := fight_target.global_position
+	var distance := global_position.distance_to(target_pos)
+	_sprite.look_at_point(target_pos)
+	if _windup > 0.0:
+		_windup -= get_physics_process_delta_time()
+		if _windup <= 0.0:
+			_deliver_attack()
+		return [global_position, 0.0]
+	if is_ranged():
+		if distance > RANGED_MAX:
+			return [target_pos, run_speed()]
+		if distance < RANGED_MIN:
+			var away := (global_position - target_pos)
+			away.y = 0.0
+			return [global_position + away.normalized() * 3.0, walk_speed()]
+	elif distance > MELEE_RANGE:
+		return [target_pos, run_speed()]
+	if _attack_cooldown <= 0.0:
+		_windup = ATTACK_WINDUP
+		_flash(Color(1.6, 1.6, 1.6))
+	return [global_position, 0.0]
+
+
+func _fight_target_valid() -> bool:
+	if fight_target == null or not is_instance_valid(fight_target):
+		return false
+	if fight_target is PokemonActor and (fight_target as PokemonActor).state == State.STUNNED:
+		return false
+	if fight_target is Player and (fight_target as Player).mode == Player.Mode.DOWNED and role == Role.WILD:
+		# Con el jugador desmayado, pelean con su compañero (si los enfrenta).
+		return false
+	return global_position.distance_to(fight_target.global_position) < 30.0
+
+
+func _deliver_attack() -> void:
+	_attack_cooldown = _rng.randf_range(ATTACK_COOLDOWN_MIN, ATTACK_COOLDOWN_MAX)
+	if not _fight_target_valid():
+		return
+	var origin := global_position + Vector3.UP * 0.6 * species.size_scale
+	if is_ranged():
+		var hit := func(node: Node3D) -> bool: return _apply_hit(node, false)
+		AttackProjectile.launch(get_parent(), origin, fight_target.global_position + Vector3.UP * 0.6, species.types[0], self, [fight_target] as Array[Node3D], hit)
+	elif global_position.distance_to(fight_target.global_position) <= MELEE_RANGE + 0.6:
+		# Embestida: un pequeño impulso hacia el objetivo y el golpe.
+		var lunge := fight_target.global_position - global_position
+		lunge.y = 0.0
+		velocity += lunge.normalized() * 6.0
+		_apply_hit(fight_target, true)
+
+
+func _apply_hit(node: Node3D, physical: bool) -> bool:
+	if node is PokemonActor:
+		var target := node as PokemonActor
+		target.receive_hit(compute_damage(species, target.species, physical, _rng), self)
+		return true
+	if node is Player:
+		var target_player := node as Player
+		if target_player.mode == Player.Mode.DOWNED:
+			return false
+		target_player.take_damage(damage_to_player())
+		contact_with_player.emit(self)
+		return true
+	return false
+
+
+## Busca un rival cercano según su naturaleza: enemigos clásicos, manadas rivales,
+## agresivos contra más débiles, territoriales contra intrusos y ventaja de tipo.
+func _find_rival() -> PokemonActor:
+	if role != Role.WILD or legendary or species.temperament == SpeciesData.Temperament.SHY:
+		return null
+	for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+		var other := node as PokemonActor
+		if other == self or other.state == State.STUNNED or other.swimming != swimming:
+			continue
+		if global_position.distance_to(other.global_position) > RIVAL_RADIUS:
+			continue
+		if group_id >= 0 and other.group_id == group_id:
+			continue
+		if CLASSIC_ENEMIES.get(species.identifier, []).has(other.species.identifier):
+			return other
+		var same_line := other.species.evolution_chain == species.evolution_chain
+		var hostile := species.temperament == SpeciesData.Temperament.AGGRESSIVE \
+				or species.temperament == SpeciesData.Temperament.TERRITORIAL
+		if group_id >= 0 and other.group_id >= 0 and hostile:
+			return other  # Manadas rivales.
+		if same_line:
+			continue
+		if species.temperament == SpeciesData.Temperament.AGGRESSIVE \
+				and (other.species.base_total < species.base_total - 30 or TypeChart.has_advantage(species.types, other.species.types)):
+			return other
+		if species.temperament == SpeciesData.Temperament.TERRITORIAL and other.global_position.distance_to(home) <= TERRITORY_RADIUS:
+			return other
+	return null
+
+
+## Debilitado: aturdido STUN_TIME s con estrellitas (se puede capturar). Después, si
+## es salvaje, desaparece en humo; si es el compañero, lo decide la escena principal.
+func _stun() -> void:
+	velocity = Vector3.ZERO
+	_windup = 0.0
+	fight_target = null
+	_enter(State.STUNNED)
+	_tell_pack_fight_over()
+	_dizzy = DizzyStars.create(species.overworld_cell * world_pixel_size() + 0.1, maxf(1.0, species.size_scale * 0.8))
+	add_child(_dizzy)
+	stunned.emit(self)
+	# Tono apagado después del parpadeo del golpe.
+	await get_tree().create_timer(0.25).timeout
+	if state == State.STUNNED:
+		_sprite.modulate = Color(0.75, 0.75, 0.85)
+
+
+func _process_stunned(delta: float) -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if not swimming:
+		velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
+		move_and_slide()
+	if role == Role.WILD and _state_time >= STUN_TIME:
+		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.5 * species.size_scale, PixelBurst.Kind.SMOKE, species.size_scale)
+		vanished.emit(self)
+		queue_free()
+
+
+## Se recupera (lo usa el compañero al volver de su Pokéball).
+func recover(ratio: float) -> void:
+	hp = hp_max * ratio
+	_health_bar.set_ratio(hp / hp_max)
+	_sprite.modulate = Color.WHITE
+	if _dizzy != null:
+		_dizzy.queue_free()
+		_dizzy = null
+	_enter(State.FOLLOW if role == Role.COMPANION else State.IDLE)
+
+
+func _tell_pack_fight_over() -> void:
+	# Quien peleaba con este Pokémon vuelve a lo suyo (el ganador queda herido).
+	for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+		var other := node as PokemonActor
+		if other.fight_target == self:
+			other.fight_target = null
+
+
+func _flash(color: Color) -> void:
+	_sprite.modulate = color
+	var tween := create_tween()
+	tween.tween_property(_sprite, "modulate", Color.WHITE, 0.2)
+
+
+## Salvaje que amenaza a Nate: lo persigue o ataca cerca, o (con Nate desmayado)
+## entra a la zona de guardia.
+func _threat_to_player() -> PokemonActor:
+	var downed := player is Player and (player as Player).mode == Player.Mode.DOWNED
+	var radius := GUARD_RADIUS if downed else DEFEND_RADIUS
+	for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+		var other := node as PokemonActor
+		if other.state == State.STUNNED or other.global_position.distance_to(player.global_position) > radius:
+			continue
+		if downed or other.fight_target == player or other.state == State.CHASE:
+			return other
+	return null
+
+
+## Cuántos salvajes pelean ahora con este Pokémon.
+func attackers_count() -> int:
+	var count := 0
+	for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+		if (node as PokemonActor).fight_target == self:
+			count += 1
+	return count
 
 
 func _nearest_wild(radius: float) -> PokemonActor:

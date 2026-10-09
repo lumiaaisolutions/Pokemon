@@ -221,7 +221,7 @@ func spawn_one() -> PokemonActor:
 		if species == null:
 			continue
 		if water_mode != 2 and _rng.randf() < PACK_CHANCE and _pack_allowed(point):
-			return _spawn_pack(species, point)
+			return _spawn_pack(species, point, habitat)
 		return spawn_species(species, point, _rng.randf() < SHINY_CHANCE, water_mode == 2)
 	return null
 
@@ -253,15 +253,21 @@ func _pack_allowed(point: Vector3) -> bool:
 
 
 ## Manada de la línea evolutiva de species: casi todos en etapa básica y, rara vez,
-## un líder evolucionado (o species misma si ya está evolucionada).
-func _spawn_pack(species: SpeciesData, point: Vector3) -> PokemonActor:
-	var line: Array[SpeciesData] = _by_chain.get(species.evolution_chain, [species] as Array[SpeciesData])
-	var basic := line[0] if line[0].spawn_weight > 0.0 else species
+## un líder evolucionado (o species misma si ya está evolucionada). Solo entran
+## especies de la línea que viven en este hábitat (p. ej. no Marill en la pradera).
+func _spawn_pack(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habitat = -1) -> PokemonActor:
+	var line: Array[SpeciesData] = (_by_chain.get(species.evolution_chain, [species]) as Array[SpeciesData]).filter(
+			func(s: SpeciesData) -> bool: return s.spawn_weight > 0.0 and (habitat < 0 or s.habitats.has(habitat)))
+	if line.is_empty():
+		line = [species]
+	var lowest_stage: int = line.map(func(s: SpeciesData) -> int: return s.evolution_stage).min()
+	var basics := line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage == lowest_stage)
+	var basic: SpeciesData = species if basics.has(species) else basics[0]
 	var leader_species := basic
-	if species.evolution_stage > 1:
+	if species.evolution_stage > lowest_stage:
 		leader_species = species
-	elif line.size() > 1 and _rng.randf() < PACK_LEADER_CHANCE:
-		var evolved := line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage > 1 and s.spawn_weight > 0.0)
+	elif _rng.randf() < PACK_LEADER_CHANCE:
+		var evolved := line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage > lowest_stage)
 		if not evolved.is_empty():
 			leader_species = evolved[_rng.randi() % evolved.size()]
 	var group := _next_group_id

@@ -201,6 +201,16 @@ Pasos:
 - Pantano: árboles muertos (`tools/derived_sprites.py`, derivado del pino de B2W2) y bruma baja entre las charcas.
 - Pendiente: el mundo tarda ~6.5 s en construirse (antes 4 s); se cubrirá con pantalla de carga u optimización.
 
+### Avance 2.8 (bloque 5a–c): peleas en el mundo
+- Tabla de tipos oficial (`creatures/data/type_chart.gd`), que también usará el combate.
+- Cada Pokémon tiene vida en el mundo (20 + PS × 0.6) con barra flotante verde, amarilla o roja. Ataca a distancia (orbe del color de su tipo, esquivable) si su At. Especial supera su Ataque; si no, embiste cuerpo a cuerpo. Hay un destello de aviso antes de cada golpe. Daño por estadísticas, STAB, tipo y azar.
+- Rivalidades: enemigos clásicos (Zangoose contra Seviper, Heatmor contra Durant…), manadas rivales, agresivos contra más débiles o con desventaja de tipo, y territoriales contra intrusos. Los tímidos no inician peleas y huyen si los golpean.
+- Debilitado: aturdido 5 s con estrellitas (ventana de captura del bloque 6) y luego desaparece en humo. El ganador queda herido.
+- Ataques al jugador: los que te persiguen te golpean al alcanzarte, de 1 a 6 de vida según su ataque.
+- Compañero: defiende a Nate de quien lo persigue o ataca (12 m). Con Nate desmayado hace guardia (8 m), con 2 salvajes como máximo peleando con él. Si cae con Nate desmayado, desmayo definitivo; si no, vuelve a su Pokéball y regresa a los 30 s con la mitad de la vida (supuesto, por confirmar con Fernando).
+- Las manadas solo incluyen especies de la línea que viven en ese hábitat (antes podía salir Marill en la pradera por la línea de Azurill).
+- Pruebas: `tests/test_fights.tscn` y `tools/run_tests.sh` (todas, con límite de tiempo por prueba: un error de script ya no deja a Godot trabado).
+
 ### Vida del jugador y emboscadas (decisiones de Fernando)
 - Vida con corazones estilo Minecraft. Se pierde por ataques de salvajes, por caídas desde altura y al ahogarse.
 - Agua: nadar en la superficie (más lento) y bucear con burbujas de aire; sin aire pierde vida poco a poco. El mar abierto cansa. Con Surf (5.8) se cruza sin gastar.
