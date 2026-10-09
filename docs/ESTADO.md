@@ -8,7 +8,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
-| 2 | Plan propuesto, esperando confirmación y roster | — | — |
+| 2 | En curso | — | Roster aprobado; compañero inicial al azar entre los básicos |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
@@ -89,12 +89,17 @@ Resultado:
 - Sonniss GDC Audio: licencia propia libre de regalías (no es CC0).
 - Cada asset se registra en `CREDITS.md` con su URL y licencia.
 
-## Roster propuesto (los 18 tipos cubiertos, mezcla con y sin mega)
+## Decisiones de Fernando (2026-10-09, Fase 2)
+- Roster aprobado.
+- Inicial: 5 al azar de cualquier básico (no legendario); selección con huevos que eclosionan y luego Nate les lanza una Pokéball (pantalla en Fase 5). En la Fase 2 el compañero es un básico al azar.
+- Evolución por desbloqueos (Fase 5.5); la mega llega con la forma final.
+
+## Roster aprobado (los 18 tipos cubiertos, mezcla con y sin mega)
 | Grupo | Pokémon | Tipos | Mega |
 |---|---|---|---|
-| Inicial Planta | Venusaur | Planta/Veneno | Sí |
-| Inicial Fuego | Charizard | Fuego/Volador | Sí (X e Y) |
-| Inicial Agua | Blastoise | Agua | Sí |
+| Mundo (antes iniciales) | Venusaur | Planta/Veneno | Sí |
+| Mundo (antes iniciales) | Charizard | Fuego/Volador | Sí (X e Y) |
+| Mundo (antes iniciales) | Blastoise | Agua | Sí |
 | Pradera | Pidgeot | Normal/Volador | Sí |
 | Pradera | Ampharos | Eléctrico | Sí |
 | Pradera | Sawsbuck | Normal/Planta | No |
@@ -118,7 +123,7 @@ Sprites verificados para los 16: mapa (pokeemerald-expansion, GitHub), frente y 
 4. Hierba alta: parches con `MultiMeshInstance3D` (briznas pixel art de B2W2) que se mecen con el viento y se apartan al paso del jugador y de los Pokémon (shader con posiciones).
 5. Spawner: los Pokémon aparecen visibles dentro de la hierba según la tabla de encuentro (máximo de vivos, desaparecen lejos del jugador).
 6. IA salvaje (máquina de estados): deambular, curioso (se acerca), tímido (huye) y agresivo (persigue), según el temperamento de la especie.
-7. Compañero: el inicial elegido te sigue con `NavigationAgent3D` (navmesh horneado del terreno y obstáculos), esquiva árboles y rocas, tiene idle y mira a los salvajes cercanos.
+7. Compañero: un Pokémon básico al azar (hasta que exista la selección de la Fase 5) te sigue con `NavigationAgent3D` (navmesh horneado del terreno y obstáculos), esquiva árboles y rocas, tiene idle y mira a los salvajes cercanos.
 8. Pruebas en headless (spawner, IA, seguimiento) y medición de FPS con la hierba; commit `Fase 2:`.
 
 ## Pendiente de definir

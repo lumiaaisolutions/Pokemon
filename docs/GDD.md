@@ -79,7 +79,8 @@ docs/  (GDD.md, ESTADO.md)
 - Campos: tipo, categoría, poder, coste de stamina, cooldown, alcance, tiempo de preparación (telegraph).
 
 **Roster del demo (15):** Pokémon reales; la lista se propone y aprueba antes de la Fase 2.
-- 3 iniciales (Planta, Fuego, Agua).
+- Iniciales (decisión 2026-10-09): **no son fijos**. Al empezar una partida se ofrecen **5 Pokémon al azar** de cualquier especie en fase básica (no legendarios ni singulares), sin repetir. Selección con **huevos que eclosionan**: 5 huevos con el patrón de color de cada Pokémon; el seleccionado se mece y, al confirmar, se agrieta y eclosiona con partículas. Luego Nate **le lanza una Pokéball** para hacerlo su inicial (animación de lanzamiento y captura). Pantalla de selección: Fase 5 (UI).
+- Venusaur, Charizard y Blastoise quedan en el roster como Pokémon del mundo.
 - Bioma 1: 4 criaturas (1 rara).
 - Bioma 2: 4 criaturas (1 rara).
 - Bioma 3: 4 criaturas (1 rara).
@@ -122,6 +123,7 @@ docs/  (GDD.md, ESTADO.md)
 - **Piedra Llave:** se consigue en un lugar específico del mundo.
 - **Megapiedras:** una por especie, repartidas en distintos lugares; se obtienen con misiones. No hay un orden obligatorio: todo es mundo abierto.
 - **Sin niveles:** se desbloquean habilidades y movimientos: de esquiva (para evadir ataques) y de ataque (lanzar o golpear).
+- **Evolución por desbloqueos (decisión 2026-10-09):** los Pokémon evolucionan al completar misiones o desbloqueos, no por nivel. Al llegar a su forma final pueden megaevolucionar si tienen megapiedra.
 - Entra en la **Fase 5.5** (ver sección 11). Detalles por definir con Fernando: qué desbloquea cada habilidad, cómo se gana y tipos de misión.
 
 ## 10b. Entrenadores NPC (pedido de Fernando, 2026-10-09)
