@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://art/world/b2w2/grass.png" id="6_swamp_ground"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/water.png" id="7_water"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/swamp_water.png" id="8_swamp_water"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2/dead_tree.png" id="9_dead_tree"]
 
 [resource]
 script = ExtResource("1_cfg")
@@ -19,3 +20,4 @@ swamp_ground_texture = ExtResource("6_swamp_ground")
 water_texture = ExtResource("7_water")
 swamp_water_texture = ExtResource("8_swamp_water")
 prop_view_distance = 170.0
+dead_tree_texture = ExtResource("9_dead_tree")

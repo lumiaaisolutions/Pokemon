@@ -193,6 +193,14 @@ Pasos:
 - Agua: nada en la superficie con la cabeza fuera (más lento, gasta stamina; sin stamina se hunde) y bucea. Hay 15 s de aire (10 burbujas en el HUD); sin aire pierde 1 de vida por segundo. Tinte azul con la cámara bajo el agua. El compañero espera en la orilla.
 - Desmayo: a 0 queda en el suelo con estrellitas (`world/effects/dizzy_stars.gd`) y la vida se llena en 2 min. Si se desmaya en el agua, desmayo definitivo: pantalla negra con "¡Nate se desmayó!", pierde 10 % del dinero (`GameState.money`) y reaparece en `GameState.respawn_point`. La protección del compañero llega con las peleas (bloque 5).
 
+### Avance 2.8 (bloque 4): coherencia de biomas
+- Pisos de altura en la montaña (shader): roca desnuda desde 18 m y nieve (blanco azulado que conserva el relieve de la roca) desde 32 m; arriba de la roca ya no crecen árboles.
+- Caminos de tierra trazados (`WorldConfig.paths`, mapa de 1 m por píxel) que unen el inicio con el lago, el bosque y el pantano, la montaña y la costa; los árboles y rocas no los tapan. Reemplazan los caminos de ruido al azar.
+- Borde del bosque: árboles sueltos en la pradera, más densos cerca del bosque.
+- Ribera viva: árboles, juncos, lavanda y flores a lo largo del río y alrededor del lago.
+- Pantano: árboles muertos (`tools/derived_sprites.py`, derivado del pino de B2W2) y bruma baja entre las charcas.
+- Pendiente: el mundo tarda ~6.5 s en construirse (antes 4 s); se cubrirá con pantalla de carga u optimización.
+
 ### Vida del jugador y emboscadas (decisiones de Fernando)
 - Vida con corazones estilo Minecraft. Se pierde por ataques de salvajes, por caídas desde altura y al ahogarse.
 - Agua: nadar en la superficie (más lento) y bucear con burbujas de aire; sin aire pierde vida poco a poco. El mar abierto cansa. Con Surf (5.8) se cruza sin gastar.

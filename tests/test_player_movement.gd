@@ -226,7 +226,8 @@ func _props_grounded() -> bool:
 				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.001 or not _bottom_row_opaque(sprite.texture):
 					printerr("flota: %s en %s" % [body.name, p])
 					ok = false
-			elif child is MultiMeshInstance3D:
+			elif child is MultiMeshInstance3D and child.name != "Bruma":
+				# (La bruma del pantano flota a propósito: no es un objeto apoyado.)
 				var instance := child as MultiMeshInstance3D
 				var multimesh := instance.multimesh
 				var quad := multimesh.mesh as QuadMesh

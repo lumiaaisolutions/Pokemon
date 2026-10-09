@@ -75,6 +75,9 @@ func _ready() -> void:
 	_build_tall_grass()
 	for biome in [Biome.MEADOW, Biome.FOREST, Biome.MOUNTAIN]:
 		_build_props(biome)
+	_build_forest_edge()
+	_build_riparian()
+	_build_swamp()
 	_build_walls()
 
 
@@ -489,7 +492,9 @@ func _build_terrain() -> void:
 	material.set_shader_parameter("extra_map", ImageTexture.create_from_image(extra_image))
 	material.set_shader_parameter("world_size", config.size)
 	material.set_shader_parameter("patch_noise", _noise_texture(config.seed + 5, 0.02))
-	material.set_shader_parameter("path_noise", _noise_texture(config.seed + 3, 0.012))
+	material.set_shader_parameter("path_map", ImageTexture.create_from_image(_path_image()))
+	material.set_shader_parameter("rock_height", config.rock_height)
+	material.set_shader_parameter("snow_height", config.snow_height)
 	material.set_shader_parameter("px_per_meter", 1.0 / config.pixel_size)
 
 	var body := StaticBody3D.new()
@@ -709,6 +714,44 @@ func _add_grass_patch(parent: Node3D, quad: QuadMesh, patch: Vector3, biome: Bio
 	return 1
 
 
+## Distancia al camino trazado más cercano.
+func distance_to_paths(x: float, z: float) -> float:
+	var point := Vector2(x, z)
+	var best := INF
+	for path in config.paths:
+		for i in path.size() - 1:
+			var a := path[i]
+			var ab := path[i + 1] - a
+			var t := clampf((point - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+			best = minf(best, point.distance_to(a + ab * t))
+	return best
+
+
+## Mapa de caminos (1 texel por metro): se estampan discos a lo largo de cada camino.
+func _path_image() -> Image:
+	var side := int(config.size)
+	var image := Image.create_empty(side, side, false, Image.FORMAT_L8)
+	var half := config.size * 0.5
+	var radius := config.path_width * 0.5
+	for path in config.paths:
+		for i in path.size() - 1:
+			var a := path[i]
+			var b := path[i + 1]
+			var steps := int(a.distance_to(b) / 0.5) + 1
+			for k in steps + 1:
+				var p := a.lerp(b, float(k) / steps)
+				for dz in range(-int(radius) - 1, int(radius) + 2):
+					for dx in range(-int(radius) - 1, int(radius) + 2):
+						var px := int(p.x + half) + dx
+						var pz := int(p.y + half) + dz
+						if px < 0 or pz < 0 or px >= side or pz >= side:
+							continue
+						var center := Vector2(px - half + 0.5, pz - half + 0.5)
+						if center.distance_to(p) <= radius:
+							image.set_pixel(px, pz, Color.WHITE)
+	return image
+
+
 ## ¿Es tierra firme en todo un círculo (sin agua cerca)?
 func _dry_land(x: float, z: float, radius: float) -> bool:
 	if water_depth_at(x, z) > -0.4:
@@ -760,6 +803,9 @@ func _build_props(biome: Biome) -> void:
 		var xz := _random_point_in(biome, rng, 1.5)
 		if xz == Vector3.INF or style.tree_textures.is_empty():
 			continue
+		# Pisos de altura: arriba de la línea de roca ya no crecen árboles.
+		if surface_height_at(xz.x, xz.z) > config.rock_height:
+			continue
 		var texture: Texture2D = style.tree_textures[rng.randi() % style.tree_textures.size()]
 		var scale_factor := 2.0 if rng.randf() < style.big_tree_ratio else 1.0
 		group.add_child(_obstacle("Tree%d" % i, texture, scale_factor, style.tree_collision_radius, xz, style.prop_tint))
@@ -795,6 +841,127 @@ func _build_props(biome: Biome) -> void:
 			group.add_child(instance)
 
 
+## Borde del bosque: árboles sueltos y arbustos en la pradera cercana al bosque, para
+## que el cambio de bioma no sea brusco.
+func _build_forest_edge() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = config.props_seed + 4001
+	var group := Node3D.new()
+	group.name = "Props_BordeBosque"
+	add_child(group)
+	var forest := config.forest
+	var attempts := int(config.size * config.size / 1000.0 * config.forest_edge_trees_per_1000m2)
+	var placed := 0
+	for i in attempts:
+		var xz := _random_xz(rng, config.spawn_flat_radius + 6.0)
+		var w := biome_weights(xz.x, xz.z)
+		# Franja de transición: pradera con algo de bosque cerca.
+		if w.y < 0.08 or w.y > 0.5 or not _dry_land(xz.x, xz.z, 2.0):
+			continue
+		if distance_to_paths(xz.x, xz.z) < config.path_width + 1.5 or rng.randf() > (w.y / 0.5):
+			continue
+		var texture: Texture2D = forest.tree_textures[rng.randi() % forest.tree_textures.size()]
+		group.add_child(_obstacle("EdgeTree%d" % placed, texture, 1.0, forest.tree_collision_radius, xz, forest.prop_tint.lerp(Color.WHITE, 0.5)))
+		placed += 1
+
+
+## Ribera viva: árboles, juncos y flores a lo largo del río y alrededor del lago.
+func _build_riparian() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = config.props_seed + 5003
+	var group := Node3D.new()
+	group.name = "Props_Ribera"
+	add_child(group)
+	var meadow := config.meadow
+	var shore_points: Array[Vector2] = []
+	var reach := config.river_width * 0.5 + RIVER_BANK + 1.0
+	for i in _river_pts.size() - 1:
+		var a := _river_pts[i]
+		var b := _river_pts[i + 1]
+		var normal := Vector2(-(b - a).normalized().y, (b - a).normalized().x)
+		var length := a.distance_to(b)
+		var count := int(length / 10.0 * (config.riparian_trees_per_10m + config.riparian_decor_per_10m) * 2.0)
+		for k in count:
+			var t := rng.randf()
+			var side := -1.0 if rng.randf() < 0.5 else 1.0
+			shore_points.append(a.lerp(b, t) + normal * side * rng.randf_range(reach, reach + 6.0))
+	var lake_reach := config.lake_radius + LAKE_BANK + 1.0
+	var lake_count := int(TAU * lake_reach / 10.0 * (config.riparian_trees_per_10m + config.riparian_decor_per_10m))
+	for k in lake_count:
+		var angle := rng.randf() * TAU
+		shore_points.append(config.lake_center + Vector2(cos(angle), sin(angle)) * rng.randf_range(lake_reach, lake_reach + 6.0))
+	var tree_share := config.riparian_trees_per_10m / (config.riparian_trees_per_10m + config.riparian_decor_per_10m)
+	var decor := {}
+	for point in shore_points:
+		if not _dry_land(point.x, point.y, 1.0) or distance_to_paths(point.x, point.y) < config.path_width + 1.0:
+			continue
+		if surface_height_at(point.x, point.y) > config.rock_height:
+			continue
+		var xz := Vector3(point.x, 0.0, point.y)
+		if rng.randf() < tree_share:
+			var texture: Texture2D = meadow.tree_textures[rng.randi() % meadow.tree_textures.size()]
+			group.add_child(_obstacle("ShoreTree%d" % group.get_child_count(), texture, 1.0, meadow.tree_collision_radius, xz, Color.WHITE))
+		else:
+			# Juncos (mechones altos), lavanda y flores.
+			var texture: Texture2D = meadow.decor_textures[[3, 6, 1, 3][rng.randi() % 4]]
+			if not decor.has(texture):
+				decor[texture] = PackedVector3Array()
+			var size := texture.get_size() * config.pixel_size
+			(decor[texture] as PackedVector3Array).append(Vector3(point.x, ground_base_height(point.x, point.y, size.x * 0.5) - config.decor_sink, point.y))
+	for texture: Texture2D in decor:
+		var size := texture.get_size() * config.pixel_size
+		var quad := QuadMesh.new()
+		quad.size = size
+		quad.center_offset = Vector3(0, size.y * 0.5, 0)
+		quad.material = _sprite_material(texture, Color.WHITE)
+		var instance := _multimesh("Ribera_%s" % texture.resource_path.get_file().get_basename(), quad, decor[texture], 0.0)
+		instance.visibility_range_end = config.prop_view_distance
+		group.add_child(instance)
+
+
+## Pantano: árboles muertos y bruma baja entre las charcas.
+func _build_swamp() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = config.props_seed + 6007
+	var group := Node3D.new()
+	group.name = "Props_Pantano"
+	add_child(group)
+	var area := PI * config.swamp_radius * config.swamp_radius
+	if config.dead_tree_texture != null:
+		for i in int(area / 1000.0 * 5.0):
+			var angle := rng.randf() * TAU
+			var c := config.swamp_center + Vector2(cos(angle), sin(angle)) * sqrt(rng.randf()) * config.swamp_radius
+			if not _dry_land(c.x, c.y, 1.0):
+				continue
+			var scale_factor := 2.0 if rng.randf() < 0.3 else 1.0
+			group.add_child(_obstacle("DeadTree%d" % i, config.dead_tree_texture, scale_factor, 0.4, Vector3(c.x, 0, c.y), Color.WHITE))
+	# Bruma: manchas blancas suaves, horizontales y bajas.
+	var mist_texture := GradientTexture2D.new()
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([Color(0.9, 0.95, 0.92, 0.35), Color(0.9, 0.95, 0.92, 0.0)])
+	mist_texture.gradient = gradient
+	mist_texture.fill = GradientTexture2D.FILL_RADIAL
+	mist_texture.fill_from = Vector2(0.5, 0.5)
+	mist_texture.fill_to = Vector2(1.0, 0.5)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = mist_texture
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var quad := QuadMesh.new()
+	quad.size = Vector2(9.0, 9.0)
+	quad.orientation = PlaneMesh.FACE_Y
+	quad.material = material
+	var mist := PackedVector3Array()
+	for i in int(area / 1000.0 * config.swamp_mist_per_1000m2):
+		var angle := rng.randf() * TAU
+		var c := config.swamp_center + Vector2(cos(angle), sin(angle)) * sqrt(rng.randf()) * config.swamp_radius
+		mist.append(Vector3(c.x, maxf(surface_height_at(c.x, c.y), water_level_at(c.x, c.y)) + rng.randf_range(0.4, 1.2), c.y))
+	var instance := _multimesh("Bruma", quad, mist, 0.0)
+	instance.layers = VISUAL_LAYER_SPRITES
+	group.add_child(instance)
+
+
 ## Punto al azar donde domina el bioma, en tierra firme y fuera del inicio y del río.
 func _random_point_in(biome: Biome, rng: RandomNumberGenerator, radius: float) -> Vector3:
 	for attempt in 40:
@@ -802,6 +969,9 @@ func _random_point_in(biome: Biome, rng: RandomNumberGenerator, radius: float) -
 		if dominant_biome(xz.x, xz.z) != biome:
 			continue
 		if not _dry_land(xz.x, xz.z, radius + 0.5):
+			continue
+		# Los caminos quedan despejados.
+		if distance_to_paths(xz.x, xz.z) < config.path_width + radius:
 			continue
 		return xz
 	return Vector3.INF

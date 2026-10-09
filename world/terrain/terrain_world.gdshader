@@ -30,19 +30,23 @@ uniform vec3 swamp_tint = vec3(0.55, 0.62, 0.42);
 
 // Mapas del mundo (1 texel por celda): biome_map RGBA = pradera, bosque, montaña,
 // costa; extra_map R = pantano, G = orilla de agua dulce.
+// path_map (1 texel por metro) R = caminos trazados que unen los lugares importantes.
 uniform sampler2D biome_map : filter_linear, repeat_disable;
 uniform sampler2D extra_map : filter_linear, repeat_disable;
+uniform sampler2D path_map : filter_linear, repeat_disable;
 uniform float world_size = 480.0;
-// Ruidos en [0,1]: manchas de pasto claro y trazado de caminos.
+// Ruido en [0,1]: manchas de pasto claro.
 uniform sampler2D patch_noise : filter_linear, repeat_enable;
-uniform sampler2D path_noise : filter_linear, repeat_enable;
 
 uniform float px_per_meter = 17.5;
 uniform float mask_scale = 0.008;
-uniform float path_width = 0.03;
 uniform float light_patch_threshold = 0.62;
 uniform float slope_threshold = 0.22;
 uniform float shade_steps = 4.0;
+// Pisos de altura en la montaña: roca desnuda desde rock_height y nieve desde snow_height.
+uniform float rock_height = 18.0;
+uniform float snow_height = 32.0;
+uniform vec3 snow_color = vec3(0.9, 0.94, 1.0);
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -80,6 +84,20 @@ vec3 biome_ground(int biome, vec2 meters, float patch, float path, float slope, 
 	return color * mountain_tint;
 }
 
+// Pisos de altura (solo en montaña): roca desnuda y nieve, con borde de píxel.
+vec3 altitude_floor(vec3 color, vec2 meters, float height, float dither) {
+	if (height + dither * 2.5 > snow_height) {
+		// Nieve: blanco azulado que conserva el relieve (luminancia) de la roca.
+		vec3 rock = tiled(mountain_grass_light, meters);
+		float lum = dot(rock, vec3(0.3, 0.59, 0.11));
+		return snow_color * (0.82 + 0.25 * lum);
+	}
+	if (height + dither * 2.5 > rock_height) {
+		return tiled(mountain_slope, meters) * mountain_tint;
+	}
+	return color;
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -95,7 +113,7 @@ void fragment() {
 	vec4 biomes = texture(biome_map, map_uv);
 	vec4 extra = texture(extra_map, map_uv);
 	float patch = texture(patch_noise, pixel_m * mask_scale).r;
-	float path = 1.0 - smoothstep(0.0, path_width, abs(texture(path_noise, pixel_m * mask_scale).r - 0.5));
+	float path = texture(path_map, map_uv).r;
 	float slope = 1.0 - world_normal.y;
 
 	// Bioma dominante con frontera de píxel: el dither desempata cerca del borde.
@@ -105,6 +123,9 @@ void fragment() {
 	if (jittered.g > best) { best = jittered.g; biome = 1; }
 	if (jittered.b > best) { best = jittered.b; biome = 2; }
 	vec3 color = biome_ground(biome, meters, patch, path, slope, dither);
+	if (biome == 2 && path + dither * 0.5 <= 0.5) {
+		color = altitude_floor(color, meters, world_pos.y, dither);
+	}
 
 	if (extra.r + dither * 0.3 > 0.5) {
 		color = tiled(swamp_ground, meters) * swamp_tint;

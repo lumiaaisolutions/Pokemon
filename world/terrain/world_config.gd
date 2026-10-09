@@ -38,6 +38,29 @@ extends Resource
 @export var swamp_radius: float = 50.0
 @export var swamp_pond_count: int = 10
 
+@export_group("Coherencia")
+## Pisos de altura en la montaña (m): sin árboles y con roca desnuda arriba de
+## rock_height; nieve arriba de snow_height.
+@export var rock_height: float = 18.0
+@export var snow_height: float = 32.0
+## Caminos de tierra que unen los lugares importantes (polilíneas x, z).
+@export var paths: Array[PackedVector2Array] = [
+	PackedVector2Array([Vector2(0, 0), Vector2(25, 25), Vector2(42, 62)]),
+	PackedVector2Array([Vector2(0, 0), Vector2(-40, 8), Vector2(-90, 22), Vector2(-135, 40), Vector2(-150, 70)]),
+	PackedVector2Array([Vector2(0, 0), Vector2(12, -40), Vector2(4, -82), Vector2(22, -120), Vector2(38, -160)]),
+	PackedVector2Array([Vector2(0, 0), Vector2(-12, 55), Vector2(2, 105), Vector2(-15, 150)]),
+	PackedVector2Array([Vector2(95, 75), Vector2(70, 115), Vector2(45, 150)]),
+]
+@export var path_width: float = 2.6
+## Ribera viva: árboles y plantas por cada 10 m de orilla.
+@export var riparian_trees_per_10m: float = 0.8
+@export var riparian_decor_per_10m: float = 4.0
+## Borde del bosque: árboles sueltos en la pradera cercana (por cada 1,000 m²).
+@export var forest_edge_trees_per_1000m2: float = 6.0
+@export var dead_tree_texture: Texture2D
+## Bruma del pantano: manchas por cada 1,000 m² del pantano.
+@export var swamp_mist_per_1000m2: float = 6.0
+
 @export_group("Sprites")
 ## Metros por píxel de todos los sprites del mundo; igual que el jugador.
 @export var pixel_size: float = 0.057
