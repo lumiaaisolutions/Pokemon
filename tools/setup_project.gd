@@ -46,6 +46,9 @@ func _setup_rendering() -> void:
 	# Pixel art: filtro Nearest por defecto en 2D/UI. En 3D lo fija cada material o SpriteBase3D.
 	ProjectSettings.set_setting("rendering/textures/canvas_textures/default_texture_filter", 0)
 	ProjectSettings.set_setting("rendering/renderer/rendering_method", "forward_plus")
+	# Bordes suaves en la geometría 3D (árboles, rocas, terreno) sin difuminar los sprites.
+	ProjectSettings.set_setting("rendering/anti_aliasing/quality/msaa_3d", Viewport.MSAA_4X)
+	ProjectSettings.set_setting("rendering/anti_aliasing/quality/screen_space_aa", Viewport.SCREEN_SPACE_AA_SMAA)
 
 
 func _setup_import_defaults() -> void:

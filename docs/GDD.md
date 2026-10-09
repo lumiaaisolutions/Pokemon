@@ -121,7 +121,7 @@ docs/  (GDD.md, ESTADO.md)
 - **Piedra Llave:** se consigue en un lugar específico del mundo.
 - **Megapiedras:** una por especie, repartidas en distintos lugares; se obtienen con misiones. No hay un orden obligatorio: todo es mundo abierto.
 - **Sin niveles:** se desbloquean habilidades y movimientos: de esquiva (para evadir ataques) y de ataque (lanzar o golpear).
-- Detalles por definir con Fernando: qué desbloquea cada habilidad, cómo se gana, tipos de misión y en qué fase entra cada sistema.
+- Entra en la **Fase 5.5** (ver sección 11). Detalles por definir con Fernando: qué desbloquea cada habilidad, cómo se gana y tipos de misión.
 
 ## 11. Fases y criterios de "hecho"
 
@@ -133,6 +133,7 @@ docs/  (GDD.md, ESTADO.md)
 | 3 | Combate en tiempo real | Arena en el lugar del encuentro; se pueden usar ataques físicos y especiales, esquivar y hay efectividad de tipos; ganar y huir funcionan |
 | 4 | Captura en 1ª persona | Lanzamiento con física, esquiva, probabilidad, éxito y fallo; la criatura capturada aparece en el equipo |
 | 5 | Equipo, inventario, UI y guardado | Menú de equipo, cambio de compañero, inventario de esferas y curación, bitácora de criaturas vistas/capturadas, guardar y cargar |
+| 5.5 | Misiones y progresión | Piedra Llave en su lugar fijo, megapiedras por misiones en cualquier orden y desbloqueo de habilidades y movimientos (esquiva y ataque). Antes de esta fase, la mega se prueba con los objetos equipados en modo debug |
 | 6 | Biomas 2–3 y roster completo | 3 biomas conectados, 15 criaturas con sus movimientos, 1 criatura jefe al final del bioma 3 |
 | 7 | Pulido y entrega | Audio, partículas, transiciones, export macOS (arm64), build firmada ad-hoc para uso personal |
 

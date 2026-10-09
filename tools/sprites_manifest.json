@@ -1,0 +1,24 @@
+{
+  "_comentario": "Sprites que el juego usa, copiados desde sprites/ (fuente local, fuera de git). crop recorta el borde transparente. generate_back crea una espalda aproximada (tools/make_back_sprite.py) cuando el paquete no la trae.",
+  "sprites": [
+    {
+      "src": "trainers/nate.png",
+      "dst": "art/trainers/nate.png",
+      "crop": true,
+      "generate_back": {
+        "dst": "art/trainers/nate_back.png",
+        "face_box": [
+          7,
+          10,
+          20,
+          21
+        ],
+        "hair": [
+          96,
+          72,
+          64
+        ]
+      }
+    }
+  ]
+}

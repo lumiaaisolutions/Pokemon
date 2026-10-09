@@ -1,0 +1,43 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/player/player.gd" id="1_player"]
+[ext_resource type="Resource" path="res://world/player/player_config.tres" id="2_cfg"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.35
+height = 1.6
+
+[sub_resource type="Gradient" id="Gradient_blob"]
+colors = PackedColorArray(0, 0, 0, 0.7, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_blob"]
+gradient = SubResource("Gradient_blob")
+width = 64
+height = 64
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="Player" type="CharacterBody3D"]
+floor_constant_speed = true
+floor_snap_length = 0.3
+script = ExtResource("1_player")
+config = ExtResource("2_cfg")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Sprite" type="Sprite3D" parent="."]
+cast_shadow = 0
+billboard = 2
+shaded = false
+double_sided = true
+alpha_cut = 1
+texture_filter = 0
+
+[node name="BlobShadow" type="Decal" parent="."]
+size = Vector3(1.2, 2, 1.2)
+texture_albedo = SubResource("GradientTexture2D_blob")
+upper_fade = 0.0
+lower_fade = 0.5

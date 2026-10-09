@@ -7,11 +7,12 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | Fase | Estado | Commit | Notas |
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
-| 1 | Plan propuesto, esperando confirmación | — | — |
+| 1 | Implementada, esperando tu prueba manual (teclado y mando PlayStation) | — | Pruebas en headless: 0 fallos; 60 FPS en M1 en la captura |
 | 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
+| 5.5 | Pendiente | — | Misiones, Piedra Llave, megapiedras y desbloqueos |
 | 6 | Pendiente | — | — |
 | 7 | Pendiente | — | — |
 
@@ -53,5 +54,20 @@ Resultado:
 6. Pruebas en headless: `tests/test_player_movement.tscn` simula input (caminar, correr y mando) y comprueba desplazamiento, velocidad y que no atraviesa el terreno. Smoke test actualizado.
 7. Verificación manual: abres el juego y lo pruebas con teclado y con mando. Commit `Fase 1:`.
 
+## Fase 1: resultado
+- Jugador: `world/player/` (`PlayerConfig.tres`): caminar a 4.5 m/s y correr a 8 m/s relativos a la cámara, velocidad constante en pendientes y stick analógico proporcional.
+- Nate: billboard en eje Y con frente y espalda (la espalda se genera con `tools/make_back_sprite.py`), rebote al caminar y blob shadow (`Decal`).
+- Cámara: `world/camera/camera_rig.tscn`. Pitch 35–45°, órbita con mouse (clic captura el cursor, Esc lo libera), stick derecho o flechas, zoom 4–11 m con rueda o cruceta.
+- Pradera greybox: `world/biomes/pradera.tscn` con `BiomeConfig`. 200×200 m de terreno low-poly por ruido, con colisión exacta (trimesh), 40 rocas, 70 árboles, muros invisibles y un centro libre de 18 m.
+- Sprites: `python3 tools/copy_sprites.py` regenera `art/` desde `sprites/` según `tools/sprites_manifest.json`.
+- Prueba: `tests/test_player_movement.tscn`, con 15 comprobaciones: suelo, caminar, correr, frenar, frente y espalda, stick completo y a la mitad, recorrido por colinas sin atravesar el terreno, choque con un árbol y con el muro.
+
+## Recursos sugeridos por Fernando (para el arte del mundo, más adelante)
+- Kenney.nl (Nature Kit, Prototype Kit) y KayKit: CC0.
+- ambientCG (texturas de pasto, tierra y roca): CC0.
+- Poly Pizza y OpenGameArt: la licencia varía por asset; revisar cada uno.
+- Sonniss GDC Audio: licencia propia libre de regalías (no es CC0).
+- Cada asset se registra en `CREDITS.md` con su URL y licencia.
+
 ## Pendiente de definir
-- En qué fase entran la Piedra Llave, las megapiedras, las misiones y los desbloqueos de habilidades (sección 10 del GDD).
+- Detalle de misiones y desbloqueos (Fase 5.5).
