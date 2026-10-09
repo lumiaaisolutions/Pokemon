@@ -95,6 +95,9 @@ func _setup_input_map() -> void:
 
 	# Exploración
 	_action("interact", [_key(KEY_E), _button(JOY_BUTTON_A)])
+	# Explorando: saltar (en combate, el mismo botón es la esquiva). Bucear: bajar al nadar.
+	_action("jump", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])
+	_action("dive", [_key(KEY_CTRL), _button(JOY_BUTTON_LEFT_SHOULDER)])
 	_action("menu", [_key(KEY_ESCAPE), _button(JOY_BUTTON_START)])
 
 	# Combate

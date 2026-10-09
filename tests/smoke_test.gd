@@ -6,7 +6,7 @@ const AUTOLOADS: Array[String] = ["GameState", "SaveSystem", "InputHints", "Audi
 const ACTIONS: Array[String] = [
 	"move_forward", "move_back", "move_left", "move_right", "run",
 	"camera_left", "camera_right", "camera_up", "camera_down", "zoom_in", "zoom_out",
-	"interact", "menu",
+	"interact", "menu", "jump", "dive",
 	"dodge", "lock_on", "attack_1", "attack_2", "attack_3", "attack_4", "mega_evolve", "capture",
 	"aim", "throw",
 ]

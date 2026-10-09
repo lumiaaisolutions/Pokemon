@@ -320,6 +320,10 @@ func _think_companion() -> Array:
 	if player == null:
 		return [global_position, 0.0]
 	var distance := global_position.distance_to(player.global_position)
+	# Si el jugador nada, el compañero lo espera en la orilla.
+	if world != null and world.water_depth_at(player.global_position.x, player.global_position.z) > 0.6:
+		_sprite.look_at_point(player.global_position)
+		return [global_position, 0.0]
 	if distance > FOLLOW_TELEPORT:
 		# Se quedó muy atrás (p. ej. atorado): reaparece junto al jugador.
 		global_position = player.global_position + Vector3(1.0, 0.5, 1.0)

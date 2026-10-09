@@ -22,7 +22,18 @@ func _ready() -> void:
 	companion.position = _player.position + Vector3(1.5, 0.3, 1.5)
 	add_child(companion)
 	$Spawner.wild_contact.connect(_on_wild_contact)
+	_player.blacked_out.connect(_on_blacked_out)
+	GameState.respawn_point = _player.global_position
 	_warm_up_shaders()
+
+
+## Desmayo definitivo: pantalla negra, pierde dinero y reaparece con todo lleno.
+func _on_blacked_out() -> void:
+	var lost := GameState.apply_blackout_penalty()
+	($Hud as Hud).show_blackout("¡Nate se desmayó!\nPerdió $%d en el camino..." % lost, 1.5)
+	await get_tree().create_timer(0.7).timeout
+	_player.respawn_at(GameState.respawn_point)
+	companion.global_position = GameState.respawn_point + Vector3(1.5, 0.3, 1.5)
 
 
 ## Dibuja una vez, frente a la cámara, cada efecto que aparece durante el juego

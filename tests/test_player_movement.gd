@@ -141,18 +141,75 @@ func _run() -> void:
 	await _frames(150)
 	_check(not _player.exhausted and _player.stamina > 0.0, "al descansar debe recuperarse")
 
-	# Agua profunda: caminando hacia el lago, se detiene en la orilla.
-	var lake := _world.config.lake_center
-	var shore := lake + Vector2(_world.config.lake_radius + 9.0, 0.0)
-	_player.global_position = Vector3(shore.x, _world.surface_height_at(shore.x, shore.y) + 0.5, shore.y)
+	# Salto: sube y vuelve al suelo sin daño.
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
 	_player.velocity = Vector3.ZERO
 	await _frames(20)
-	Input.action_press("move_left")
-	await _frames(300)
-	Input.action_release("move_left")
-	var p2 := _player.global_position
-	_check(_world.water_depth_at(p2.x, p2.z) < Player.DEEP_WATER + 0.2, "el jugador entró al agua profunda (%.1f m)" % _world.water_depth_at(p2.x, p2.z))
-	_check(p2.x < shore.x - 2.0, "el jugador debe avanzar hasta la orilla antes de detenerse")
+	var ground_y := _player.global_position.y
+	var health_before := _player.health
+	Input.action_press("jump")
+	await _frames(2)
+	Input.action_release("jump")
+	var peak := ground_y
+	for i in 60:
+		await get_tree().physics_frame
+		peak = maxf(peak, _player.global_position.y)
+	_check(peak > ground_y + 1.0, "saltar debe elevar al jugador (%.2f m)" % (peak - ground_y))
+	_check(_player.is_on_floor() and is_equal_approx(_player.health, health_before), "un salto normal no hace daño")
+
+	# Caída desde 10 m: pierde (10 - 4) × 1 = 6 de vida (3 corazones).
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 10.5, 0)
+	_player.velocity = Vector3.ZERO
+	await _frames(90)
+	var fall_damage := health_before - _player.health
+	_check(fall_damage > 4.5 and fall_damage < 7.5, "una caída de 10 m debe quitar unos 6 de vida (quitó %.1f)" % fall_damage)
+
+	# Nadar: al entrar al lago nada con la cabeza fuera y no gasta aire.
+	_player.heal(100.0)
+	var lake := _world.config.lake_center
+	_player.global_position = Vector3(lake.x, _world.water_level_at(lake.x, lake.y) - 1.0, lake.y)
+	_player.velocity = Vector3.ZERO
+	await _frames(60)
+	_check(_player.mode == Player.Mode.SWIM, "en el lago debe nadar (modo %d)" % _player.mode)
+	_check(_player.air >= _player.config.air_max - 0.01, "nadando en la superficie no debe gastar aire")
+	var level := _world.water_level_at(_player.global_position.x, _player.global_position.z)
+	_check(_player.global_position.y + 1.5 > level, "nadando debe tener la cabeza fuera del agua")
+
+	# Bucear sin parar: se acaba el aire y pierde vida.
+	Input.action_press("dive")
+	await _frames(int((_player.config.air_max + 3.5) * 60))
+	_check(_player.air <= 0.0, "buceando más de %.0f s se acaba el aire" % _player.config.air_max)
+	_check(_player.health < _player.config.health_max, "sin aire debe perder vida")
+	Input.action_release("dive")
+	await _frames(240)
+	_check(_player.mode == Player.Mode.SWIM, "al soltar bucear debe volver a la superficie")
+
+	# Desmayo en tierra: estrellitas, recuperación y se levanta.
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.velocity = Vector3.ZERO
+	await _frames(30)
+	var saved_duration := _player.config.downed_duration
+	_player.config.downed_duration = 2.0
+	_player.take_damage(1000.0)
+	await _frames(2)
+	_check(_player.mode == Player.Mode.DOWNED and _player.has_node("DizzyStars"), "a 0 de vida debe quedar desmayado con estrellitas")
+	Input.action_press("move_forward")
+	await _frames(30)
+	Input.action_release("move_forward")
+	_check(_player.get_ground_speed() < 0.05, "desmayado no debe poder moverse")
+	await _frames(150)
+	_check(_player.mode == Player.Mode.WALK and is_equal_approx(_player.health, _player.config.health_max), "tras recuperarse debe levantarse con la vida llena")
+	_player.config.downed_duration = saved_duration
+
+	# Desmayo en el agua: pantalla negra y reaparece en el inicio.
+	var blacked := [false]
+	_player.blacked_out.connect(func() -> void: blacked[0] = true)
+	_player.global_position = Vector3(lake.x, _world.water_level_at(lake.x, lake.y) - 1.0, lake.y)
+	await _frames(20)
+	_player.take_damage(1000.0)
+	await _frames(90)
+	_check(blacked[0], "desmayarse en el agua debe ser desmayo definitivo")
+	_check(_player.global_position.distance_to(GameState.respawn_point) < 3.0, "tras el desmayo debe reaparecer en el punto de inicio")
 
 
 func _props_grounded() -> bool:

@@ -185,7 +185,20 @@ Pasos:
 - Documentación: al cerrar la fase, reorganizar en un .md por tema (regla nueva).
 - Orden: tirones y sprites, aparición y manadas y esconderse y legendarios, salto, coherencia, peleas, captura y mapa.
 - Legendarios cautelosos (pedido posterior): nunca atacan; si te ven (cono de visión) o te oyen (cerca, o más lejos si corres) muestran "?" y se reubican rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
-- Pedidos posteriores, pendientes de detallar: vida del jugador (ataques de salvajes al jugador y a su compañero, caída desde altura, ahogarse en el agua al quedarse sin aire, estilo Minecraft); Pokémon Bicho colgados en los árboles que caen de sorpresa y aves en las copas que se lanzan en picada, según su naturaleza.
+- Pedidos posteriores (detallados abajo): vida del jugador (ataques de salvajes al jugador y a su compañero, caída desde altura, ahogarse en el agua al quedarse sin aire, estilo Minecraft); Pokémon Bicho colgados en los árboles que caen de sorpresa y aves en las copas que se lanzan en picada, según su naturaleza.
+
+### Avance 2.8 (bloque 3): salto, vida, caídas, agua y desmayo
+- Salto con Espacio o B (Círculo); bucear con Ctrl o LB.
+- Vida: 20 (10 corazones, estilo Minecraft) en el HUD. Una caída de más de 4 m quita 1 por metro extra.
+- Agua: nada en la superficie con la cabeza fuera (más lento, gasta stamina; sin stamina se hunde) y bucea. Hay 15 s de aire (10 burbujas en el HUD); sin aire pierde 1 de vida por segundo. Tinte azul con la cámara bajo el agua. El compañero espera en la orilla.
+- Desmayo: a 0 queda en el suelo con estrellitas (`world/effects/dizzy_stars.gd`) y la vida se llena en 2 min. Si se desmaya en el agua, desmayo definitivo: pantalla negra con "¡Nate se desmayó!", pierde 10 % del dinero (`GameState.money`) y reaparece en `GameState.respawn_point`. La protección del compañero llega con las peleas (bloque 5).
+
+### Vida del jugador y emboscadas (decisiones de Fernando)
+- Vida con corazones estilo Minecraft. Se pierde por ataques de salvajes, por caídas desde altura y al ahogarse.
+- Agua: nadar en la superficie (más lento) y bucear con burbujas de aire; sin aire pierde vida poco a poco. El mar abierto cansa. Con Surf (5.8) se cruza sin gastar.
+- Ataques de salvajes según naturaleza y tipo: golpe cuerpo a cuerpo o ataque a distancia de su tipo, con aviso visual para esquivar o saltar. El compañero defiende a Nate (se interpone y contraataca). Si te tocan, empieza la batalla (Fase 3) o recibes daño si huyes.
+- Al llegar a 0: Nate queda en el suelo con estrellitas y una barra de vida flotante que se llena en 2 minutos. Su compañero lo protege en modo combate contra los salvajes que entren a la zona, como máximo 2 a la vez. Si el compañero se debilita: pantalla negra ("¡Nate se desmayó!"), reaparece en el último Centro Pokémon o campamento con la vida llena y pierde dinero (hasta la 2.6, en el punto de inicio).
+- Emboscadas: Bicho colgado de las ramas y aves en las copas, con pistas (la copa se mueve, ruido). Si son agresivos o territoriales y pasas debajo, caen o se lanzan en picada con un "¡!" y tienes medio segundo para esquivar o saltar; si te alcanzan, empieza la batalla. Los tímidos y curiosos solo observan.
 
 ### Avance 2.8 (bloques 1 y 2)
 - Sprites rotos: 25 hojas usan cuadros de 64 px (Lugia, Reshiram…) y 52 traen el lado derecho propio (8 cuadros, sprites asimétricos como Absol). El conversor detecta ambos y el tamaño en el mundo se normaliza (32 px × escalón).

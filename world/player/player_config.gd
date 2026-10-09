@@ -10,6 +10,31 @@ extends Resource
 @export var deceleration: float = 40.0
 @export var gravity: float = 20.0
 
+@export_group("Salto y caídas")
+@export var jump_velocity: float = 7.5
+## Caer más que esto (m) hace daño: fall_damage por cada metro extra (estilo Minecraft).
+@export var fall_safe_height: float = 4.0
+@export var fall_damage_per_meter: float = 1.0
+
+@export_group("Vida")
+## Vida en medios corazones (20 = 10 corazones, como Minecraft).
+@export var health_max: float = 20.0
+## Al desmayarse, segundos que tarda en llenarse la vida mientras el compañero lo protege.
+@export var downed_duration: float = 120.0
+
+@export_group("Agua")
+## Profundidad desde la que nada en vez de caminar.
+@export var swim_depth: float = 1.1
+@export var swim_speed: float = 2.6
+@export var dive_speed: float = 2.0
+## Cansancio al nadar (stamina por segundo); sin stamina se hunde.
+@export var swim_stamina_drain: float = 3.0
+## Segundos de aire bajo el agua (10 burbujas) y recuperación por segundo al salir.
+@export var air_max: float = 15.0
+@export var air_refill: float = 6.0
+## Daño por segundo al quedarse sin aire.
+@export var drown_damage_per_second: float = 1.0
+
 @export_group("Stamina")
 @export var stamina_max: float = 100.0
 ## Gasto por segundo al correr y recuperación por segundo al no correr.
