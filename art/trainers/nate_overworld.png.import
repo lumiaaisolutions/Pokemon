@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://u1rqqliyjbc5"
-path="res://.godot/imported/nate_back.png-6df591da39f600c4645f6603653cfc82.ctex"
+uid="uid://dly3lsacnerel"
+path="res://.godot/imported/nate_overworld.png-5654954b0b37b07c58209afafac65b50.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/trainers/nate_back.png"
-dest_files=["res://.godot/imported/nate_back.png-6df591da39f600c4645f6603653cfc82.ctex"]
+source_file="res://art/trainers/nate_overworld.png"
+dest_files=["res://.godot/imported/nate_overworld.png-5654954b0b37b07c58209afafac65b50.ctex"]
 
 [params]
 

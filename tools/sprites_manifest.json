@@ -4,19 +4,38 @@
     {
       "src": "trainers/nate.png",
       "dst": "art/trainers/nate.png",
-      "crop": true,
-      "generate_back": {
-        "dst": "art/trainers/nate_back.png",
-        "face_box": [
-          7,
-          10,
-          20,
-          21
-        ],
-        "hair": [
-          96,
-          72,
-          64
+      "crop": true
+    },
+    {
+      "src": "overworld/nate_b2w2.png",
+      "dst": "art/trainers/nate_overworld.png",
+      "_fuente": "https://www.spriters-resource.com/ds_dsi/pokemonblack2white2/asset/48040/ (ripeado por Dazz)",
+      "overworld_sheet": {
+        "cell": 32,
+        "pitch": 33,
+        "blocks": [
+          {
+            "x": 1,
+            "y": 1,
+            "frames": 3,
+            "rows": {
+              "up": 0,
+              "down": 1,
+              "left": 2,
+              "right": 3
+            }
+          },
+          {
+            "x": 133,
+            "y": 1,
+            "frames": 3,
+            "rows": {
+              "up": 0,
+              "down": 1,
+              "left": 2,
+              "right": 3
+            }
+          }
         ]
       }
     }

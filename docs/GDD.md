@@ -23,11 +23,12 @@ Juego de exploración y colección de criaturas en mundo abierto, en tercera per
 **Ciclo principal (debe funcionar completo antes de expandir contenido):**
 Explorar → ver criatura en la hierba → contacto → combate en tiempo real controlando a tu criatura → debilitarla → cambiar a primera persona → lanzar esfera y esquivar → captura → se une al equipo y te sigue por el mundo.
 
-## 3. Dirección de arte (técnica tipo Gen 5, sprites de Pokémon)
+## 3. Dirección de arte (HD-2D con gráficos de Negro 2/Blanco 2)
 
-- **Mundo:** modelos 3D low-poly con texturas en pixel art. Import preset: filtro `Nearest`, sin mipmaps, sin compresión con pérdida.
+- **Mundo (decisión final 2026-10-09): HD-2D con gráficos de Pokémon Negro 2/Blanco 2.** El mundo usa el mismo pixel art que Nate: texturas y tiles de B2W2 en el suelo 3D (pasto, hierba alta, caminos, agua), árboles, rocas y props como sprites billboard o modelos con texturas de B2W2, filtro `Nearest`, luz suave, profundidad de campo y niebla ligera. Se descarta el estilo naturalista de Leyendas Arceus.
+- **Sprites (personajes y Pokémon):** preset pixel art: filtro `Nearest`, sin mipmaps, sin compresión con pérdida.
 - **Criaturas y NPCs:** sprites 2D animados como billboards (billboard solo en eje Y) dentro del mundo 3D, con sombra proyectada simple (blob shadow).
-- **Cámara de exploración:** tercera persona elevada (~35–45°), con zoom limitado.
+- **Cámara de exploración:** tercera persona con órbita libre de 360° en horizontal y pitch de -20° (mirar al cielo) a 80° (casi cenital), con zoom limitado.
 - **Decisión (2026-10-09):** proyecto personal y privado. Se usan Pokémon reales (nombres y sprites) tomados del paquete local `sprites/` (dump de Pokémon Showdown). El juego y sus assets no se publican ni se distribuyen.
 - **Fuente de sprites:** `sprites/` es solo fuente: lleva `.gdignore` (Godot no la importa) y está fuera de git. Un script copia a `res://art/` únicamente los sprites del roster, y eso sí se versiona.
 - Otros assets de terceros (modelos, texturas, audio) solo con licencia **CC0**, registrados en `CREDITS.md` con URL y licencia.
@@ -35,12 +36,12 @@ Explorar → ver criatura en la hierba → contacto → combate en tiempo real c
 ### Formato de sprites
 | Uso | Fuente | Presentación |
 |---|---|---|
-| Criatura en mundo | `gen5ani` / `gen5ani-back` (GIF animado) si existe; si no, `gen5` / `gen5-back` (PNG estático, 96×96) con animación procedural | Billboard en eje Y a escala reducida: frente cuando se acerca a la cámara, espalda cuando se aleja; rebote procedural al caminar |
+| Criatura en mundo | Sprites *overworld* de seguidores (paquete de la comunidad, 4 direcciones con caminar) | Billboard en eje Y; la dirección mostrada (frente, espalda, izquierda, derecha) depende del movimiento respecto a la cámara |
 | Criatura en combate | La misma regla (animado con respaldo estático) | Frente y espalda; estados (ataque, daño, debilitado) por animación procedural (escala, tinte, sacudida) |
 | Variocolor | `gen5-shiny`, `gen5-back-shiny`, `gen5ani-shiny`, `gen5ani-back-shiny` | Igual que la forma normal |
 | Megaevoluciones | 71 megas completas (frente y espalda) en `gen5`/`gen5-back`; animadas solo 26 de frente y 11 de espalda | Animado con respaldo estático |
 | Íconos (menús) | `gen5icons` (no hay de megas; no hacen falta porque la mega se revierte al terminar el combate) | — |
-| Jugador | `sprites/trainers/nate.png` (estático, de frente, 80×80) | Billboard con rebote procedural |
+| Jugador | Sprite sheet *overworld* de Nate de Negro 2/Blanco 2 (caminar y correr en 4 direcciones) | Billboard en eje Y con animación por dirección relativa a la cámara |
 
 Godot no importa GIF: un script convierte cada GIF animado a sprite sheet PNG y normaliza la escala.
 

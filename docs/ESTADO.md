@@ -7,7 +7,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | Fase | Estado | Commit | Notas |
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
-| 1 | Implementada, esperando tu prueba manual (teclado y mando PlayStation) | — | Pruebas en headless: 0 fallos; 60 FPS en M1 en la captura |
+| 1 | En curso: mundo HD-2D | `362778e` (greybox) | Nate animado con su hoja de B2W2, aprobado por Fernando. Falta: mundo en pixel art de B2W2 |
 | 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
@@ -61,6 +61,15 @@ Resultado:
 - Pradera greybox: `world/biomes/pradera.tscn` con `BiomeConfig`. 200×200 m de terreno low-poly por ruido, con colisión exacta (trimesh), 40 rocas, 70 árboles, muros invisibles y un centro libre de 18 m.
 - Sprites: `python3 tools/copy_sprites.py` regenera `art/` desde `sprites/` según `tools/sprites_manifest.json`.
 - Prueba: `tests/test_player_movement.tscn`, con 15 comprobaciones: suelo, caminar, correr, frenar, frente y espalda, stick completo y a la mitad, recorrido por colinas sin atravesar el terreno, choque con un árbol y con el muro.
+
+## Retroalimentación de la prueba manual (2026-10-09)
+- La espalda generada de Nate no se ve bien. Se reemplaza por su sprite sheet overworld de B2W2 (caminar y correr en 4 direcciones).
+- No hay animación de caminar ni de lado. Se resuelve con el sprite sheet overworld.
+- Los árboles se ven pixeleados. Hecho: MSAA 4x + SMAA. Los árboles se reemplazan por modelos con follaje.
+- La cámara no subía y no se sentía 360°. Hecho: órbita libre y pitch de -20° a 80°.
+- Al mundo le faltaba estructura y textura. Primero se eligió el estilo Leyendas Arceus, pero al ver a Nate animado Fernando pidió que el mundo tuviera su mismo pixel art. Decisión final: HD-2D con gráficos de B2W2 (descargas autorizadas).
+- Nate animado (hoja overworld de B2W2 de The Spriters Resource, ripeada por Dazz, "No Credit Required"): aprobado.
+- Pokémon en el mundo: sprites overworld de seguidores (4 direcciones). En combate siguen gen5 / gen5ani.
 
 ## Recursos sugeridos por Fernando (para el arte del mundo, más adelante)
 - Kenney.nl (Nature Kit, Prototype Kit) y KayKit: CC0.

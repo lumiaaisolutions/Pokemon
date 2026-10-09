@@ -1,24 +1,33 @@
 class_name Player
 extends CharacterBody3D
 ## Entrenador en exploración: camina y corre relativo a la cámara activa.
-## El sprite es un billboard en eje Y que alterna frente/espalda según hacia
-## dónde se mueve respecto a la cámara, con rebote procedural al caminar.
+## El sprite es un billboard en eje Y con hoja overworld (4 direcciones, caminar
+## y correr). La fila se elige según la dirección de mirada respecto a la cámara,
+## así que al orbitar la cámara alrededor del jugador también cambia su lado visible.
+
+enum Facing { DOWN, LEFT, RIGHT, UP }
+
+## Ciclo de pasos: parado, paso A, parado, paso B.
+const STEP_CYCLE: Array[int] = [0, 1, 0, 2]
 
 @export var config: PlayerConfig
 
 @onready var _sprite: Sprite3D = $Sprite
 
-var _bob_phase: float = 0.0
-var _facing_away: bool = true
-var _sprite_base_y: float = 0.0
+## Hacia dónde mira el jugador en el mundo (horizontal, normalizado).
+var _facing_world := Vector3.FORWARD
+var _anim_time: float = 0.0
 
 
 func _ready() -> void:
+	_sprite.texture = config.sheet
+	_sprite.hframes = config.hframes
+	_sprite.vframes = config.vframes
 	_sprite.pixel_size = config.pixel_size
-	_sprite.texture = config.texture_back
-	# Pies en el origen del cuerpo.
-	_sprite_base_y = config.texture_front.get_height() * config.pixel_size * 0.5
-	_sprite.position.y = _sprite_base_y
+	# Pies en el origen del cuerpo: la celda tiene los pies en su borde inferior.
+	var cell_height := config.sheet.get_height() / float(config.vframes)
+	_sprite.position.y = cell_height * config.pixel_size * 0.5
+	_update_sprite(Vector3.ZERO, 0.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -63,17 +72,33 @@ func _camera_relative(input: Vector2) -> Vector3:
 	return direction.normalized() if direction.length_squared() > 0.0001 else Vector3.ZERO
 
 
+## Fila de dirección visible ahora (Facing), según la cámara. La usan las pruebas.
+func get_visible_facing() -> Facing:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return Facing.UP
+	var forward := -camera.global_basis.z
+	forward.y = 0.0
+	var right := camera.global_basis.x
+	right.y = 0.0
+	var along := _facing_world.dot(forward.normalized())
+	var side := _facing_world.dot(right.normalized())
+	if absf(side) > absf(along):
+		return Facing.RIGHT if side > 0.0 else Facing.LEFT
+	return Facing.UP if along > 0.0 else Facing.DOWN
+
+
 func _update_sprite(horizontal: Vector3, delta: float) -> void:
 	var speed := horizontal.length()
-	if speed > 0.1:
-		var camera := get_viewport().get_camera_3d()
-		if camera != null:
-			var to_camera := camera.global_position - global_position
-			to_camera.y = 0.0
-			_facing_away = horizontal.dot(to_camera) < 0.0
-		_sprite.texture = config.texture_back if _facing_away else config.texture_front
-		_bob_phase += delta * config.bob_frequency * TAU * (speed / config.walk_speed)
-		_sprite.position.y = _sprite_base_y + absf(sin(_bob_phase)) * config.bob_height
+	var moving := speed > 0.1
+	if moving:
+		_facing_world = horizontal / speed
+	var running := speed > config.walk_speed + 0.5
+	var row := int(get_visible_facing()) + (4 if running else 0)
+	var column := 0
+	if moving:
+		_anim_time += delta * (config.run_fps if running else config.walk_fps)
+		column = STEP_CYCLE[int(_anim_time) % STEP_CYCLE.size()]
 	else:
-		_bob_phase = 0.0
-		_sprite.position.y = move_toward(_sprite.position.y, _sprite_base_y, delta)
+		_anim_time = 0.0
+	_sprite.frame = row * config.hframes + column

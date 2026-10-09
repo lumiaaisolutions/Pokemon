@@ -10,11 +10,14 @@ extends Resource
 @export var deceleration: float = 40.0
 @export var gravity: float = 20.0
 
-@export_group("Sprite")
-@export var texture_front: Texture2D
-@export var texture_back: Texture2D
-## Metros por píxel del sprite (70 px × 0.024 ≈ 1.7 m).
-@export var pixel_size: float = 0.024
-## Rebote al caminar: altura en metros y pasos por segundo a velocidad de caminata.
-@export var bob_height: float = 0.06
-@export var bob_frequency: float = 2.2
+@export_group("Sprite overworld")
+## Hoja generada por tools/copy_sprites.py: columnas = frames (parado, paso A, paso B);
+## filas 0–3 caminar y 4–7 correr, en orden abajo, izquierda, derecha, arriba.
+@export var sheet: Texture2D
+@export var hframes: int = 3
+@export var vframes: int = 8
+## Metros por píxel (28 px de personaje × 0.057 ≈ 1.6 m).
+@export var pixel_size: float = 0.057
+## Pasos por segundo de la animación al caminar y al correr.
+@export var walk_fps: float = 7.0
+@export var run_fps: float = 10.0

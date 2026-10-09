@@ -11,6 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 from make_back_sprite import make_back
+from overworld_sheet import extract
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "sprites"
@@ -28,6 +29,13 @@ def main() -> int:
             missing += 1
             continue
         image = Image.open(src).convert("RGBA")
+        sheet = entry.get("overworld_sheet")
+        if sheet:
+            out = extract(image, sheet["cell"], sheet["pitch"], sheet["blocks"])
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            out.save(dst)
+            print(f"{entry['src']} -> {entry['dst']} hoja overworld {out.size[0]}x{out.size[1]}")
+            continue
         if entry.get("crop"):
             bbox = image.getchannel("A").getbbox()
             if bbox:
