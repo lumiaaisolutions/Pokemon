@@ -10,6 +10,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
 | 2 | Hecha (aprobada por Fernando el 2026-10-09) | `33a8792` | Hierba alta, salvajes con IA y compañero al azar; 0 fallos; 60 FPS |
 | 2.5 | Implementada, esperando revisión de Fernando | ver `git log` | 5 pruebas en headless con 0 fallos; 55–60 FPS a 1080p; el mundo se construye en ~4 s |
+| 2.8 | En curso | — | Pulido del mundo vivo (pedido de Fernando tras probar la 2.5) |
 | 2.6 | Pendiente | — | Asentamientos, rutas pavimentadas y lugares icónicos (GDD 10c) |
 | 2.7 | Pendiente | — | NPC con rutinas, viajeros, entrenadores caminando, día/noche y clima (GDD 10c) |
 | 5.7 | Pendiente | — | Interiores (GDD 10c) |
@@ -169,6 +170,33 @@ Pasos:
 - Persecución: agresivos y territoriales; área de 12–35 m según velocidad y poder, con anillo en el suelo; al salir del área se rinden y regresan.
 - Stamina (barra en pantalla): correr 5 s la agota y hay que recuperar el 25 % para volver a correr. El agua profunda detiene a Nate en la orilla.
 - Rendimiento: construcción de 21 s a 4 s (alturas en caché), sombras del sol y desenfoque más baratos; de 51 a 55–60 FPS a 1080p en M1.
+
+## Fase 2.8: decisiones de Fernando (2026-10-09)
+- Arreglar tirones y sprites rotos.
+- Aparición en cualquier lugar (no solo en hierba alta), con cupo por zona de 40×40 m y especies características por zona. Los Pokémon tienen mentalidad propia y recorren todo.
+- Manadas en el 30 % de las apariciones: 3 a 6 de la misma línea evolutiva, la mayoría básicos, y rara vez un líder evolucionado (más grande). Nunca dos manadas juntas, salvo un 5 %, y entonces pueden pelear según su naturaleza.
+- Esconderse: tras 1 a 3 minutos sin interacción buscan un escondite y desaparecen con un efecto según el lugar (hojas, polvo, salpicadura, arena).
+- Peleas entre salvajes: rivalidades naturales (ventaja de tipo, agresivos contra débiles, territoriales contra intrusos, manadas rivales y enemigos clásicos), con barra de vida visible. El ganador queda herido. Al debilitarse quedan aturdidos 5 s (estrellitas girando); si no se capturan en ese tiempo, desaparecen en humo (estilo mob de Minecraft).
+- Captura en el mundo estilo Leyendas Arceus: apuntar (clic derecho o LT) con arco de trayectoria y lanzar (clic izquierdo o RT). La probabilidad usa el ratio oficial de la especie, su vida, la Pokéball, su temperamento y un bono por sigilo. Se mantiene la captura en primera persona dentro del combate.
+- Salto: Espacio o B (Círculo) explorando; en combate ese botón es la esquiva (salto o dash).
+- Legendarios solo en santuarios, con 10 % por visita y a veces condición de hora o clima. Pseudolegendarios solo en su zona, 10 veces más raros (y su etapa final, casi nunca).
+- Minimapa que gira con la cámara y mapa completo (M o Select) con niebla de exploración y marcadores.
+- Coherencia: pisos de altura en la montaña (pinos, roca, nieve), transiciones naturales, ribera viva (juncos, árboles, flores; pantano con árboles muertos y niebla) y caminos que conectan lugares.
+- Documentación: al cerrar la fase, reorganizar en un .md por tema (regla nueva).
+- Orden: tirones y sprites, aparición y manadas y esconderse y legendarios, salto, coherencia, peleas, captura y mapa.
+- Legendarios cautelosos (pedido posterior): nunca atacan; si te ven (cono de visión) o te oyen (cerca, o más lejos si corres) muestran "?" y se reubican rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
+- Pedidos posteriores, pendientes de detallar: vida del jugador (ataques de salvajes al jugador y a su compañero, caída desde altura, ahogarse en el agua al quedarse sin aire, estilo Minecraft); Pokémon Bicho colgados en los árboles que caen de sorpresa y aves en las copas que se lanzan en picada, según su naturaleza.
+
+### Avance 2.8 (bloques 1 y 2)
+- Sprites rotos: 25 hojas usan cuadros de 64 px (Lugia, Reshiram…) y 52 traen el lado derecho propio (8 cuadros, sprites asimétricos como Absol). El conversor detecta ambos y el tamaño en el mundo se normaliza (32 px × escalón).
+- Tirones: los Pokémon recalculaban su camino en cada cuadro (ahora solo si el destino se mueve más de 1.5 m) y los efectos compilaban su shader la primera vez (ahora hay un calentamiento al cargar). En 60 s con 27 salvajes: de 27.2 a 16.7 ms de promedio y de 854 a 29 ms de peor cuadro.
+- Aparición en cualquier lugar transitable (ajustado a la navegación, nunca dentro de árboles, rocas ni agua), con zonas de 40 m, cupo de grupos por hábitat y 2 especies características por zona (35 % de las apariciones).
+- Manadas (30 %): de 3 a 6 de una línea evolutiva, con líder evolucionado en el 25 % de las manadas. Siguen al líder en formación y huyen o persiguen juntos. Separadas 60 m, salvo un 5 % de manadas rivales a 15 m.
+- Mentalidad propia: pasean hasta 14 m y cada 4 paseos se mudan unos 25 m.
+- Esconderse: tras 60–180 s sin interacción buscan hierba alta cercana y desaparecen con una nube (`world/effects/pixel_burst.gd`): hojas, hojas de bosque, polvo, roca, salpicadura, arena o humo. La manada se esconde con su líder.
+- Pseudolegendarios: solo en montaña, ×0.1 y su etapa final ×0.01. Datos nuevos: línea evolutiva y ratio de captura oficial.
+- Legendarios: 10 santuarios (la cumbre más alta incluida), 10 % de aparición por visita y uno a la vez por especie. Cautelosos, con "?" y escape corriendo por un camino real o volando en arco (Volador o dragón grande). Nunca provocan combate.
+
 
 ## Pendiente de definir
 - Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.

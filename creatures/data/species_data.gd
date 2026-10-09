@@ -33,6 +33,11 @@ enum Habitat { MEADOW, FOREST, MOUNTAIN, FRESHWATER, SEA, SWAMP }
 @export var habitats: Array[Habitat] = []
 ## Peso relativo de aparición (etapa × poder). 0 = no aparece en hierba (legendarios).
 @export var spawn_weight: float = 1.0
+## Línea evolutiva (evolution_chain_id de PokeAPI): las manadas son de una sola línea.
+@export var evolution_chain: int = 0
+@export var is_pseudo_legendary: bool = false
+## Ratio de captura oficial (3 = muy difícil, 255 = muy fácil).
+@export var capture_rate: int = 45
 ## Nada en el agua (tipo Agua con forma de pez o tentáculos); si no, aparece en la orilla.
 @export var swims: bool = false
 @export var is_legendary: bool = false
@@ -40,9 +45,12 @@ enum Habitat { MEADOW, FOREST, MOUNTAIN, FRESHWATER, SEA, SWAMP }
 
 @export_group("Mundo")
 @export var temperament: Temperament = Temperament.WANDER
-## Hoja overworld: 2 columnas (pasos) × 4 filas (abajo, izquierda, derecha, arriba), celdas de 32 px.
+## Hoja overworld: 2 columnas (pasos) × 4 filas (abajo, izquierda, derecha, arriba).
 @export var overworld_sheet: Texture2D
 ## La misma hoja con la paleta variocolor.
 @export var overworld_sheet_shiny: Texture2D
 ## Filas transparentes bajo los pies en la hoja; se descuentan al apoyar el sprite en el suelo.
 @export var foot_offset_px: int = 0
+## Lado de cada cuadro de la hoja overworld (32 o 64 px). El tamaño en el mundo se
+## normaliza a 32 px × size_scale, así una hoja de 64 px no sale el doble de grande.
+@export var overworld_cell: int = 32

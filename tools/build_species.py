@@ -70,6 +70,15 @@ ROSTER = {
     "garchomp": AGGRESSIVE,
 }
 
+# Líneas pseudolegendarias (todas sus etapas): solo en montaña y 10 veces más raras;
+# su etapa final, otras 10 veces más rara.
+PSEUDO_LINES = {
+    "dratini", "dragonair", "dragonite", "larvitar", "pupitar", "tyranitar", "bagon", "shelgon", "salamence",
+    "beldum", "metang", "metagross", "gible", "gabite", "garchomp", "deino", "zweilous", "hydreigon",
+    "goomy", "sliggoo", "goodra", "jangmo-o", "hakamo-o", "kommo-o", "dreepy", "drakloak", "dragapult",
+    "frigibax", "arctibax", "baxcalibur",
+}
+
 # Roster como destacados de su bioma: siempre aparecen ahí y con peso ×20.
 ROSTER_HABITAT = {
     "pidgeot": MEADOW, "ampharos": MEADOW, "sawsbuck": MEADOW, "absol": MEADOW,
@@ -134,40 +143,46 @@ def read_jasc_pal(path: Path) -> list[int]:
     return values + [0] * (768 - len(values))
 
 
-def overworld_sheets(source: str) -> tuple[Image.Image, Image.Image | None, int]:
-    """Convierte la hoja de pokeemerald (6 frames: abajo×2, arriba×2, lado izquierdo×2)
-    a 2 columnas × 4 filas (abajo, izquierda, derecha, arriba) con fondo transparente,
-    en versión normal y shiny (si existe la paleta)."""
+def overworld_sheets(source: str) -> tuple[Image.Image, Image.Image | None, int, int]:
+    """Convierte la hoja de pokeemerald a 2 columnas × 4 filas (abajo, izquierda,
+    derecha, arriba) con fondo transparente, en versión normal y shiny.
+    Los cuadros son cuadrados (32 o 64 px según la especie). Con 6 cuadros: abajo×2,
+    arriba×2, izquierda×2 (la derecha se espeja); con 8, los dos últimos son la
+    derecha dibujada aparte (sprites asimétricos). Devuelve (normal, shiny, pies, cuadro)."""
     raw = Image.open(fetch(source, "overworld.png"))
     shiny_pal = fetch(source, "overworld_shiny.pal")
+    cell = raw.height
     variants = [raw.copy()]
     if raw.mode == "P" and shiny_pal is not None:
         shiny = raw.copy()
         shiny.putpalette(read_jasc_pal(shiny_pal))
         variants.append(shiny)
     sheets = []
-    foot = CELL
+    foot = cell
     for variant in variants:
         if variant.mode == "P":
             # El índice 0 de la paleta es el fondo en las hojas de GBA.
             variant.info["transparency"] = 0
         image = variant.convert("RGBA")
-        frames = [image.crop((i * CELL, 0, (i + 1) * CELL, CELL)) for i in range(image.width // CELL)]
+        frames = [image.crop((i * cell, 0, (i + 1) * cell, cell)) for i in range(image.width // cell)]
         while len(frames) < 6:
             frames.append(frames[-1])
         down, up, left = frames[0:2], frames[2:4], frames[4:6]
-        right = [f.transpose(Image.Transpose.FLIP_LEFT_RIGHT) for f in left]
-        sheet = Image.new("RGBA", (CELL * 2, CELL * 4), (0, 0, 0, 0))
+        if len(frames) >= 8:
+            right = frames[6:8]
+        else:
+            right = [f.transpose(Image.Transpose.FLIP_LEFT_RIGHT) for f in left]
+        sheet = Image.new("RGBA", (cell * 2, cell * 4), (0, 0, 0, 0))
         for row, pair in enumerate((down, left, right, up)):
             for col, frame in enumerate(pair):
-                sheet.paste(frame, (col * CELL, row * CELL))
+                sheet.paste(frame, (col * cell, row * cell))
         # Filas vacías bajo los pies: el mínimo entre todos los frames (el que más baja).
         for frame in frames:
             bbox = frame.getchannel("A").getbbox()
             if bbox:
-                foot = min(foot, CELL - bbox[3])
+                foot = min(foot, cell - bbox[3])
         sheets.append(sheet)
-    return sheets[0], sheets[1] if len(sheets) > 1 else None, foot
+    return sheets[0], sheets[1] if len(sheets) > 1 else None, foot, cell
 
 
 def default_temperament(stats: dict) -> int:
@@ -250,11 +265,15 @@ size_scale = {sp['size']}
 habitats = Array[int]([{habitats}])
 spawn_weight = {sp['weight']}
 swims = {str(sp['swims']).lower()}
+evolution_chain = {sp['chain']}
+is_pseudo_legendary = {str(sp['pseudo']).lower()}
+capture_rate = {sp['capture_rate']}
 is_legendary = {str(sp['legendary']).lower()}
 is_mythical = {str(sp['mythical']).lower()}
 temperament = {sp['temperament']}
 overworld_sheet = ExtResource("2_ow"){shiny_field}
 foot_offset_px = {sp['foot']}
+overworld_cell = {sp['cell']}
 """
 
 
@@ -299,7 +318,7 @@ def main() -> int:
         row = species_rows[sid]
         identifier = row["identifier"]
         source = pokeemerald_name(identifier, dirs)
-        sheet, shiny, foot = overworld_sheets(source)
+        sheet, shiny, foot, cell = overworld_sheets(source)
         art = ROOT / "art" / "pokemon" / identifier
         art.mkdir(parents=True, exist_ok=True)
         sheet.save(art / "overworld.png")
@@ -315,11 +334,16 @@ def main() -> int:
             temperament = TERRITORIAL
         return {
             "id": int(sid), "identifier": identifier, "name": names.get(sid, identifier.title()),
-            "types": types[sid], **st, "foot": foot, "shiny": shiny is not None,
+            "types": types[sid], **st, "foot": foot, "cell": cell, "shiny": shiny is not None,
             "stage": stage, "base_total": base_total, "height": heights[sid], "size": size_scale(heights[sid]),
-            "habitats": sorted(set(habitats_for(types[sid], row["habitat_id"])) | ({ROSTER_HABITAT[identifier]} if identifier in ROSTER_HABITAT else set())),
+            "habitats": [MOUNTAIN] if identifier in PSEUDO_LINES and WATER not in types[sid] else
+                        sorted(set(habitats_for(types[sid], row["habitat_id"])) | ({ROSTER_HABITAT[identifier]} if identifier in ROSTER_HABITAT else set())),
             "weight": round(spawn_weight(stage, base_total, legendary or mythical or identifier in SPECIAL)
-                            * (ROSTER_WEIGHT_BOOST if identifier in ROSTER_HABITAT and identifier not in ROSTER_RARE else 1.0), 4),
+                            * (ROSTER_WEIGHT_BOOST if identifier in ROSTER_HABITAT and identifier not in ROSTER_RARE else 1.0)
+                            * (0.1 if identifier in PSEUDO_LINES else 1.0)
+                            * (0.1 if identifier in PSEUDO_LINES and stage == 3 else 1.0), 5),
+            "chain": int(row["evolution_chain_id"]), "pseudo": identifier in PSEUDO_LINES,
+            "capture_rate": int(row["capture_rate"]),
             "legendary": legendary, "mythical": mythical, "temperament": temperament,
             "swims": WATER in types[sid] and row["shape_id"] in SWIMMING_SHAPES,
         }

@@ -243,6 +243,37 @@ func habitat_at(x: float, z: float) -> SpeciesData.Habitat:
 	return SpeciesData.Habitat.MEADOW
 
 
+## Efecto con el que un Pokémon se esconde en (x, z), según el lugar.
+func hide_effect_at(x: float, z: float) -> PixelBurst.Kind:
+	if water_depth_at(x, z) > 0.3:
+		return PixelBurst.Kind.SPLASH
+	if is_in_tall_grass(Vector3(x, 0, z)):
+		return PixelBurst.Kind.LEAVES
+	match dominant_biome(x, z):
+		Biome.FOREST:
+			return PixelBurst.Kind.FOREST_LEAVES
+		Biome.MOUNTAIN:
+			return PixelBurst.Kind.ROCK
+		Biome.BEACH:
+			return PixelBurst.Kind.SAND
+	return PixelBurst.Kind.LEAVES
+
+
+## Punto de hierba alta más cercano a point dentro de radius, o Vector3.INF.
+func nearest_tall_grass_point(point: Vector3, radius: float) -> Vector3:
+	var best := Vector3.INF
+	var best_d := radius
+	for patch in tall_grass_patches:
+		var center := Vector2(patch.x, patch.y)
+		var d := center.distance_to(Vector2(point.x, point.z)) - patch.z
+		if d < best_d:
+			best_d = d
+			var dir := (Vector2(point.x, point.z) - center)
+			var inside := center + (dir.normalized() * minf(dir.length(), patch.z * 0.6) if dir.length() > 0.01 else Vector2.ZERO)
+			best = Vector3(inside.x, surface_height_at(inside.x, inside.y), inside.y)
+	return best
+
+
 ## ¿Está el punto dentro de un parche de hierba alta?
 func is_in_tall_grass(point: Vector3) -> bool:
 	for patch in tall_grass_patches:

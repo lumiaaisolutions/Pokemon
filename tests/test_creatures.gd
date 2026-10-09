@@ -70,7 +70,9 @@ func _run() -> void:
 	var wailord := _spawner.spawn_species(_species("wailord"), Vector3(0, 0, 0), false, false)
 	var joltik := _spawner.spawn_species(_species("joltik"), Vector3(0, 0, 0), true, false)
 	await _frames(2)
-	_check(is_equal_approx((wailord.get_node("Sprite") as Sprite3D).pixel_size, PokemonActor.PIXEL_SIZE * 3.0), "Wailord debe dibujarse ×3")
+	var wailord_sprite := wailord.get_node("Sprite") as Sprite3D
+	var wailord_height := wailord_sprite.texture.get_height() / 4.0 * wailord_sprite.pixel_size
+	_check(is_equal_approx(wailord_height, 32.0 * 3.0 * PokemonActor.PIXEL_SIZE), "Wailord debe medir 32 px ×3 en el mundo (%.2f m)" % wailord_height)
 	_check(is_equal_approx((joltik.get_node("Sprite") as Sprite3D).pixel_size, PokemonActor.PIXEL_SIZE), "Joltik debe dibujarse ×1")
 	_check((joltik.get_node("Sprite") as Sprite3D).texture == _species("joltik").overworld_sheet_shiny, "un shiny debe usar su hoja variocolor")
 	_check(joltik.has_node("ShinySparkles"), "un shiny debe tener destello")
@@ -109,19 +111,92 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(2)
 
-	# Legendarios: uno solo por lugar, y uno capturado no reaparece sin la tirada.
+	# Cupo por zona: nunca más grupos que el cupo en una zona.
+	_spawner.set_process(true)
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	for i in 900:
+		await get_tree().physics_frame
+	_spawner.set_process(false)
+	var counts := _spawner.groups_per_zone()
+	var over := 0
+	for zone: Vector2i in counts:
+		if counts[zone] > _spawner.zone_quota(zone):
+			over += 1
+	print("  zonas ocupadas: %d, grupos: %d, salvajes: %d" % [counts.size(), counts.values().reduce(func(a, b): return a + b, 0), get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP).size()])
+	_check(over == 0, "%d zonas superan su cupo" % over)
+	_clear_wild()
+	await _frames(2)
+
+	# Manadas: misma línea evolutiva, como mucho un líder evolucionado.
+	var packs_ok := 0
+	for i in 6:
+		var leader := _spawner._spawn_pack(_species("pidgey"), _ground(20.0, 4.0 * i))
+		await _frames(2)
+		var members := get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP).filter(func(a: PokemonActor) -> bool: return a.group_id == leader.group_id)
+		var evolved := members.filter(func(a: PokemonActor) -> bool: return a.species.evolution_stage > 1)
+		var same_line := members.all(func(a: PokemonActor) -> bool: return a.species.evolution_chain == leader.species.evolution_chain)
+		if members.size() >= 2 and same_line and evolved.size() <= 1:
+			packs_ok += 1
+		_clear_wild()
+		await _frames(2)
+	_check(packs_ok == 6, "las manadas deben ser de una línea con como mucho un líder evolucionado (%d de 6)" % packs_ok)
+
+	# Esconderse: al cumplir su tiempo sin interacción desaparece con efecto.
+	var hider := _spawner.spawn_species(_species("bidoof"), _ground(25.0, 0.0), false, false)
+	await _frames(2)
+	hider._hide_after = 0.5
+	var bursts_before := _count_bursts()
+	var bursts_at_vanish := bursts_before
+	for i in 600:
+		await get_tree().physics_frame
+		if not is_instance_valid(hider):
+			bursts_at_vanish = _count_bursts()
+			break
+	_check(not is_instance_valid(hider), "debe esconderse y desaparecer tras su tiempo sin interacción")
+	_check(bursts_at_vanish > bursts_before, "debe dejar un efecto al esconderse (%d -> %d)" % [bursts_before, bursts_at_vanish])
+
+	# Legendarios: solo en santuarios, nunca provocan combate y escapan al verte.
 	var legendaries := _main.get_node("Legendaries") as LegendaryManager
-	_check(legendaries.spots.size() >= 90, "todos los legendarios deben tener lugar (%d)" % legendaries.spots.size())
-	var spot: Vector3 = legendaries.spots["groudon"]
-	_player.global_position = spot + Vector3(30, 1, 0)
-	legendaries.set_process(true)
+	_check(legendaries.sanctuaries.size() >= 8 and legendaries.sanctuaries.size() <= 12, "debe haber unos 10 santuarios (%d)" % legendaries.sanctuaries.size())
+	_check(get_tree().get_nodes_in_group(LegendaryManager.LEGENDARY_GROUP).size() == 0, "no debe haber legendarios fuera de los santuarios")
+	var mountain_index := 0
+	var sanctuary_pos: Vector3 = legendaries.sanctuaries[mountain_index].position
+	_player.global_position = sanctuary_pos + Vector3(0, 0.5, 30)
 	await _frames(5)
-	var groudons := get_tree().get_nodes_in_group(LegendaryManager.LEGENDARY_GROUP).filter(func(a: PokemonActor) -> bool: return a.species.identifier == "groudon")
-	_check(groudons.size() == 1, "debe haber exactamente un Groudon (%d)" % groudons.size())
+	var legend := legendaries.summon(mountain_index, "groudon")
+	_check(legend != null and legend.legendary, "debe poder aparecer Groudon en el santuario de la cumbre")
+	if legend != null:
+		var contacted := [false]
+		legend.contact_with_player.connect(func(_a: PokemonActor) -> void: contacted[0] = true)
+		await _frames(10)
+		# El jugador corre hacia él: lo oye o lo ve, muestra "?" y escapa sin atacar.
+		_player.global_position = legend.global_position + Vector3(0, 0.5, 3.0)
+		await _frames(20)
+		_check(legend.state == PokemonActor.State.NOTICE or legend.state == PokemonActor.State.ESCAPE, "el legendario debe notar al jugador (estado %d)" % legend.state)
+		_check((legend.get_node("QuestionMark") as Sprite3D).visible, "debe mostrar el signo de interrogación")
+		var start := legend.global_position.distance_to(_player.global_position)
+		await _frames(240)
+		var end := legend.global_position.distance_to(_player.global_position)
+		print("  legendario Groudon: %.1f m -> %.1f m, contacto=%s" % [start, end, contacted[0]])
+		_check(end > start + 10.0, "el legendario debe escapar lejos (%.1f -> %.1f m)" % [start, end])
+		_check(not contacted[0], "un legendario nunca debe provocar combate")
+		legend.queue_free()
+	var flyer := legendaries.summon(mountain_index, "rayquaza")
+	if flyer == null:
+		flyer = _spawner.spawn_species(_species("rayquaza"), sanctuary_pos, false, false, true)
 	await _frames(5)
-	_check(get_tree().get_nodes_in_group(LegendaryManager.LEGENDARY_GROUP).filter(func(a: PokemonActor) -> bool: return a.species.identifier == "groudon").size() == 1, "no debe duplicarse")
+	_player.global_position = flyer.global_position + Vector3(0, 0.5, 3.0)
+	var max_height := flyer.global_position.y
+	for i in 120:
+		await get_tree().physics_frame
+		max_height = maxf(max_height, flyer.global_position.y)
+	_check(max_height > sanctuary_pos.y + 5.0, "un legendario volador debe escapar volando (subió %.1f m)" % (max_height - sanctuary_pos.y))
 	GameState.mark_legendary_caught("groudon")
 	_check(not GameState.is_legendary_available("groudon"), "un legendario capturado no reaparece sin la tirada del 2 %")
+
+
+func _count_bursts() -> int:
+	return _main.find_children("*", "PixelBurst", true, false).size()
 
 
 func _check_habitat_rules(actor: PokemonActor) -> void:
@@ -136,7 +211,7 @@ func _check_habitat_rules(actor: PokemonActor) -> void:
 	elif is_water_type:
 		_check(_world.water_depth_at(p.x, p.z) < 0.0, "%s (Agua) apareció dentro del agua sin nadar" % species.display_name)
 	else:
-		_check(_world.is_in_tall_grass(p), "%s apareció fuera de la hierba alta" % species.display_name)
+		_check(_world.water_depth_at(p.x, p.z) < 0.0, "%s apareció dentro del agua" % species.display_name)
 
 
 ## Coloca un salvaje a distance m del jugador, espera 3 s y evalúa el criterio.
