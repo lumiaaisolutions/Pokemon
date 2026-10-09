@@ -7,7 +7,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 | Fase | Estado | Commit | Notas |
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
-| 1 | Pendiente | — | — |
+| 1 | Plan propuesto, esperando confirmación | — | — |
 | 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
@@ -44,6 +44,14 @@ Resultado:
 - Material 3D base pixel art: `art/materials/pixel_base.tres` (Nearest).
 - Prueba: `godot --headless --path . tests/smoke_test.tscn` sale con 0. La prueba negativa (una acción inexistente) sale con 1.
 
-## Pendiente de definir antes de la Fase 1
-- Plan de la Fase 1 (requiere tu confirmación).
+## Plan de la Fase 1 (jugador y Pradera en greybox)
+1. Jugador `CharacterBody3D` (`world/player/`): caminar y correr relativos a la cámara, gravedad y salto desactivado; los parámetros van en un Resource `PlayerConfig.tres`.
+2. Visual: `sprites/trainers/nate.png` copiado a `art/trainers/` (con un script en `tools/`), como `Sprite3D` billboard en eje Y, filtro Nearest, rebote procedural al caminar y blob shadow.
+3. Cámara en tercera persona: `SpringArm3D` con pitch limitado a 35–45°, órbita con mouse (captura del cursor) y stick derecho, zoom limitado con rueda o cruceta, y suavizado.
+4. Pradera greybox (`world/biomes/pradera.tscn`): terreno de unos 200×200 m con desniveles suaves, rocas y árboles low-poly con `pixel_base`, colisiones estáticas y límites invisibles.
+5. `world/main.tscn` instancia la Pradera y al jugador; luz direccional y `WorldEnvironment` simple.
+6. Pruebas en headless: `tests/test_player_movement.tscn` simula input (caminar, correr y mando) y comprueba desplazamiento, velocidad y que no atraviesa el terreno. Smoke test actualizado.
+7. Verificación manual: abres el juego y lo pruebas con teclado y con mando. Commit `Fase 1:`.
+
+## Pendiente de definir
 - En qué fase entran la Piedra Llave, las megapiedras, las misiones y los desbloqueos de habilidades (sección 10 del GDD).
