@@ -40,6 +40,12 @@ extends Resource
 ## Decoración sin colisión (flores, arbustos, mechones), dibujada con MultiMesh.
 @export var decor_textures: Array[Texture2D] = []
 @export var decor_count_each: int = 220
+## Cuánto se hunden en el suelo los obstáculos y la decoración, para que nunca
+## parezcan flotar sobre una pendiente.
+@export var obstacle_sink: float = 0.15
+@export var decor_sink: float = 0.05
+## Opacidad de la sombra de contacto bajo árboles y rocas.
+@export_range(0.0, 1.0) var contact_shadow_alpha: float = 0.45
 ## Distancia mínima de los props al punto de inicio.
 @export var props_clear_radius: float = 18.0
 @export var props_seed: int = 7

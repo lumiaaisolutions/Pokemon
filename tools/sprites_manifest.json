@@ -72,37 +72,44 @@
     {
       "src": "world/route01/Route 1_texture_0016.png",
       "dst": "art/world/b2w2/pine.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0022.png",
       "dst": "art/world/b2w2/flower_bush_pink.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0061.png",
       "dst": "art/world/b2w2/flowers_yellow.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0020.png",
       "dst": "art/world/b2w2/bush.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0013.png",
       "dst": "art/world/b2w2/plant.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0002.png",
       "dst": "art/world/b2w2/tuft.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0009.png",
       "dst": "art/world/b2w2/tuft_small.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Route 01 (asset 587527)",
+      "crop": true
     },
     {
       "src": "world/route01/Route 1_texture_0014.png",
@@ -117,17 +124,20 @@
     {
       "src": "world/twist_mountain/Twist Mountain_texture_0023.png",
       "dst": "art/world/b2w2/rock_brown.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)",
+      "crop": true
     },
     {
       "src": "world/twist_mountain/Twist Mountain_texture_0020.png",
       "dst": "art/world/b2w2/tree_round.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Twist Mountain (asset 587554)",
+      "crop": true
     },
     {
       "src": "world/floccesy_ranch/Floccesy Ranch_texture_0015.png",
       "dst": "art/world/b2w2/lavender.png",
-      "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)"
+      "_fuente": "The Models Resource, Pokémon B2W2, Floccesy Ranch (asset 587484)",
+      "crop": true
     }
   ]
 }

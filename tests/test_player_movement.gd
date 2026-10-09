@@ -97,6 +97,10 @@ func _run() -> void:
 	var p := _player.global_position
 	_check(absf(p.x) < half and absf(p.z) < half, "el jugador salió del bioma (%.1f, %.1f)" % [p.x, p.z])
 
+	# Ningún árbol, roca o decoración debe flotar: su base queda en o bajo el terreno
+	# en todo su contorno, y cada sprite tiene píxeles opacos en su fila inferior.
+	_check(_props_grounded(), "hay elementos flotando sobre el terreno")
+
 	# Props: corriendo contra un árbol no debe atravesarlo.
 	var tree := _biome.get_node("Trees/Tree0") as Node3D
 	_player.global_position = tree.global_position + Vector3(-3.0, 0.5, 0.0)
@@ -121,6 +125,42 @@ func _run() -> void:
 	Input.action_release("run")
 	Input.action_release("move_right")
 	_check(_player.global_position.x < half, "el jugador cruzó el muro del borde (x=%.1f)" % _player.global_position.x)
+
+
+func _props_grounded() -> bool:
+	var ok := true
+	for group in ["Trees", "Rocks"]:
+		for body: Node3D in _biome.get_node(group).get_children():
+			var sprite := body.get_node("Sprite") as Sprite3D
+			var radius := sprite.texture.get_width() * sprite.pixel_size * 0.5
+			var p := body.global_position
+			if p.y > _biome.ground_base_height(p.x, p.z, radius) + 0.001 or not _bottom_row_opaque(sprite.texture):
+				printerr("flota: %s en %s" % [body.name, p])
+				ok = false
+	for instance: MultiMeshInstance3D in _biome.get_node("Decor").get_children():
+		var multimesh := instance.multimesh
+		var texture := ((multimesh.mesh as QuadMesh).material as StandardMaterial3D).albedo_texture
+		if not _bottom_row_opaque(texture):
+			printerr("sprite con fila inferior transparente: %s" % instance.name)
+			ok = false
+		var radius := (multimesh.mesh as QuadMesh).size.x * 0.5
+		for i in multimesh.instance_count:
+			var p := multimesh.get_instance_transform(i).origin
+			if p.y > _biome.ground_base_height(p.x, p.z, radius) + 0.001:
+				printerr("decoración flotando: %s #%d" % [instance.name, i])
+				return false
+	return ok
+
+
+func _bottom_row_opaque(texture: Texture2D) -> bool:
+	var image := texture.get_image()
+	if image.is_compressed():
+		image.decompress()
+	var y := image.get_height() - 1
+	for x in image.get_width():
+		if image.get_pixel(x, y).a > 0.5:
+			return true
+	return false
 
 
 func _terrain_faces_up() -> bool:

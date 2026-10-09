@@ -30,6 +30,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CapsuleShape3D_body")
 
 [node name="Sprite" type="Sprite3D" parent="."]
+layers = 2
 cast_shadow = 0
 billboard = 2
 shaded = false
@@ -38,6 +39,7 @@ alpha_cut = 1
 texture_filter = 0
 
 [node name="BlobShadow" type="Decal" parent="."]
+cull_mask = 1
 size = Vector3(1.2, 2, 1.2)
 texture_albedo = SubResource("GradientTexture2D_blob")
 upper_fade = 0.0

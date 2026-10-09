@@ -9,10 +9,14 @@ const TERRAIN_SHADER := preload("res://world/terrain/terrain_pixel.gdshader")
 ## muros: bloquean al jugador pero no acortan el brazo de la cámara).
 const LAYER_TERRAIN := 1
 const LAYER_OBSTACLES := 2
+## Capa visual de los sprites: las sombras de contacto (Decal) solo se proyectan
+## sobre la capa 1 (terreno), nunca sobre los sprites.
+const VISUAL_LAYER_SPRITES := 2
 
 @export var config: BiomeConfig
 
 var _noise := FastNoiseLite.new()
+var _shadow_texture: GradientTexture2D
 
 
 func _ready() -> void:
@@ -124,7 +128,7 @@ func _build_trees() -> void:
 	for i in config.tree_count:
 		var texture: Texture2D = config.tree_textures[rng.randi() % config.tree_textures.size()]
 		var scale_factor := 2.0 if rng.randf() < config.big_tree_ratio else 1.0
-		var tree := _obstacle("Tree%d" % i, texture, scale_factor, config.tree_collision_radius, _random_ground_point(rng))
+		var tree := _obstacle("Tree%d" % i, texture, scale_factor, config.tree_collision_radius, _random_xz(rng))
 		trees.add_child(tree)
 
 
@@ -139,18 +143,22 @@ func _build_rocks() -> void:
 	for i in config.rock_count:
 		var texture: Texture2D = config.rock_textures[rng.randi() % config.rock_textures.size()]
 		var scale_factor := 2.0 if rng.randf() < 0.2 else 1.0
-		var rock := _obstacle("Rock%d" % i, texture, scale_factor, config.rock_collision_radius, _random_ground_point(rng))
+		var rock := _obstacle("Rock%d" % i, texture, scale_factor, config.rock_collision_radius, _random_xz(rng))
 		rocks.add_child(rock)
 
 
-## Sprite billboard con los pies en el suelo y un cilindro de colisión en la capa de obstáculos.
-func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, pos: Vector3) -> StaticBody3D:
+## Sprite billboard apoyado en el suelo, con sombra de contacto y un cilindro de
+## colisión en la capa de obstáculos. xz es la posición horizontal (y se ignora).
+func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, xz: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = obstacle_name
-	body.position = pos
 	body.collision_layer = LAYER_OBSTACLES
+	var width := texture.get_size().x * config.pixel_size * scale_factor
 	var height := texture.get_size().y * config.pixel_size * scale_factor
+	body.position = Vector3(xz.x, ground_base_height(xz.x, xz.z, width * 0.5) - config.obstacle_sink, xz.z)
+	body.add_child(_contact_shadow(width * 1.1))
 	var sprite := _billboard(texture, config.pixel_size * scale_factor)
+	sprite.name = "Sprite"
 	sprite.position.y = height * 0.5
 	body.add_child(sprite)
 	var shape := CylinderShape3D.new()
@@ -181,12 +189,14 @@ func _build_decor() -> void:
 		multimesh.mesh = quad
 		multimesh.instance_count = config.decor_count_each
 		for i in config.decor_count_each:
-			var pos := _random_ground_point(rng, 4.0)
-			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, pos))
+			var xz := _random_xz(rng, 4.0)
+			var base := ground_base_height(xz.x, xz.z, size.x * 0.5) - config.decor_sink
+			multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, Vector3(xz.x, base, xz.z)))
 		var instance := MultiMeshInstance3D.new()
 		instance.name = texture.resource_path.get_file().get_basename()
 		instance.multimesh = multimesh
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		instance.layers = VISUAL_LAYER_SPRITES
 		decor.add_child(instance)
 
 
@@ -200,6 +210,7 @@ func _billboard(texture: Texture2D, pixel_size: float) -> Sprite3D:
 	# Sin sombreado: los sprites conservan los colores exactos de B2W2, como el jugador.
 	sprite.shaded = false
 	sprite.double_sided = true
+	sprite.layers = VISUAL_LAYER_SPRITES
 	return sprite
 
 
@@ -215,7 +226,8 @@ func _sprite_material(texture: Texture2D) -> StandardMaterial3D:
 	return material
 
 
-func _random_ground_point(rng: RandomNumberGenerator, clear_radius: float = -1.0) -> Vector3:
+## Punto horizontal al azar dentro del bioma, fuera del radio libre del inicio (y = 0).
+func _random_xz(rng: RandomNumberGenerator, clear_radius: float = -1.0) -> Vector3:
 	var radius := config.props_clear_radius if clear_radius < 0.0 else clear_radius
 	var margin := config.cell_size * 2.0
 	var half := config.size * 0.5 - margin
@@ -223,8 +235,42 @@ func _random_ground_point(rng: RandomNumberGenerator, clear_radius: float = -1.0
 		var x := rng.randf_range(-half, half)
 		var z := rng.randf_range(-half, half)
 		if Vector2(x, z).length() >= radius:
-			return Vector3(x, surface_height_at(x, z), z)
-	return Vector3(half, surface_height_at(half, half), half)
+			return Vector3(x, 0.0, z)
+	return Vector3(half, 0.0, half)
+
+
+## Altura más baja del terreno bajo la base de un objeto de radio dado (centro y 8
+## puntos alrededor). Apoyar el objeto ahí evita que su lado de abajo flote en pendientes.
+func ground_base_height(x: float, z: float, radius: float) -> float:
+	var lowest := surface_height_at(x, z)
+	for i in 8:
+		var angle := TAU * i / 8.0
+		lowest = minf(lowest, surface_height_at(x + cos(angle) * radius, z + sin(angle) * radius))
+	return lowest
+
+
+## Sombra suave proyectada sobre el terreno (Decal), se adapta a la pendiente.
+func _contact_shadow(diameter: float) -> Decal:
+	if _shadow_texture == null:
+		var gradient := Gradient.new()
+		gradient.colors = PackedColorArray([Color(0, 0, 0, config.contact_shadow_alpha), Color(0, 0, 0, 0)])
+		_shadow_texture = GradientTexture2D.new()
+		_shadow_texture.gradient = gradient
+		_shadow_texture.width = 64
+		_shadow_texture.height = 64
+		_shadow_texture.fill = GradientTexture2D.FILL_RADIAL
+		_shadow_texture.fill_from = Vector2(0.5, 0.5)
+		_shadow_texture.fill_to = Vector2(1.0, 0.5)
+	var decal := Decal.new()
+	decal.name = "ContactShadow"
+	decal.texture_albedo = _shadow_texture
+	decal.size = Vector3(diameter, 3.0, diameter * 0.8)
+	decal.position.y = config.obstacle_sink
+	decal.upper_fade = 0.2
+	decal.lower_fade = 0.6
+	# Solo sobre el terreno (capa visual 1), nunca sobre los sprites.
+	decal.cull_mask = 1
+	return decal
 
 
 func _build_walls() -> void:
