@@ -8,7 +8,8 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
-| 2 | Implementada, esperando revisión de Fernando | ver `git log` | Hierba alta, 4 salvajes de la Pradera con IA y compañero al azar; 0 fallos; 60 FPS |
+| 2 | Hecha (aprobada por Fernando el 2026-10-09) | `33a8792` | Hierba alta, salvajes con IA y compañero al azar; 0 fallos; 60 FPS |
+| 2.5 | En curso | — | Mundo de 3 biomas con agua, aparición por tipo y rareza, shiny, tamaños, persecución con stamina y legendarios |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
@@ -135,6 +136,26 @@ Sprites verificados para los 16: mapa (pokeemerald-expansion, GitHub), frente y 
 - `WildSpawner`: aparecen solo en hierba alta, a más de 10 m del jugador; desaparecen a más de 90 m.
 - Capas de colisión: 1 terreno, 2 obstáculos, 3 actores (jugador y Pokémon no se empujan; la cámara solo choca con el terreno).
 - Prueba: `tests/test_creatures.tscn`. Mide la navegación, el seguimiento del compañero, la aparición en hierba y los 4 temperamentos (agresivo 7→0 m con contacto, tímido 6→16 m, curioso 7→2.4 m y deambula sin contacto).
+
+## Plan de la Fase 2.5 (pedido de Fernando, 2026-10-09; adelanta los biomas de la Fase 6)
+Decisiones de Fernando:
+- Especies: todas (1,025), aparecen según su tipo y bioma. El roster de 16 queda como destacados.
+- Agua: lago en la Pradera, río que baja de la montaña y cruza los tres biomas, pantano en el Bosque y costa (mar) en un borde.
+- Rareza: peso = etapa × poder. Básico ×1, 2.ª etapa ×0.35, 3.ª etapa ×0.1; a más estadísticas totales, menos probable (más de 500, muy raro).
+- Legendarios (todos): cada uno en un lugar fijo según su tipo, uno a la vez y moviéndose en su zona. Tras capturarlo puede reaparecer con 2 % de probabilidad, nunca más de uno.
+- Shiny: 2 %, con paleta variocolor en el mapa y en combate, y un destello periódico.
+- Tamaño por altura oficial en escalones de píxel: ×1, ×1.5, ×2 y ×3.
+- Persecución: agresivos (te persiguen al verte) y territoriales (solo dentro de su zona). Área según el Pokémon (12–35 m, base 20) con indicador en el suelo; si te alcanza empieza el combate; si sales del área se rinde y regresa.
+- Correr con stamina: barra de aguante que se gasta corriendo y se recupera caminando.
+- Los 3 biomas se adelantan ahora, antes del combate.
+
+Pasos:
+1. Datos: las 1,025 especies con etapa evolutiva, estadísticas totales, altura (escalón de tamaño), bandera legendario/singular y hoja shiny (paleta `overworld_shiny.pal` de pokeemerald).
+2. Mundo: Pradera (centro), Bosque/humedal y Montaña conectados en un solo terreno, sin cargas; río, lago, pantano y costa con agua animada (textura de B2W2); el agua profunda bloquea el paso.
+3. Hábitats por tipo (pradera, bosque, montaña, agua dulce, mar, pantano) y spawner por zona con la rareza y el 2 % de shiny.
+4. Persecución (agresivo y territorial), área con indicador, stamina del jugador con barra en pantalla.
+5. Legendarios en lugares fijos con la regla de reaparición.
+6. Pruebas en headless y capturas.
 
 ## Pendiente de definir
 - Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.

@@ -141,6 +141,7 @@ docs/  (GDD.md, ESTADO.md)
 | 0 | Proyecto base | Estructura de carpetas, autoloads vacíos, Input Map dual, import preset pixel art, `ESTADO.md` creado, repo con commit inicial |
 | 1 | Jugador y bioma 1 en greybox | El jugador camina y corre con teclado y con mando, la cámara de 3ª persona funciona, y el terreno de la Pradera tiene colisiones |
 | 2 | Hierba y criaturas visibles | Hierba con MultiMesh a 60 FPS, 4 criaturas placeholder con IA deambulando y el inicial siguiéndote |
+| 2.5 | Mundo de 3 biomas y aparición por tipo | Pradera, Bosque/humedal y Montaña conectados con río, lago, pantano y costa; 1,025 especies por tipo y bioma con rareza por etapa y poder; 2 % shiny; tamaño por altura; persecución (agresivos y territoriales) con área y stamina para correr; legendarios en lugares fijos (ver ESTADO.md) |
 | 3 | Combate en tiempo real | Arena en el lugar del encuentro; se pueden usar ataques físicos y especiales, esquivar y hay efectividad de tipos; ganar y huir funcionan |
 | 4 | Captura en 1ª persona | Lanzamiento con física, esquiva, probabilidad, éxito y fallo; la criatura capturada aparece en el equipo |
 | 5 | Equipo, inventario, UI y guardado | Menú de equipo, cambio de compañero, inventario de esferas y curación, bitácora de criaturas vistas/capturadas, guardar y cargar |
