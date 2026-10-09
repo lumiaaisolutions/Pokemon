@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/monferno/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/monferno/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 391
+identifier = "monferno"
+display_name = "Monferno"
+types = Array[int]([9, 1])
+hp = 64
+attack = 78
+defense = 52
+sp_attack = 78
+sp_defense = 52
+speed = 81
+evolution_stage = 2
+base_total = 405
+height_m = 0.9
+size_scale = 1.5
+habitats = Array[int]([0, 2])
+spawn_weight = 0.2614
+is_legendary = false
+is_mythical = false
+temperament = 0
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

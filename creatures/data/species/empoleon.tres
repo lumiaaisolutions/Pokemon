@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/empoleon/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/empoleon/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 395
+identifier = "empoleon"
+display_name = "Empoleon"
+types = Array[int]([10, 8])
+hp = 84
+attack = 86
+defense = 88
+sp_attack = 111
+sp_defense = 101
+speed = 60
+evolution_stage = 3
+base_total = 530
+height_m = 1.7
+size_scale = 2.0
+habitats = Array[int]([3, 4, 5])
+spawn_weight = 0.0131
+is_legendary = false
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/ho-oh/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/ho-oh/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 250
+identifier = "ho-oh"
+display_name = "Ho-Oh"
+types = Array[int]([9, 2])
+hp = 106
+attack = 130
+defense = 90
+sp_attack = 110
+sp_defense = 154
+speed = 90
+evolution_stage = 1
+base_total = 680
+height_m = 3.8
+size_scale = 3.0
+habitats = Array[int]([0, 1, 2])
+spawn_weight = 0.0
+is_legendary = true
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 0

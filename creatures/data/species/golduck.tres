@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/golduck/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/golduck/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 55
+identifier = "golduck"
+display_name = "Golduck"
+types = Array[int]([10])
+hp = 80
+attack = 82
+defense = 78
+sp_attack = 95
+sp_defense = 80
+speed = 85
+evolution_stage = 2
+base_total = 500
+height_m = 1.7
+size_scale = 2.0
+habitats = Array[int]([3, 5])
+spawn_weight = 0.1715
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

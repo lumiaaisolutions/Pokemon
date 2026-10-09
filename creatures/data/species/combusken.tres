@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/combusken/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/combusken/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 256
+identifier = "combusken"
+display_name = "Combusken"
+types = Array[int]([9, 1])
+hp = 60
+attack = 85
+defense = 60
+sp_attack = 85
+sp_defense = 60
+speed = 55
+evolution_stage = 2
+base_total = 405
+height_m = 0.9
+size_scale = 1.5
+habitats = Array[int]([0, 2])
+spawn_weight = 0.2614
+is_legendary = false
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

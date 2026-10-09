@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/eelektross/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/eelektross/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 604
+identifier = "eelektross"
+display_name = "Eelektross"
+types = Array[int]([12])
+hp = 85
+attack = 115
+defense = 80
+sp_attack = 105
+sp_defense = 80
+speed = 50
+evolution_stage = 3
+base_total = 515
+height_m = 2.1
+size_scale = 2.0
+habitats = Array[int]([0, 2])
+spawn_weight = 0.0139
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 1

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 475
+identifier = "gallade"
+display_name = "Gallade"
+types = Array[int]([13, 1])
+hp = 68
+attack = 125
+defense = 65
+sp_attack = 65
+sp_defense = 115
+speed = 80
+evolution_stage = 3
+base_total = 518
+height_m = 1.6
+size_scale = 2.0
+habitats = Array[int]([0, 1, 2])
+spawn_weight = 0.0137
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

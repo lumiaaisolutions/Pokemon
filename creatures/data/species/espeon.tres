@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/espeon/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/espeon/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 196
+identifier = "espeon"
+display_name = "Espeon"
+types = Array[int]([13])
+hp = 65
+attack = 65
+defense = 60
+sp_attack = 130
+sp_defense = 95
+speed = 110
+evolution_stage = 2
+base_total = 525
+height_m = 0.9
+size_scale = 1.5
+habitats = Array[int]([0, 1])
+spawn_weight = 0.0467
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

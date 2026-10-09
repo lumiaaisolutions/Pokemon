@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/arbok/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/arbok/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 24
+identifier = "arbok"
+display_name = "Arbok"
+types = Array[int]([3])
+hp = 60
+attack = 95
+defense = 69
+sp_attack = 65
+sp_defense = 79
+speed = 80
+evolution_stage = 2
+base_total = 448
+height_m = 3.5
+size_scale = 3.0
+habitats = Array[int]([1, 5])
+spawn_weight = 0.2136
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

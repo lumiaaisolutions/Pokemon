@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/copperajah/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/copperajah/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 879
+identifier = "copperajah"
+display_name = "Copperajah"
+types = Array[int]([8])
+hp = 122
+attack = 130
+defense = 69
+sp_attack = 80
+sp_defense = 69
+speed = 30
+evolution_stage = 2
+base_total = 500
+height_m = 3.0
+size_scale = 2.0
+habitats = Array[int]([2])
+spawn_weight = 0.1715
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 0

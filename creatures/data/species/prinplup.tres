@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/prinplup/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/prinplup/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 394
+identifier = "prinplup"
+display_name = "Prinplup"
+types = Array[int]([10])
+hp = 64
+attack = 66
+defense = 68
+sp_attack = 81
+sp_defense = 76
+speed = 50
+evolution_stage = 2
+base_total = 405
+height_m = 0.8
+size_scale = 1.5
+habitats = Array[int]([3, 4, 5])
+spawn_weight = 0.2614
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

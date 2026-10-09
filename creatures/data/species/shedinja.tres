@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/shedinja/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/shedinja/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 292
+identifier = "shedinja"
+display_name = "Shedinja"
+types = Array[int]([6, 7])
+hp = 1
+attack = 90
+defense = 45
+sp_attack = 30
+sp_defense = 30
+speed = 40
+evolution_stage = 2
+base_total = 236
+height_m = 0.8
+size_scale = 1.5
+habitats = Array[int]([0, 1, 2, 5])
+spawn_weight = 0.525
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 3

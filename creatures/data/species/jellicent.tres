@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/jellicent/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/jellicent/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 593
+identifier = "jellicent"
+display_name = "Jellicent"
+types = Array[int]([10, 7])
+hp = 100
+attack = 60
+defense = 70
+sp_attack = 85
+sp_defense = 105
+speed = 60
+evolution_stage = 2
+base_total = 480
+height_m = 2.2
+size_scale = 2.0
+habitats = Array[int]([3, 4, 5])
+spawn_weight = 0.1861
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 4

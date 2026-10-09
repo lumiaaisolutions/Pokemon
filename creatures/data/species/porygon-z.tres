@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/porygon-z/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/porygon-z/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 474
+identifier = "porygon-z"
+display_name = "Porygon-Z"
+types = Array[int]([0])
+hp = 85
+attack = 80
+defense = 70
+sp_attack = 135
+sp_defense = 75
+speed = 90
+evolution_stage = 3
+base_total = 535
+height_m = 0.9
+size_scale = 1.5
+habitats = Array[int]([0, 1])
+spawn_weight = 0.0128
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 3

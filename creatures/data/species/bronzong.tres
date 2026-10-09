@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/bronzong/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/bronzong/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 437
+identifier = "bronzong"
+display_name = "Bronzong"
+types = Array[int]([8, 13])
+hp = 67
+attack = 89
+defense = 116
+sp_attack = 79
+sp_defense = 116
+speed = 33
+evolution_stage = 2
+base_total = 500
+height_m = 1.3
+size_scale = 1.5
+habitats = Array[int]([0, 1, 2])
+spawn_weight = 0.1715
+is_legendary = false
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 3

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/magneton/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/magneton/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 82
+identifier = "magneton"
+display_name = "Magneton"
+types = Array[int]([12, 8])
+hp = 50
+attack = 60
+defense = 95
+sp_attack = 120
+sp_defense = 70
+speed = 70
+evolution_stage = 2
+base_total = 465
+height_m = 1.0
+size_scale = 1.5
+habitats = Array[int]([0, 2])
+spawn_weight = 0.1983
+is_legendary = false
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 3

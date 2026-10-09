@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/dewgong/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/dewgong/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 87
+identifier = "dewgong"
+display_name = "Dewgong"
+types = Array[int]([10, 14])
+hp = 90
+attack = 70
+defense = 80
+sp_attack = 70
+sp_defense = 95
+speed = 70
+evolution_stage = 2
+base_total = 475
+height_m = 1.7
+size_scale = 2.0
+habitats = Array[int]([4])
+spawn_weight = 0.19
+is_legendary = false
+is_mythical = false
+temperament = 0
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 1

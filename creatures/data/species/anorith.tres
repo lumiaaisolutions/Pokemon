@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://art/pokemon/anorith/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/anorith/overworld_shiny.png" id="3_shiny"]
 
 [resource]
 script = ExtResource("1_script")
@@ -15,7 +16,15 @@ defense = 50
 sp_attack = 40
 sp_defense = 50
 speed = 75
+evolution_stage = 1
+base_total = 355
+height_m = 0.7
+size_scale = 1.0
+habitats = Array[int]([0, 1, 2])
+spawn_weight = 0.972
+is_legendary = false
+is_mythical = false
 temperament = 3
-rarity = 0
 overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
 foot_offset_px = 2

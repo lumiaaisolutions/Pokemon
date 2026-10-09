@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://art/pokemon/dondozo/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/dondozo/overworld_shiny.png" id="3_shiny"]
 
 [resource]
 script = ExtResource("1_script")
@@ -15,7 +16,15 @@ defense = 115
 sp_attack = 65
 sp_defense = 65
 speed = 35
+evolution_stage = 1
+base_total = 530
+height_m = 12.0
+size_scale = 3.0
+habitats = Array[int]([3, 4, 5])
+spawn_weight = 0.1308
+is_legendary = false
+is_mythical = false
 temperament = 3
-rarity = 0
 overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
 foot_offset_px = 0

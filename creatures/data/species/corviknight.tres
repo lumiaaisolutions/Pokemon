@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/corviknight/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/corviknight/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 823
+identifier = "corviknight"
+display_name = "Corviknight"
+types = Array[int]([2, 8])
+hp = 98
+attack = 87
+defense = 105
+sp_attack = 53
+sp_defense = 85
+speed = 67
+evolution_stage = 3
+base_total = 495
+height_m = 2.2
+size_scale = 2.0
+habitats = Array[int]([0, 1, 2])
+spawn_weight = 0.05
+is_legendary = false
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/pecharunt/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/pecharunt/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 1025
+identifier = "pecharunt"
+display_name = "Pecharunt"
+types = Array[int]([3, 7])
+hp = 88
+attack = 88
+defense = 160
+sp_attack = 88
+sp_defense = 88
+speed = 88
+evolution_stage = 1
+base_total = 600
+height_m = 0.3
+size_scale = 1.0
+habitats = Array[int]([1, 2, 5])
+spawn_weight = 0.0
+is_legendary = false
+is_mythical = true
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 1

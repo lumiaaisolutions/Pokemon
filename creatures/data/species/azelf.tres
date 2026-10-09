@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/azelf/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/azelf/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 482
+identifier = "azelf"
+display_name = "Azelf"
+types = Array[int]([13])
+hp = 75
+attack = 125
+defense = 70
+sp_attack = 125
+sp_defense = 70
+speed = 115
+evolution_stage = 1
+base_total = 580
+height_m = 0.3
+size_scale = 1.0
+habitats = Array[int]([0, 1])
+spawn_weight = 0.0
+is_legendary = true
+is_mythical = false
+temperament = 4
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

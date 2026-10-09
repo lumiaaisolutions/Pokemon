@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/simisage/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/simisage/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 512
+identifier = "simisage"
+display_name = "Simisage"
+types = Array[int]([11])
+hp = 75
+attack = 98
+defense = 63
+sp_attack = 98
+sp_defense = 63
+speed = 101
+evolution_stage = 2
+base_total = 498
+height_m = 1.1
+size_scale = 1.5
+habitats = Array[int]([0, 1, 5])
+spawn_weight = 0.1729
+is_legendary = false
+is_mythical = false
+temperament = 3
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2

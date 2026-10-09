@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SpeciesData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/species_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/wormadam/overworld.png" id="2_ow"]
+[ext_resource type="Texture2D" path="res://art/pokemon/wormadam/overworld_shiny.png" id="3_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+dex_id = 413
+identifier = "wormadam"
+display_name = "Wormadam"
+types = Array[int]([6, 11])
+hp = 60
+attack = 59
+defense = 85
+sp_attack = 79
+sp_defense = 105
+speed = 36
+evolution_stage = 2
+base_total = 424
+height_m = 0.5
+size_scale = 1.0
+habitats = Array[int]([0, 1, 5])
+spawn_weight = 0.2385
+is_legendary = false
+is_mythical = false
+temperament = 1
+overworld_sheet = ExtResource("2_ow")
+overworld_sheet_shiny = ExtResource("3_shiny")
+foot_offset_px = 2
