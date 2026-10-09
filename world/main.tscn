@@ -3,6 +3,10 @@
 [ext_resource type="PackedScene" path="res://world/biomes/pradera.tscn" id="1_pradera"]
 [ext_resource type="PackedScene" path="res://world/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://world/camera/camera_rig.tscn" id="3_camera"]
+[ext_resource type="Script" path="res://world/main.gd" id="4_main"]
+[ext_resource type="Script" path="res://world/navigation/world_navigation.gd" id="5_nav"]
+[ext_resource type="Script" path="res://world/actors/wild_spawner.gd" id="6_spawner"]
+[ext_resource type="Resource" path="res://world/biomes/pradera_encounters.tres" id="7_encounters"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.38, 0.6, 0.9, 1)
@@ -26,6 +30,7 @@ fog_density = 0.0018
 fog_sky_affect = 0.0
 
 [node name="Main" type="Node3D"]
+script = ExtResource("4_main")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_main")
@@ -44,3 +49,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
 [node name="CameraRig" parent="." instance=ExtResource("3_camera")]
 target_path = NodePath("../Player")
+
+[node name="Navigation" type="NavigationRegion3D" parent="."]
+script = ExtResource("5_nav")
+biome_path = NodePath("../Pradera")
+
+[node name="Spawner" type="Node3D" parent="."]
+script = ExtResource("6_spawner")
+encounters = ExtResource("7_encounters")
+biome_path = NodePath("../Pradera")
+player_path = NodePath("../Player")
+navigation_path = NodePath("../Navigation")

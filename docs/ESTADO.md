@@ -8,7 +8,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
-| 2 | En curso | — | Roster aprobado; compañero inicial al azar entre los básicos |
+| 2 | Implementada, esperando revisión de Fernando | ver `git log` | Hierba alta, 4 salvajes de la Pradera con IA y compañero al azar; 0 fallos; 60 FPS |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
@@ -125,6 +125,16 @@ Sprites verificados para los 16: mapa (pokeemerald-expansion, GitHub), frente y 
 6. IA salvaje (máquina de estados): deambular, curioso (se acerca), tímido (huye) y agresivo (persigue), según el temperamento de la especie.
 7. Compañero: un Pokémon básico al azar (hasta que exista la selección de la Fase 5) te sigue con `NavigationAgent3D` (navmesh horneado del terreno y obstáculos), esquiva árboles y rocas, tiene idle y mira a los salvajes cercanos.
 8. Pruebas en headless (spawner, IA, seguimiento) y medición de FPS con la hierba; commit `Fase 2:`.
+
+## Fase 2: resultado
+- Datos: `tools/build_species.py` genera 436 especies (`creatures/data/species/*.tres`) desde PokeAPI con las hojas overworld de pokeemerald-expansion. Grupo de iniciales: 423 básicos (sin legendarios, singulares, Ultraentes ni paradojas). Tabla de la Pradera: Pidgeot 35, Ampharos 30, Sawsbuck 30 y Absol 5 (raro), máximo 12 vivos.
+- `DirectionalSprite`: animación por dirección compartida por Nate y los Pokémon.
+- Hierba alta: 16 parches (el primero a 26 m del inicio), unas 18,000 briznas con MultiMesh; shader con viento y se aparta y aplasta al paso de hasta 16 actores.
+- Navegación: horneada al iniciar desde terreno, árboles, rocas y muros (celdas de 0.5 m).
+- `PokemonActor`: rol salvaje (deambula, curioso, tímido o agresivo, con contacto que avisa del encuentro) y rol compañero (sigue con navegación, corre si te alejas, reaparece si se queda a más de 30 m y mira al salvaje más cercano).
+- `WildSpawner`: aparecen solo en hierba alta, a más de 10 m del jugador; desaparecen a más de 90 m.
+- Capas de colisión: 1 terreno, 2 obstáculos, 3 actores (jugador y Pokémon no se empujan; la cámara solo choca con el terreno).
+- Prueba: `tests/test_creatures.tscn`. Mide la navegación, el seguimiento del compañero, la aparición en hierba y los 4 temperamentos (agresivo 7→0 m con contacto, tímido 6→16 m, curioso 7→2.4 m y deambula sin contacto).
 
 ## Pendiente de definir
 - Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.

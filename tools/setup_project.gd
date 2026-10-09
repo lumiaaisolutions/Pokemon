@@ -16,6 +16,7 @@ func _initialize() -> void:
 	_setup_application()
 	_setup_display()
 	_setup_rendering()
+	_setup_navigation()
 	_setup_import_defaults()
 	_setup_autoloads()
 	_setup_input_map()
@@ -49,6 +50,12 @@ func _setup_rendering() -> void:
 	# Bordes suaves en la geometría 3D (árboles, rocas, terreno) sin difuminar los sprites.
 	ProjectSettings.set_setting("rendering/anti_aliasing/quality/msaa_3d", Viewport.MSAA_4X)
 	ProjectSettings.set_setting("rendering/anti_aliasing/quality/screen_space_aa", Viewport.SCREEN_SPACE_AA_SMAA)
+
+
+func _setup_navigation() -> void:
+	# Celdas de 0.5 m: suficiente para esquivar árboles y rocas y hornea rápido 200×200 m.
+	ProjectSettings.set_setting("navigation/3d/default_cell_size", 0.5)
+	ProjectSettings.set_setting("navigation/3d/default_cell_height", 0.25)
 
 
 func _setup_import_defaults() -> void:
