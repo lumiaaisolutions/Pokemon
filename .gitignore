@@ -1,0 +1,15 @@
+# Godot
+.godot/
+*.translation
+export/
+export_presets.cfg.bak
+
+# Fuente de sprites (1.1 GB, Pokémon Showdown): solo local, nunca se versiona.
+# Lo que usa el juego se copia a art/ con un script.
+/sprites/
+
+# macOS
+.DS_Store
+
+# OMC
+.omc/
