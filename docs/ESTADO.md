@@ -8,7 +8,7 @@ Motor: Godot 4.7.2 estable (estándar, GDScript), instalado con Homebrew.
 |---|---|---|---|
 | 0 | Hecha | ver `git log` (Fase 0: proyecto base) | `--quit` y `tests/smoke_test.tscn` en headless sin errores |
 | 1 | Hecha (aprobada por Fernando el 2026-10-09) | `89ba4cc` | Nate animado, cámara libre y Pradera HD-2D con texturas de B2W2; 0 fallos; 60 FPS |
-| 2 | Pendiente | — | Antes de empezar: aprobar el roster de 15 Pokémon (con y sin mega) |
+| 2 | Plan propuesto, esperando confirmación y roster | — | — |
 | 3 | Pendiente | — | — |
 | 4 | Pendiente | — | — |
 | 5 | Pendiente | — | — |
@@ -88,6 +88,38 @@ Resultado:
 - Poly Pizza y OpenGameArt: la licencia varía por asset; revisar cada uno.
 - Sonniss GDC Audio: licencia propia libre de regalías (no es CC0).
 - Cada asset se registra en `CREDITS.md` con su URL y licencia.
+
+## Roster propuesto (los 18 tipos cubiertos, mezcla con y sin mega)
+| Grupo | Pokémon | Tipos | Mega |
+|---|---|---|---|
+| Inicial Planta | Venusaur | Planta/Veneno | Sí |
+| Inicial Fuego | Charizard | Fuego/Volador | Sí (X e Y) |
+| Inicial Agua | Blastoise | Agua | Sí |
+| Pradera | Pidgeot | Normal/Volador | Sí |
+| Pradera | Ampharos | Eléctrico | Sí |
+| Pradera | Sawsbuck | Normal/Planta | No |
+| Pradera (rara) | Absol | Siniestro | Sí |
+| Bosque/humedal | Heracross | Bicho/Lucha | Sí |
+| Bosque/humedal | Swampert | Agua/Tierra | Sí |
+| Bosque/humedal | Leavanny | Bicho/Planta | No |
+| Bosque/humedal (rara) | Gardevoir | Psíquico/Hada | Sí |
+| Montaña | Aggron | Acero/Roca | Sí |
+| Montaña | Aerodactyl | Roca/Volador | Sí |
+| Montaña | Excadrill | Tierra/Acero | Sí |
+| Montaña (rara) | Froslass | Hielo/Fantasma | Sí |
+| Jefe (bioma 3) | Garchomp | Dragón/Tierra | Sí |
+
+Sprites verificados para los 16: mapa (pokeemerald-expansion, GitHub), frente y espalda gen5 animados, y mega.
+
+## Plan de la Fase 2 (hierba alta y Pokémon visibles)
+1. `tools/`: descarga de GitHub las hojas overworld del roster (32×32, 6 frames: abajo, arriba, lado) y las convierte a hojas de 4 direcciones con fondo transparente en `art/pokemon/<especie>/`. Créditos en `CREDITS.md`.
+2. Datos: `PokemonType` (18), `SpeciesData.tres` (nombre, tipos, temperamento, rareza, velocidad, hoja overworld) y `EncounterTable.tres` de la Pradera.
+3. Componente compartido `DirectionalSprite` (animación por dirección relativa a la cámara), reutilizado por Nate y por los Pokémon.
+4. Hierba alta: parches con `MultiMeshInstance3D` (briznas pixel art de B2W2) que se mecen con el viento y se apartan al paso del jugador y de los Pokémon (shader con posiciones).
+5. Spawner: los Pokémon aparecen visibles dentro de la hierba según la tabla de encuentro (máximo de vivos, desaparecen lejos del jugador).
+6. IA salvaje (máquina de estados): deambular, curioso (se acerca), tímido (huye) y agresivo (persigue), según el temperamento de la especie.
+7. Compañero: el inicial elegido te sigue con `NavigationAgent3D` (navmesh horneado del terreno y obstáculos), esquiva árboles y rocas, tiene idle y mira a los salvajes cercanos.
+8. Pruebas en headless (spawner, IA, seguimiento) y medición de FPS con la hierba; commit `Fase 2:`.
 
 ## Pendiente de definir
 - Entrenadores NPC (GDD 10b), Fase 5.6: qué recompensa dan y si vuelven a retar.
