@@ -33,3 +33,9 @@ Fernando pidió el estilo de Pokémon Pokopia (sus imágenes, solo como referenc
 - **Caja de diálogo** (`ui/notices/dialog_box.gd`): abajo al centro, retrato y nombre en etiqueta roja, texto letra por letra, E avanza, opciones en píldoras (Retar / Adiós). Bloquea el movimiento mientras está abierta. Los avisos "Nombre: texto" se muestran aquí sin bloquear. La leyenda se oculta mientras hay diálogo.
 - **Leyenda de botones:** pestaña "◂ Controles / Ocultar controles ▸" y **toque de H** para desplegar u ocultar (se recuerda en Opciones); **mantener H** abre la ayuda completa.
 - **HUD claro:** paneles y píldoras crema con franja de color (una pasada automática pasa sus textos a tinta); los textos que flotan sobre el mundo siguen claros con contorno.
+
+## Tablero de misiones (2026-10-10)
+Código: `core/mission_board.gd` (junta las misiones), `ui/notices/mission_panel.gd` (pantalla).
+- **En pantalla, a la izquierda** (debajo del panel de bienvenida si está): "MISIONES · [J] ver todas" y **3 tarjetas** con ícono, nombre y barra: las en curso con más avance.
+- **J** (o mantener la cruceta ↓ medio segundo) abre el **tablero completo** en su propia capa, con marco rojo, por categoría: **Rotom** (actividades con plazo), **Megapiedras**, **Foto del día**, **Héroes** (rumores del día sin vencer) e **Investigación** (las 3 especies más cerca de completarse), con avance, detalle y premio. J o Esc lo cierran; pausa el juego.
+- Acción nueva `missions` (J; reasignable en Opciones). Las regiones se agregarán como categoría cuando existan.

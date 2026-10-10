@@ -38,12 +38,12 @@ const LANGUAGES := ["Español"]
 const COLORBLIND_NAMES := ["Ninguno", "Protanopía (rojo)", "Deuteranopía (verde)", "Tritanopía (azul)"]
 ## Acciones que se pueden reasignar en Opciones.
 const REMAPPABLE := ["move_forward", "move_back", "move_left", "move_right", "run", "jump", "dive", "interact", "companion",
-		"ride", "aim", "throw", "ball_next", "ball_prev", "attack_1", "attack_2", "attack_3", "attack_4", "move_modifier", "map", "help", "menu", "bag", "photo"]
+		"ride", "aim", "throw", "ball_next", "ball_prev", "attack_1", "attack_2", "attack_3", "attack_4", "move_modifier", "map", "help", "menu", "bag", "photo", "missions"]
 const ACTION_NAMES := {"move_forward": "Avanzar", "move_back": "Retroceder", "move_left": "Izquierda", "move_right": "Derecha",
 		"run": "Correr", "jump": "Saltar / subir", "dive": "Bucear / bajar", "interact": "Interactuar", "companion": "Compañero (rueda)",
 		"ride": "Montar / bicicleta", "aim": "Apuntar", "throw": "Lanzar", "ball_next": "Siguiente ball", "ball_prev": "Ball anterior",
 		"attack_1": "Movimiento 1", "attack_2": "Movimiento 2", "attack_3": "Movimiento 3", "attack_4": "Movimiento 4",
-		"move_modifier": "Modificador de movimientos", "map": "Mapa", "help": "Ayuda", "menu": "Menú", "bag": "Mochila", "photo": "Foto"}
+		"move_modifier": "Modificador de movimientos", "map": "Mapa", "help": "Ayuda", "menu": "Menú", "bag": "Mochila", "photo": "Foto", "missions": "Misiones"}
 static var _defaults := {}
 
 

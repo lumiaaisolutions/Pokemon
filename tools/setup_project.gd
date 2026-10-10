@@ -124,6 +124,8 @@ func _setup_input_map() -> void:
 	# Ayuda: todos los controles en pantalla (teclado de Mac y control de PlayStation).
 	_action("help", [_key(KEY_H), _button(JOY_BUTTON_TOUCHPAD)])
 	_action("photo", [_key(KEY_P), _button(JOY_BUTTON_MISC1)])
+	# Tablero de misiones (en el mando: mantener la cruceta ↓).
+	_action("missions", [_key(KEY_J)])
 
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])

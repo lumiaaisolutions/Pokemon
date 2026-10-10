@@ -47,6 +47,7 @@ var _rumor_day := -1
 
 
 func _ready() -> void:
+	add_to_group(&"heroes")
 	_main = get_parent()
 	_world = get_node(world_path) as WorldBuilder
 	_player = get_node(player_path) as Player

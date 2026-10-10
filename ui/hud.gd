@@ -90,6 +90,9 @@ func _ready() -> void:
 	dialog = DialogBox.new()
 	dialog.name = "Dialog"
 	_root_control().add_child(dialog)
+	missions = MissionPanel.new()
+	missions.name = "Missions"
+	_root_control().add_child(missions)
 	GameState.pokemon_caught.connect(func(name: String, shiny: bool, location: String) -> void:
 		show_toast("¡Atrapaste a %s%s! (va a tu %s)" % [name, " ✦" if shiny else "", location]))
 	GameState.capture_failed.connect(func(name: String) -> void: show_toast("¡%s escapó de la Pokéball!" % name))
@@ -149,6 +152,8 @@ func _ink_panels() -> void:
 
 
 func _process(delta: float) -> void:
+	if missions != null:
+		missions.set_top(_tip.position.y + _tip.size.y + 14.0 if _tip.visible else 24.0)
 	_ink_timer -= delta
 	if _ink_timer <= 0.0:
 		_ink_timer = 0.5
@@ -252,6 +257,7 @@ var _toast_queue: Array[String] = []
 ## Avisos en tarjetas y caja de diálogo (estilo claro, 2026-10-10).
 var cards: NoticeCards
 var dialog: DialogBox
+var missions: MissionPanel
 var _speech := RegEx.create_from_string("^([A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñ.]*(?: [A-ZÁÉÍÓÚÑ\\w.]+){0,3}): (.+)$")
 var _toast_tween: Tween
 

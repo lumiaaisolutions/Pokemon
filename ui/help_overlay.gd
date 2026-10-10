@@ -40,6 +40,7 @@ const SECTIONS := [
 	["Sistema", [
 		["menu", "", "Abrir o cerrar el menú (equipo, mochila, Pokédex…)"],
 		["bag", "", "Abrir la Mochila"],
+		["missions", "", "Tablero de misiones (mando: mantener cruceta ↓)"],
 		["menu_prev", "", "Menú: pestaña anterior"],
 		["menu_next", "", "Menú: pestaña siguiente"],
 		["ball_next", "", "Siguiente Pokéball"],
