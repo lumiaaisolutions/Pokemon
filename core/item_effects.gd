@@ -18,6 +18,8 @@ static func action_label(id: String) -> String:
 		return "Dar a tu compañero"
 	if id == "town-map":
 		return "Ver el mapa"
+	if item.has("sleep"):
+		return "Dormir hasta la mañana"
 	return ""
 
 
@@ -90,6 +92,17 @@ static func use(id: String, main: Node) -> String:
 		return "+%d Puntos de Entrenamiento para repartir (pestaña Equipo)." % int(item["training"])
 	if id == "town-map":
 		return "map"
+	if item.has("sleep"):
+		if not GameState.is_night() and GameState.clock_hour() < 17.0:
+			return "Todavía es de día. Puedes dormir desde las 17:00."
+		GameState.sleep_until_morning()
+		for member: Dictionary in GameState.party:
+			member["hp_ratio"] = 1.0
+		if companion != null:
+			companion.recover(1.0)
+		if player != null:
+			player.heal(player.config.health_max)
+		return "Dormiste en tu tienda. ¡Buenos días! Tú y tu equipo están descansados."
 	return ""
 
 

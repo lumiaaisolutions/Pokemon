@@ -50,6 +50,11 @@ func save_slot(slot: int, main: Node) -> bool:
 		"bag": GameState.bag, "selected_ball": GameState.selected_ball,
 		"dex": GameState.dex, "legendary_caught": GameState.legendary_caught,
 		"tips_seen": GameState.tips_seen, "rewards_claimed": GameState.rewards_claimed,
+		"professor": GameState.professor, "rival": GameState.rival, "villain_team": GameState.villain_team,
+		"activities": GameState.activities, "news": GameState.news, "reputation": GameState.reputation,
+		"path_progress": GameState.path_progress, "rival_progress": GameState.rival_progress,
+		"occupied_zones": GameState.occupied_zones,
+		"stats": GameState.stats, "achievements": GameState.achievements, "money_log": GameState.money_log,
 		"respawn_point": [GameState.respawn_point.x, GameState.respawn_point.y, GameState.respawn_point.z],
 		"position": [position.x, position.y, position.z],
 	}
@@ -84,6 +89,18 @@ func load_slot(slot: int) -> bool:
 	GameState.legendary_caught = data.get("legendary_caught", {})
 	GameState.tips_seen = data.get("tips_seen", {})
 	GameState.rewards_claimed = data.get("rewards_claimed", {})
+	GameState.professor = data.get("professor", "")
+	GameState.rival = data.get("rival", "")
+	GameState.villain_team = data.get("villain_team", "")
+	GameState.activities = data.get("activities", [])
+	GameState.news = data.get("news", [])
+	GameState.reputation = data.get("reputation", {})
+	GameState.path_progress = data.get("path_progress", {})
+	GameState.rival_progress = data.get("rival_progress", {})
+	GameState.occupied_zones = data.get("occupied_zones", [])
+	GameState.stats = data.get("stats", {})
+	GameState.achievements = data.get("achievements", {})
+	GameState.money_log = data.get("money_log", [])
 	var respawn: Array = data.get("respawn_point", [0, 1, 0])
 	GameState.respawn_point = Vector3(respawn[0], respawn[1], respawn[2])
 	var pos: Array = data.get("position", [0, 1, 0])

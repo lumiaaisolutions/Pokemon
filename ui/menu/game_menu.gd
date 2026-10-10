@@ -5,7 +5,7 @@ extends Control
 ## ficha de cada Pokémon). Pestañas: Equipo, Mochila, Pokédex, Ficha, Mapa, Controles,
 ## Opciones y Guardar. Se cambia de pestaña con Q / E o L1 / R1.
 
-const TABS := ["Equipo", "Mochila", "Pokédex", "Ficha", "Mapa", "Controles", "Opciones", "Guardar"]
+const TABS := ["Equipo", "Mochila", "Pokédex", "Caja", "Rotom", "Logros", "Dinero", "Ficha", "Mapa", "Controles", "Opciones", "Guardar"]
 
 ## Escena principal (compañero, cambio de acompañante, mapa).
 var main: Node
@@ -46,7 +46,7 @@ func _ready() -> void:
 	top.add_child(_tab_bar)
 	top.add_child(InputGlyph.make("menu_next"))
 	for i in TABS.size():
-		var button := MenuStyle.button(TABS[i], 22)
+		var button := MenuStyle.button(TABS[i], 19)
 		button.pressed.connect(show_tab.bind(i))
 		_tab_bar.add_child(button)
 	_strip = HBoxContainer.new()
@@ -114,6 +114,14 @@ func show_tab(index: int) -> void:
 			page = _bag_tab.build()
 		"Pokédex":
 			page = _dex_tab.build()
+		"Rotom":
+			page = RotomTab.build()
+		"Caja":
+			page = ExtraTabs.box(self)
+		"Logros":
+			page = ExtraTabs.achievements()
+		"Dinero":
+			page = ExtraTabs.money()
 		"Ficha":
 			page = _trainer_card()
 		"Mapa":
@@ -125,7 +133,39 @@ func show_tab(index: int) -> void:
 		"Guardar":
 			page = SaveTab.build(self)
 	_content.add_child(page)
+	_show_guide(TABS[tab])
 	_footer.text = "%s / %s Cambiar de pestaña   ·   %s Cerrar" % [InputHints.hint("menu_prev"), InputHints.hint("menu_next"), InputHints.hint("menu")]
+	if _footer_guide != "":
+		_footer.text = "💡 " + _footer_guide + "      " + _footer.text
+		_footer_guide = ""
+
+
+## Guía de la primera vez en cada pestaña.
+const GUIDES := {
+	"Equipo": "Aquí ves la ficha de cada Pokémon de tu equipo. Reparte sus Puntos de Entrenamiento y elige quién te acompaña.",
+	"Mochila": "Tus objetos por bolsillo. Elige la Pokéball que lanzas, cura a tu compañero, come bayas o fabrica objetos.",
+	"Pokédex": "Las 1,025 especies. Investiga cada una (verla, capturarla, de espaldas…) para ver dónde vive en el mapa.",
+	"Caja": "Lo que capturas con el equipo lleno llega aquí. Pásalos al equipo o libéralos.",
+	"Rotom": "Tus actividades con plazo. Cúmplelas antes de que se acabe el tiempo o habrá consecuencias.",
+	"Logros": "Medallas por hitos y las estadísticas de tu partida.",
+	"Dinero": "Tu dinero, lo que ganas y pierdes, y los precios de referencia.",
+	"Ficha": "Tu ficha de entrenador.",
+	"Mapa": "Abre el mapa completo de la región.",
+	"Controles": "Todos los botones del teclado de Mac y del control de PlayStation.",
+	"Opciones": "Ajusta la cámara, el audio, la densidad de Pokémon y más. Se guarda solo.",
+	"Guardar": "Guarda en 3 ranuras. También hay autoguardado cada 5 minutos.",
+}
+
+
+func _show_guide(tab_name: String) -> void:
+	var key := "menu_" + tab_name
+	if GameState.tips_seen.get(key, false) or not GUIDES.has(tab_name):
+		return
+	GameState.tips_seen[key] = true
+	_footer_guide = GUIDES[tab_name]
+
+
+var _footer_guide := ""
 
 
 ## Tira del equipo: siempre visible arriba; tocar un Pokémon abre su ficha.

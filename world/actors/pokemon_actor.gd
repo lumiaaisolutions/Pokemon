@@ -100,6 +100,7 @@ var size_factor: float = 1.0
 ## Distancia a la que el jugador "lo ve" (cuenta para la Pokédex).
 const SEEN_RADIUS := 22.0
 var _seen_marked := false
+var _last_attacker: Node3D
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
 @export var legendary := false
@@ -944,6 +945,7 @@ func receive_hit(damage: float, from: Node3D) -> void:
 		_land()
 	hp = maxf(hp - damage, 0.0)
 	_health_bar.set_ratio(hp / hp_max)
+	_last_attacker = from
 	_flash(Color(1, 0.4, 0.4))
 	_unseen_time = 0.0
 	if hp <= 0.0:
@@ -1087,6 +1089,8 @@ func _find_rival() -> PokemonActor:
 ## Debilitado: aturdido STUN_TIME s con estrellitas (se puede capturar). Después, si
 ## es salvaje, desaparece en humo; si es el compañero, lo decide la escena principal.
 func _stun() -> void:
+	if role == Role.WILD and _last_attacker is PokemonActor and (_last_attacker as PokemonActor).role == Role.COMPANION:
+		GameState.wild_defeated.emit(species.identifier)
 	if role == Role.WILD and player != null and global_position.distance_to(player.global_position) <= SEEN_RADIUS:
 		GameState.dex_count(species.identifier, "stunned")
 	velocity = Vector3.ZERO

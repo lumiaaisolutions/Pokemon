@@ -13,6 +13,7 @@ uniform float wind_speed = 1.6;
 uniform vec4 actors[16];
 uniform float push_strength = 0.45;
 uniform float alpha_cutoff = 0.5;
+global uniform vec4 time_tint;
 
 varying float shade;
 
@@ -57,5 +58,5 @@ void fragment() {
 	if (texel.a < alpha_cutoff) {
 		discard;
 	}
-	ALBEDO = texel.rgb * mix(tint_top, tint_bottom, UV.y) * shade;
+	ALBEDO = texel.rgb * mix(tint_top, tint_bottom, UV.y) * shade * time_tint.rgb;
 }

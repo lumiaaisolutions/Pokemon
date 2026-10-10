@@ -47,6 +47,8 @@ var _downed_controls: Label
 var _downed_tint: ColorRect
 var _legend: VBoxContainer
 var _ball_panel: PanelContainer
+var _clock: Label
+var _prompt: Label
 var _ball_key := ""
 var _legend_context := ""
 var _tip: PanelContainer
@@ -82,6 +84,22 @@ func _ready() -> void:
 	_build_downed_panel()
 	_build_hints()
 	_build_ball_panel()
+	_build_clock()
+	_prompt = _small_label("", 24)
+	_prompt.anchor_left = 0.5
+	_prompt.anchor_right = 0.5
+	_prompt.anchor_top = 1.0
+	_prompt.anchor_bottom = 1.0
+	_prompt.offset_left = -400
+	_prompt.offset_right = 400
+	_prompt.offset_top = -200
+	_prompt.offset_bottom = -168
+	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prompt.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+	add_child(_prompt)
+	var gathering := get_node_or_null("../Gathering") as GatherManager
+	if gathering != null:
+		gathering.prompt_changed.connect(func(text: String) -> void: _prompt.text = text)
 	_player.notice.connect(show_toast)
 	GameState.notice.connect(show_toast)
 
@@ -109,6 +127,7 @@ func _process(delta: float) -> void:
 		(_bubbles_box.get_child(i) as TextureRect).visible = air_ratio > float(i) / BUBBLES
 	_reticle.visible = (_player.get_node("ThrowAim") as ThrowAim).is_aiming()
 	_update_ball_panel()
+	_clock.text = "%s Día %d · %s" % ["☾" if GameState.is_night() else "☀", GameState.game_day() + 1, DayNight.clock_text(GameState.clock_hour())]
 	_update_companion_card()
 	_update_downed_panel()
 	_update_hints()
@@ -471,6 +490,19 @@ func _update_tips() -> void:
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	if aim.is_aiming():
 		show_tip("lanzar", "Lanzar una Pokéball", [["throw", "Lanzar"], ["aim", "Toca para fijar o soltar la mira"], [null, "Mueve la cámara para lanzar lejos o hacia arriba."]])
+
+
+# --- Reloj ---------------------------------------------------------------------------
+
+func _build_clock() -> void:
+	_clock = _small_label("", 22)
+	_clock.anchor_left = 1.0
+	_clock.anchor_right = 1.0
+	_clock.offset_left = -260
+	_clock.offset_right = -40
+	_clock.offset_top = 230
+	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_clock)
 
 
 # --- Pokéball elegida -------------------------------------------------------------

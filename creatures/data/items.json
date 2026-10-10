@@ -367,7 +367,8 @@
       "pocket": "exploracion",
       "price": 0,
       "key": true,
-      "desc": "Tienda de campaña: duerme para curarte y pasar la noche (llegará con el día y la noche)."
+      "desc": "Tienda de campaña: duerme hasta la mañana siguiente y recupera tus corazones y a tu equipo.",
+      "sleep": true
     },
     {
       "id": "red-apricorn",
@@ -713,6 +714,7 @@
     "repel": 1,
     "smoke-ball": 2,
     "town-map": 1,
-    "escape-rope": 1
+    "escape-rope": 1,
+    "explorer-kit": 1
   }
 }

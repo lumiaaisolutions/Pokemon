@@ -213,6 +213,19 @@ func is_nomad(identifier: String) -> bool:
 	return _nomads.has(identifier)
 
 
+## Pokémon nocturnos además de los tipos Fantasma y Siniestro.
+const NOCTURNAL := ["hoothoot", "noctowl", "zubat", "golbat", "crobat", "oddish", "gloom", "venonat", "venomoth", "clefairy",
+		"murkrow", "spinarak", "ariados", "gastly", "haunter", "kricketot", "kricketune", "woobat", "swoobat", "noibat", "noivern", "rockruff"]
+
+
+## Peso según la hora: de noche salen más los nocturnos, Fantasma y Siniestro.
+func time_factor(species: SpeciesData) -> float:
+	var night_lover := species.types.has(PokemonTypes.Type.GHOST) or species.types.has(PokemonTypes.Type.DARK) or NOCTURNAL.has(species.identifier)
+	if GameState.is_night():
+		return 4.0 if night_lover else 0.7
+	return 0.3 if night_lover else 1.0
+
+
 ## Peso extra de la especie en point: común en su área, rara fuera.
 func home_factor(identifier: String, point: Vector3) -> float:
 	for area: Vector3 in _home_areas.get(identifier, []):
@@ -287,7 +300,8 @@ func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesD
 	var weights := PackedFloat32Array()
 	var total := 0.0
 	for species in candidates:
-		total += species.spawn_weight * home_factor(species.identifier, point)
+		var occupied := 6.0 if ActivityManager.is_occupied(point) and (species.types.has(PokemonTypes.Type.DARK) or species.types.has(PokemonTypes.Type.POISON)) else 1.0
+		total += species.spawn_weight * home_factor(species.identifier, point) * time_factor(species) * occupied
 		weights.append(total)
 	var index := weights.bsearch(_rng.randf() * total)
 	return candidates[mini(index, candidates.size() - 1)]

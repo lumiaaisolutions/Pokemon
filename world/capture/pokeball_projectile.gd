@@ -103,6 +103,7 @@ func start_capture(actor: PokemonActor) -> void:
 		var location := GameState.add_caught(actor.species, actor.shiny, 1.0 if heals else actor.hp / actor.hp_max, actor.gender, actor.size_factor)
 		if stealth:
 			GameState.dex_count(actor.species.identifier, "behind")
+		GameState.species_caught.emit(actor.species.identifier, stealth)
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SAND, 0.8)
 		GameState.pokemon_caught.emit(actor.species.display_name, actor.shiny, location)
 		actor.captured()

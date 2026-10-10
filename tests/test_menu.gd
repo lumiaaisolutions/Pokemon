@@ -111,6 +111,39 @@ func _run() -> void:
 	menu.close()
 	_check(not get_tree().paused, "al cerrar el menú el juego sigue")
 
+	# Rotom Móvil: hay actividades; cumplir una da premio y progreso; vencer otra baja
+	# la reputación y deja noticia.
+	await _frames(5)
+	var active := GameState.activities.filter(func(a: Dictionary) -> bool: return not a.get("done", false) and not a.get("failed", false))
+	_check(active.size() == ActivityManager.MAX_ACTIVE, "el Rotom Móvil debe tener %d actividades (hay %d)" % [ActivityManager.MAX_ACTIVE, active.size()])
+	_check(GameState.professor != "" and GameState.rival != "" and GameState.villain_team != "", "el elenco de la partida sale al azar")
+	var gather := {"id": 999, "path": "academia", "kind": "gather", "progress": 0, "target": 2, "deadline_day": GameState.game_day() + 2, "money": 100, "item": "potion", "item_amount": 1, "title": "Prueba"}
+	GameState.activities.append(gather)
+	var money_before := GameState.money
+	GameState.gathered.emit("oran-berry", 2)
+	_check(gather.get("done", false) and GameState.money == money_before + 100 and int(GameState.path_progress.get("academia", 0)) >= 1, "cumplir una actividad da su premio y avanza el camino")
+	var late := {"id": 998, "path": "concursos", "kind": "see", "progress": 0, "target": 50, "deadline_day": GameState.game_day(), "money": 100, "item": "potion", "item_amount": 1, "title": "Vencida"}
+	GameState.activities.append(late)
+	var rep_before := int(GameState.reputation.get("Concursos", 50))
+	GameState.play_time += GameState.DAY_SECONDS
+	await _frames(3)
+	_check(late.get("failed", false) and int(GameState.reputation.get("Concursos", 50)) < rep_before, "si vence el plazo falla y baja la reputación")
+	_check(not GameState.news.is_empty(), "las consecuencias salen en las noticias")
+
+	# Recolección: recoger un punto da objetos y lo oculta hasta el día siguiente.
+	var gathering := _main.get_node("Gathering") as GatherManager
+	_check(gathering.nodes().size() > 30, "debe haber puntos de recolección en el mundo (%d)" % gathering.nodes().size())
+	var node := gathering.nodes()[0]
+	var result := gathering.collect(node)
+	_check(not result.is_empty() and not node.visible, "recoger da objetos y el punto desaparece")
+
+	# Día y noche: a las 22:00 es de noche y está oscuro.
+	GameState.play_time = (22.0 - GameState.START_HOUR) * 60.0
+	await _frames(3)
+	_check(GameState.is_night() and GameState.dark, "a las 22:00 es de noche")
+	GameState.play_time = 0.0
+	await _frames(3)
+
 	# Cambiar de acompañante.
 	var first := (_main.get("companion") as PokemonActor).species
 	(_main as Node).call("swap_companion", GameState.party.size() - 1)

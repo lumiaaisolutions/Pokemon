@@ -50,6 +50,7 @@ var _downed_time: float = 0.0
 var riding: PokemonActor
 const HURT_COLOR := Color(1.0, 0.3, 0.3)
 var _since_damage: float = 0.0
+var _distance_buffer: float = 0.0
 var _hurt_tween: Tween
 ## Hoja overworld del personaje elegido.
 var sheet: Texture2D
@@ -123,6 +124,13 @@ func _physics_process(delta: float) -> void:
 	_update_fall(swimming)
 	_update_air(delta)
 	_update_regen(delta)
+	# Distancia recorrida (logros y estadísticas).
+	var moved := Vector2(velocity.x, velocity.z).length() * delta
+	if moved > 0.001:
+		_distance_buffer += moved
+		if _distance_buffer >= 10.0:
+			Achievements.add("distance", _distance_buffer)
+			_distance_buffer = 0.0
 	_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
 	_update_swim_visuals(horizontal, delta)
 	if aiming:
@@ -284,6 +292,7 @@ func _get_up() -> void:
 		await tween.finished
 	_set_downed_visuals(false)
 	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.8, PixelBurst.Kind.HEAL, 1.6)
+	Achievements.add("recoveries")
 	revived.emit()
 
 

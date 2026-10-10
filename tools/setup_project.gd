@@ -16,6 +16,7 @@ func _initialize() -> void:
 	_setup_application()
 	_setup_display()
 	_setup_rendering()
+	_setup_shader_globals()
 	_setup_navigation()
 	_setup_import_defaults()
 	_setup_autoloads()
@@ -54,6 +55,12 @@ func _setup_rendering() -> void:
 	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/size", 2048)
 	ProjectSettings.set_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_quality", 0)
 	ProjectSettings.set_setting("rendering/camera/depth_of_field/depth_of_field_bokeh_shape", 0)
+
+
+## Uniformes globales de los shaders: tinte de la hora del día para lo que no recibe
+## luz (sprites, hierba y agua); lo actualiza world/day_night.gd.
+func _setup_shader_globals() -> void:
+	ProjectSettings.set_setting("shader_globals/time_tint", {"type": "color", "value": Color(1, 1, 1, 1)})
 
 
 func _setup_navigation() -> void:

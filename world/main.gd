@@ -56,6 +56,7 @@ var _autosave_timer := SaveSystem.AUTOSAVE_SECONDS
 
 func _process(delta: float) -> void:
 	GameState.play_time += delta
+	_update_wheel()
 	_autosave_timer -= delta
 	if _autosave_timer <= 0.0 and not GameState.party.is_empty() and _player.mode == Player.Mode.WALK:
 		_autosave_timer = SaveSystem.AUTOSAVE_SECONDS
@@ -168,12 +169,41 @@ func _physics_process(_delta: float) -> void:
 			_send_out_companion()
 
 
+## Botón del compañero: tocar lo guarda o lo saca; mantener (más de WHEEL_HOLD s) abre
+## la rueda de cambio rápido con el equipo.
+const WHEEL_HOLD := 0.35
+var _companion_pressed_at := -1
+var _wheel: CompanionWheel
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("companion") and companion != null and not _busy and _player.mode == Player.Mode.WALK:
+		_companion_pressed_at = Time.get_ticks_msec()
+	elif event.is_action_released("companion") and _companion_pressed_at >= 0:
+		_companion_pressed_at = -1
+		if _wheel != null and _wheel.visible:
+			var index := _wheel.close()
+			if index >= 0 and index != GameState.companion_index:
+				swap_companion(index)
+			return
+		if companion == null or _busy:
+			return
 		if companion_state == CompanionState.OUT:
 			_recall_companion()
 		elif companion_state == CompanionState.IN_BALL:
 			_send_out_companion()
+
+
+func _update_wheel() -> void:
+	if _companion_pressed_at < 0 or GameState.party.size() < 2:
+		return
+	if (Time.get_ticks_msec() - _companion_pressed_at) / 1000.0 < WHEEL_HOLD:
+		return
+	if _wheel == null:
+		_wheel = CompanionWheel.new()
+		get_node("MenuLayer").add_child(_wheel)
+	if not _wheel.visible:
+		_wheel.open()
 
 
 ## Lo regresa a su Pokéball: destello rojo, se encoge hacia Nate y desaparece.

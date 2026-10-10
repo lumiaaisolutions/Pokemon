@@ -20,6 +20,47 @@ var tips_seen := {}
 ## Premios del profesor ya entregados (ver Research.REWARDS).
 var rewards_claimed := {}
 
+## --- Historia y Rotom Móvil (ver world/rotom/activity_manager.gd) ---
+## Elenco al azar de la partida.
+var professor := ""
+var rival := ""
+var villain_team := ""
+## Actividades activas e historial de noticias ({"day", "text"}).
+var activities: Array = []
+var news: Array = []
+## Reputación con cada grupo (0 a 100) y progreso en cada camino.
+var reputation := {}
+var path_progress := {}
+var rival_progress := {}
+## Zonas tomadas por el equipo criminal: {"x", "z", "radius", "until_day"}.
+var occupied_zones: Array = []
+## Estadísticas de la partida (logros) y logros desbloqueados (id -> día).
+var stats := {}
+var achievements := {}
+## Movimientos de dinero recientes: {"day", "amount", "reason"}.
+var money_log: Array = []
+
+
+## Suma (o resta) dinero y lo registra en el historial.
+func add_money(amount: int, reason: String) -> void:
+	money = maxi(money + amount, 0)
+	money_log.push_front({"day": game_day() + 1, "amount": amount, "reason": reason})
+	if money_log.size() > 25:
+		money_log.resize(25)
+var _activity_serial := 0
+
+
+func next_activity_id() -> int:
+	_activity_serial += 1
+	return _activity_serial
+
+
+func add_news(text: String) -> void:
+	news.push_front({"day": game_day() + 1, "text": text})
+	if news.size() > 30:
+		news.resize(30)
+	notice.emit("[Rotom] " + text)
+
 ## Avisos de captura (el HUD los muestra).
 signal pokemon_caught(display_name: String, shiny: bool, location: String)
 signal capture_failed(display_name: String)
@@ -49,6 +90,12 @@ var pokeballs: int:
 var dex := {}
 
 signal bag_changed
+## Capturaste una especie (identifier) por la espalda o no (lo usan las actividades).
+signal species_caught(identifier: String, behind: bool)
+## Tu compañero debilitó a un salvaje.
+signal wild_defeated(identifier: String)
+## Se recogió algo en el mundo (lo usan las actividades del Rotom Móvil).
+signal gathered(id: String, amount: int)
 ## Aviso para el HUD (premios del profesor, etc.).
 signal notice(text: String)
 signal dex_changed(identifier: String)
@@ -93,6 +140,8 @@ func add_caught(species: SpeciesData, shiny: bool, hp_ratio: float, gender: int 
 	dex_count(species.identifier, "caught")
 	if shiny:
 		dex_entry(species.identifier)["shiny"] = true
+		Achievements.add("shinies")
+	Achievements.add("captures")
 	for message in Research.claim_rewards():
 		notice.emit(message)
 	if species.is_legendary or species.is_mythical:
@@ -107,7 +156,8 @@ func add_caught(species: SpeciesData, shiny: bool, hp_ratio: float, gender: int 
 ## Aplica la pérdida de dinero de un desmayo y devuelve cuánto se perdió.
 func apply_blackout_penalty() -> int:
 	var lost := int(money * difficulty_value("money_loss"))
-	money -= lost
+	add_money(-lost, "Desmayo")
+	Achievements.add("blackouts")
 	return lost
 
 
@@ -127,8 +177,29 @@ var repel_until: float = 0.0
 var boosts := {}
 
 
+## La partida empieza a esta hora del primer día.
+const START_HOUR := 8.0
+
+
+## Día del juego (desde 0) y hora (0 a 24) según el tiempo jugado.
 func game_day() -> int:
-	return int(play_time / DAY_SECONDS)
+	return int((play_time + START_HOUR * 60.0) / DAY_SECONDS)
+
+
+func clock_hour() -> float:
+	return fmod(START_HOUR + play_time / 60.0, 24.0)
+
+
+func is_night() -> bool:
+	var hour := clock_hour()
+	return hour < 5.5 or hour >= 20.0
+
+
+## Dormir: avanza hasta las 7:00 del día siguiente.
+func sleep_until_morning() -> void:
+	var hour := clock_hour()
+	var hours := (24.0 - hour) + 7.0 if hour >= 7.0 else 7.0 - hour
+	play_time += hours * 60.0
 
 
 ## ¿Está activo el potenciador kind ("speed", "stealth", "shiny") o el repelente ("repel")?
@@ -207,6 +278,8 @@ func mark_seen(identifier: String) -> void:
 ## Suma uno a un contador de la Pokédex ("caught", "behind", "stunned", "fights").
 func dex_count(identifier: String, key: String) -> void:
 	dex_entry(identifier)[key] += 1
+	if key == "behind":
+		Achievements.add("behind")
 	dex_changed.emit(identifier)
 
 

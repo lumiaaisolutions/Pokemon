@@ -16,6 +16,8 @@ uniform float tilt_amount = 0.9;
 uniform float max_tilt = 50.0;
 // Por instancia: altura local (m) bajo la cual no se dibuja (p. ej. lo que queda bajo
 // el agua al nadar) e inclinación extra hacia atrás en radianes (nadar buceando).
+// Tinte de la hora del día (noche más oscura y azul); ver world/day_night.gd.
+global uniform vec4 time_tint;
 instance uniform float cut_bottom = -1000.0;
 instance uniform float extra_tilt = 0.0;
 
@@ -49,5 +51,5 @@ void fragment() {
 	if (COLOR.a < 0.99 && COLOR.a <= threshold) {
 		discard;
 	}
-	ALBEDO = texel.rgb * COLOR.rgb * tint.rgb;
+	ALBEDO = texel.rgb * COLOR.rgb * tint.rgb * time_tint.rgb;
 }

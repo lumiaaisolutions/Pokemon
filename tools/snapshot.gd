@@ -91,7 +91,17 @@ func _ready() -> void:
 		menu.selected_member = 1
 		menu.open()
 		menu.show_tab(int(args[5].substr(5)))
+		for i in 3:
+			await get_tree().process_frame
+		menu.show_tab(int(args[5].substr(5)))
 		for i in 20:
+			await get_tree().process_frame
+	# "hora:H": pone el reloj a la hora H (p. ej. hora:22).
+	if args.size() > 5 and args[5].begins_with("hora:"):
+		GameState.play_time = (float(args[5].substr(5)) - GameState.START_HOUR) * 60.0
+		if GameState.play_time < 0.0:
+			GameState.play_time += GameState.DAY_SECONDS
+		for i in 30:
 			await get_tree().process_frame
 	# "ayuda": abre la pantalla de Ayuda.
 	if args.size() > 5 and args[5] == "ayuda":

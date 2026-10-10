@@ -3,6 +3,7 @@ shader_type spatial;
 // densidad de píxeles que el resto, desplazamiento lento cuantizado a píxeles y
 // espuma de píxel donde el agua es poco profunda (orilla).
 render_mode unshaded, cull_disabled, depth_draw_always;
+global uniform vec4 time_tint;
 
 uniform sampler2D water_tex : source_color, filter_nearest, repeat_enable;
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
@@ -36,4 +37,5 @@ void fragment() {
 		ALBEDO = foam_color;
 		ALPHA = 0.95;
 	}
+	ALBEDO *= time_tint.rgb;
 }

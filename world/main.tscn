@@ -11,6 +11,9 @@
 [ext_resource type="Script" path="res://world/actors/legendary_manager.gd" id="8_legendary"]
 [ext_resource type="Script" path="res://world/actors/ambush_manager.gd" id="9_ambush"]
 [ext_resource type="PackedScene" path="res://ui/map/map_ui.tscn" id="10_map"]
+[ext_resource type="Script" path="res://world/day_night.gd" id="11_daynight"]
+[ext_resource type="Script" path="res://world/gathering/gather_manager.gd" id="12_gather"]
+[ext_resource type="Script" path="res://world/rotom/activity_manager.gd" id="13_rotom"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.38, 0.6, 0.9, 1)
@@ -85,3 +88,18 @@ player_path = NodePath("../Player")
 [node name="MapUi" parent="." instance=ExtResource("10_map")]
 player_path = NodePath("../Player")
 world_path = NodePath("../World")
+
+[node name="DayNight" type="Node" parent="."]
+script = ExtResource("11_daynight")
+sun_path = NodePath("../Sun")
+environment_path = NodePath("../WorldEnvironment")
+
+[node name="Gathering" type="Node3D" parent="."]
+script = ExtResource("12_gather")
+world_path = NodePath("../World")
+player_path = NodePath("../Player")
+
+[node name="Rotom" type="Node" parent="."]
+script = ExtResource("13_rotom")
+world_path = NodePath("../World")
+player_path = NodePath("../Player")
