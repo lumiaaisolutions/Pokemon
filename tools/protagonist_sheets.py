@@ -31,6 +31,9 @@ CHARACTERS = {
     "red": {"file": "hgss_trainers_overworld.png", "cells": {"origin": (0, 640), "pitch": (32, 32), "size": (32, 32), "grid": (3, 4)},
             # Bloque de 12 cuadros de HGSS (orden medido con la piel de la cara).
             "order": {"down": [5, 8, 11], "left": [3, 6, 9], "right": [1, 4, 7], "up": [0, 2, 10]}},
+    # Profesores (acordado con Fernando el 2026-10-10: sprites originales de su juego).
+    "elm": {"file": "hgss_trainers_overworld.png", "cells": {"origin": (0, 0), "pitch": (32, 32), "size": (32, 32), "grid": (3, 4)},
+            "order": {"down": [5, 8, 11], "left": [3, 6, 9], "right": [1, 4, 7], "up": [0, 2, 10]}},
     "ethan": {"file": "hgss_ethan.png",
               "walk": {"box": (0, 0, 70, 122), "rows": ["down", "left", "up", "right"], "frames": [1, 0, 2]},
               "run": {"box": (85, 0, 160, 122), "rows": ["up", "left", "down", "right"], "frames": [1, 0, 2]}},

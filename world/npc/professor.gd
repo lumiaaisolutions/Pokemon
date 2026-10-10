@@ -29,8 +29,23 @@ func _ready() -> void:
 	_player = get_node(player_path) as Player
 
 
+## Profesores con sprite original de su juego (pedido de Fernando, 2026-10-10): Oak y
+## Rowan de Platino, Elm de HGSS. Los demás, el científico o la científica de BW2.
+const OWN_SPRITES := {"Oak": "prof_oak", "Elm": "prof_elm", "Rowan": "prof_rowan"}
+## Retrato oficial (diálogo) por nombre.
+const PORTRAITS := {"Oak": "oak", "Elm": "elm", "Birch": "birch", "Rowan": "rowan", "Encina": "juniper", "Sycamore": "sycamore",
+		"Kukui": "kukui", "Magnolia": "magnolia", "Sada": "sada", "Turo": "turo"}
+
+
 static func look() -> String:
+	if OWN_SPRITES.has(GameState.professor):
+		return OWN_SPRITES[GameState.professor]
 	return "cientifica" if GameState.professor in FEMALE else "cientifico"
+
+
+static func portrait() -> Texture2D:
+	var path := "res://art/portraits/%s.png" % PORTRAITS.get(GameState.professor, "")
+	return load(path) as Texture2D if ResourceLoader.exists(path) else NpcLooks.portrait(look())
 
 
 static func title() -> String:
@@ -144,7 +159,7 @@ func talk_on_trip() -> void:
 	var dialog := _dialog()
 	if dialog == null:
 		return
-	dialog.open(title(), lines, NpcLooks.portrait(look()))
+	dialog.open(title(), lines, portrait())
 	if not prize.is_empty():
 		dialog.closed.connect(func() -> void:
 			GameState.add_item(prize[0], int(prize[1]))

@@ -236,7 +236,7 @@ func _light(parent: Node3D, at: Vector3, color: Color, range_m: float, energy: f
 ## el 2026-10-10). tools/fix_dae.py los deja listos para Godot.
 const INTERIOR_MODELS := {
 	"center": ["center"], "mart": ["mall"], "lab": ["lab_fennel"],
-	"house": ["house_floccesy5", "house_humilau7", "house_mistralton3", "house_accumula2"], "cabin": ["house_hugh"],
+	"house": ["house_floccesy5", "house_humilau7", "house_mistralton3", "house_accumula2", "house_alder", "house_black", "house_route5", "house_route13", "house_player"], "cabin": ["house_hugh"],
 	"gym": ["gym_aspertia", "gym_castelia", "gym_mistralton", "gym_icirrus", "gym_humilau", "gym_nacrene"],
 	"league": ["e4_room2", "e4_room4", "e4_room1"], "contest": ["school_striaton"], "daycare": ["daycare"],
 }

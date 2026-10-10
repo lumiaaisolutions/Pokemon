@@ -134,7 +134,13 @@ func open(speaker: String, lines: Array, portrait: Texture2D = null, options: Ar
 func say(speaker: String, text: String) -> void:
 	if visible and _blocking:
 		return
-	open(speaker, [text], null, [], Callable(), false)
+	# Retratos de personajes conocidos (el profesor, el rival).
+	var portrait: Texture2D = null
+	if speaker.begins_with("Prof."):
+		portrait = Professor.portrait()
+	elif speaker == GameState.rival and ResourceLoader.exists("res://art/portraits/hugh.png"):
+		portrait = load("res://art/portraits/hugh.png")
+	open(speaker, [text], portrait, [], Callable(), false)
 
 
 func _show_line() -> void:

@@ -27,3 +27,6 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | NPC: clases de BW2 para caminar ("Overworld Entities") | https://www.spriters-resource.com/ds_dsi/pokemonblack2white2/asset/48049/ | Ripeado por Barubary (The Spriters Resource) |
 | Retratos de entrenadores de BW2 ("Trainers"), solo local | https://www.spriters-resource.com/ds_dsi/pokemonblack2white2/asset/48033/ | Ripeado por redblueyellow (The Spriters Resource) |
 | Interiores de B2W2 (Centro, tienda, laboratorios, casas, gimnasios, Liga, guardería, escuela) | https://www.models-resource.com/ds_dsi/pokemonblack2white2/ (Interior Maps) | The Models Resource |
+| Prof. Oak y Prof. Rowan (Platino, "NPCs") | https://www.spriters-resource.com/ds_dsi/pokemonplatinum/asset/25791/ | Ripeado por spaceemotion |
+| Prof. Elm (HGSS, "Trainers (Overworld)") | https://www.spriters-resource.com/ds_dsi/pokemonheartgoldsoulsilver/asset/26955/ | Ripeado por Dragoon |
+| Retratos de profesores y de Hugh | Paquete de sprites de Pokémon Showdown (`sprites/trainers/`) | Comunidad de Pokémon Showdown |

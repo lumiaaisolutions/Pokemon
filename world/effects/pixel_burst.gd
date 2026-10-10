@@ -20,7 +20,13 @@ const COLORS := {
 
 
 ## Crea una nube en position (coordenadas del mundo) dentro de parent. size escala la nube.
+## Efectos creados desde el inicio (las pruebas lo usan: contar nodos fallaba si otro
+## efecto desaparecía en el mismo cuadro).
+static var spawned_total := 0
+
+
 static func spawn(parent: Node, position: Vector3, kind: Kind, size: float = 1.0) -> PixelBurst:
+	spawned_total += 1
 	var burst := PixelBurst.new()
 	burst._setup(kind, size)
 	parent.add_child(burst)

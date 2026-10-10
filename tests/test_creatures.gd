@@ -236,7 +236,7 @@ func _run() -> void:
 
 
 func _count_bursts() -> int:
-	return _main.find_children("*", "PixelBurst", true, false).size()
+	return PixelBurst.spawned_total
 
 
 func _check_habitat_rules(actor: PokemonActor) -> void:

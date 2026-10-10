@@ -84,6 +84,38 @@ def _has_body(art):
     return len(pixels) > 90 and len(set(pixels)) > 3
 
 
+# Profesores de Platino (sprites/npc_src/prof_plat_npcs.png, "NPCs" de The Spriters
+# Resource, ripeado por spaceemotion): columnas de 9 cuadros en la sección "Other".
+# Orden: frente, espalda, perfil, espalda×2 (pasos), frente×2, perfil×2.
+PLATINUM_COLUMNS = {"prof_rowan": (241, 1560), "prof_oak": (273, 1560)}
+
+
+def columns_from_platinum():
+    path = ROOT / "sprites" / "npc_src" / "prof_plat_npcs.png"
+    if not path.exists():
+        return
+    image = Image.open(path).convert("RGBA")
+    for key, (x, y) in PLATINUM_COLUMNS.items():
+        color = image.getpixel((x + 1, y + 1))
+        cells = [frame_at(image, x, y + i * CELL, color) for i in range(9)]
+        down = [cells[0], cells[5], cells[6]]
+        up = [cells[1], cells[3], cells[4]]
+        left = [cells[2], cells[7], cells[8]]
+        right = [c.transpose(Image.FLIP_LEFT_RIGHT) for c in left]
+        sheet = Image.new("RGBA", (CELL * 3, CELL * 8), (0, 0, 0, 0))
+        for row, group in enumerate([down, left, right, up]):
+            for col in range(3):
+                sheet.paste(group[col], (col * CELL, row * CELL))
+                sheet.paste(group[col], (col * CELL, (row + 4) * CELL))
+        sheet.save(OUT / f"{key}.png")
+
+
+def frame_at(image, x, y, color):
+    crop = image.crop((x, y, x + CELL, y + CELL))
+    crop.putdata([(0, 0, 0, 0) if abs(p[0] - color[0]) + abs(p[1] - color[1]) + abs(p[2] - color[2]) < 6 else p for p in crop.getdata()])
+    return crop
+
+
 def main():
     image = Image.open(SRC).convert("RGBA")
     every = blocks(image)
@@ -130,6 +162,7 @@ def main():
                 sheet.paste(cells[col], (col * CELL, row * CELL))
                 sheet.paste(cells[col], (col * CELL, (row + 4) * CELL))
         sheet.save(OUT / f"{key}.png")
+    columns_from_platinum()
     print(f"{len(LOOKS) + len(LOOKS_7)} hojas de NPC en {OUT}")
 
 
