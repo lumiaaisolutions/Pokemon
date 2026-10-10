@@ -188,10 +188,86 @@ func _run() -> void:
 	_check(hits > 15, "en un brote masivo sale mucho esa especie (%d/40)" % hits)
 	_check(events.outbreak_species_at(outbreak_point + Vector3(500, 0, 0)) == null, "fuera del brote no aplica")
 
+	# Habitantes con rutina: de día en el pueblo, de noche en casa.
+	_player.respawn_at(_world.start_position() + Vector3.UP * 0.5)
+	var npcs := _main.get_node("TownNPCs") as TownNPCs
+	npcs.set_process(true)
+	GameState.play_time = float(GameState.game_day()) * 1440.0 + (12.0 - GameState.START_HOUR) * 60.0
+	await _frames(90)
+	_check(npcs.all_npcs().size() >= 3, "el pueblo inicial tiene habitantes (%d)" % npcs.all_npcs().size())
+	var probe := {"wake": 8.0, "sleep": 21.0, "work": Vector2(1, 1)}
+	_check(TownNPCs.goal_for(probe, 12.0, false) == "work" and TownNPCs.goal_for(probe, 19.0, false) == "plaza" and TownNPCs.goal_for(probe, 23.0, false) == "home", "la rutina cambia con la hora")
+	_check(TownNPCs.goal_for(probe, 12.0, true) == "home", "con tormenta se van a casa")
+	GameState.play_time = float(GameState.game_day()) * 1440.0 + (23.5 - GameState.START_HOUR) * 60.0
+	for i in 3600:
+		await get_tree().physics_frame
+		if npcs.visible_npcs().is_empty():
+			break
+	_check(npcs.visible_npcs().is_empty(), "de noche todos los habitantes están en casa (%d afuera)" % npcs.visible_npcs().size())
+	_check(npcs.all_npcs().any(func(n: Dictionary) -> bool: return n.has("pet")), "algunos habitantes tienen su Pokémon")
+	# Viajeros: en un camino lejos de los pueblos aparecen y de noche acampan.
+	var road_spot := Vector2.INF
+	for road: PackedVector2Array in _world.layout.roads:
+		for point in road:
+			if _world.settlement_at(point.x, point.y, 200.0).is_empty():
+				road_spot = point
+				break
+		if road_spot != Vector2.INF:
+			break
+	if road_spot != Vector2.INF:
+		_world.ensure_area(Vector3(road_spot.x, 0, road_spot.y))
+		_player.respawn_at(Vector3(road_spot.x, _world.height_at(road_spot.x, road_spot.y) + 0.5, road_spot.y))
+		await _frames(150)
+		_check(not npcs.travelers().is_empty(), "en los caminos hay viajeros")
+		if not npcs.travelers().is_empty():
+			_check(npcs.travelers()[0]["camp"] != null, "de noche los viajeros acampan")
+	var mart: Dictionary = _world.structures.nearest_building("mart", start)
+	var mart_town: Dictionary = _world.layout.settlements[0]
+	_services.enter_interior("mart", mart_town, mart)
+	await _frames(30)
+	_check(not _services.interiors.is_inside(), "la tienda está cerrada de noche")
+	GameState.play_time = float(GameState.game_day() + 1) * 1440.0 + (10.0 - GameState.START_HOUR) * 60.0
+
+	# Acertijo de las ruinas: el orden de la inscripción despierta las piedras.
+	var ruins: Dictionary = _world.layout.places_of("ruins")[0]
+	var order := _services.ruin_order(ruins)
+	var wrong: int = order[1]
+	_services.ruin_stone(ruins, wrong)
+	for symbol: int in order:
+		_services.ruin_stone(ruins, symbol)
+	_check(GameState.world_flags.get("ruin_solved:%d" % int(ruins["id"]), false), "tocar las piedras en orden resuelve el acertijo")
+
+	# Comerciante, huerto y profesor.
+	var merchant: Dictionary = _world.layout.places_of("merchant")[0]
+	_check(_services.merchant_stock(merchant).size() == 5, "el comerciante vende 5 cosas raras al día")
+	var farm: Dictionary = _world.layout.places_of("berry_farm")[0]
+	var berries := GameState.item_count("oran-berry")
+	_services.harvest(farm, 0)
+	var after := GameState.item_count("oran-berry")
+	_services.harvest(farm, 0)
+	_check(after > berries and GameState.item_count("oran-berry") == after, "cada fila del huerto se cosecha una vez al día")
+	GameState.bag.erase("bicycle")
+	GameState.add_item("helix-fossil", 1)
+	_services.talk_professor()
+	_check(GameState.item_count("bicycle") == 1, "el profesor regala la bicicleta")
+	_check(GameState.world_flags.get("ride_license", false), "con una medalla el profesor da la Licencia de Montura")
+	var revived := GameState.party.any(func(e: Dictionary) -> bool: return e["species"] == "omanyte") or GameState.box.any(func(e: Dictionary) -> bool: return e["species"] == "omanyte")
+	_check(revived and GameState.item_count("helix-fossil") == 0, "el profesor revive el Fósil Hélix")
+
+	# Mina: mazmorra con tesoros.
+	var mine: Dictionary = _world.layout.places_of("mine")[0]
+	_services.enter_interior("mine", {}, mine)
+	await _wait_interior(true)
+	_check(_services.interiors.is_inside() and _services.interiors.current["kind"] == "mine", "se entra a la mina")
+	_services.interiors.exit_to(_services.interiors.current["return"])
+	await _wait_interior(false)
+
 	# Bicicleta, montura y vuelo.
 	_player.respawn_at(_world.start_position() + Vector3.UP * 0.5)
 	await _frames(20)
 	GameState.add_item("bicycle", 1)
+	GameState.world_flags["ride_license"] = true
+	GameState.world_flags["fly_license"] = true
 	(_main.get("companion") as PokemonActor).process_mode = Node.PROCESS_MODE_DISABLED
 	_main.set("companion_state", 1)
 	var bike_message: String = _main.call("toggle_ride")

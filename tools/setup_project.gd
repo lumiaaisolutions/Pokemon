@@ -61,6 +61,8 @@ func _setup_rendering() -> void:
 ## luz (sprites, hierba y agua); lo actualiza world/day_night.gd.
 func _setup_shader_globals() -> void:
 	ProjectSettings.set_setting("shader_globals/time_tint", {"type": "color", "value": Color(1, 1, 1, 1)})
+	# Color de la estación para el pasto, la hierba alta y el follaje (lo cambia Weather).
+	ProjectSettings.set_setting("shader_globals/season_tint", {"type": "color", "value": Color(1, 1, 1, 1)})
 
 
 func _setup_navigation() -> void:

@@ -1,13 +1,13 @@
-# Historia, caminos, tiempo y mundo aleatorio (plan)
+# Historia, caminos, tiempo y mundo aleatorio
 
-[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **plan**.
+[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **hecho** (2026-10-10). Mundo: [mundo grande](mundo_grande.md); caminos y Rotom: `world/rotom/`; retos: [pueblos e interiores](pueblos_e_interiores.md).
 
 ## Inicio (✅ hecho: `world/starter/starter_ceremony.gd`)
 - Tras elegir personaje, **5 huevos eclosionan a la vez** con básicos al azar. Eliges uno; los demás se van y no se vuelven a ver.
 - Al elegido le lanzas la Pokéball (tutorial de apuntar y lanzar, captura segura). Es tu compañero de viaje.
 
 ## Mundo aleatorio con semilla
-- Cada partida nueva genera su mapa a partir de una **semilla** guardada con la partida (se puede escribir una para repetir un mapa).
+- Cada partida nueva genera su mapa a partir de una **semilla** guardada con la partida. En la pantalla final de la selección de personaje se puede escribir una para repetir un mapa (vacío = al azar).
 - Contenido: biomas, río, montañas, costa y todo lo del [catálogo](../catalogo_mundo.md): pueblos, ciudades, cabañas, rutas con distintos pavimentos, volcanes, cuevas, santuarios, lugares icónicos y actividades.
 - **Límite del mundo:** mezcla de mar y montaña. Un lado es costa con mar abierto hasta el horizonte, donde una corriente te regresa ("La corriente es muy fuerte"). El resto es una cordillera infranqueable con montañas lejanas y niebla. Nunca se ve el borde.
 
@@ -35,9 +35,9 @@
 
 ## Recuperar vida del jugador
 - **Descanso:** tras 10 s sin daño regenera poco a poco (ya hecho). Dormir en una tienda, una cama o el Centro Pokémon te cura por completo.
-- **Comida y bayas:** las bayas recolectadas y la comida de las fogatas dan corazones.
+- **Comida y bayas:** las bayas recolectadas (y la Leche Mu-mu de los ranchos) dan corazones.
 - **Tu Pokémon te cura:** si conoce Deseo, Aromaterapia o similares, con un botón y tiempo de espera. Algunos salvajes amables (Chansey, Audino) curan si te acercas.
-- **Lugares curativos:** aguas termales, fuentes y árboles de bayas.
+- **Lugares curativos:** aguas termales y fuentes curan poco a poco; los huertos dan bayas cada día. Chansey, Blissey, Audino y Happiny salvajes te curan si estás cerca y tranquilos.
 
 ## Agua
 - Al entrar al agua profunda te hundes poco a poco; **mantener Espacio / ✕** te mantiene a flote o te hace subir.

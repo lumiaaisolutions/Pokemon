@@ -183,7 +183,8 @@ func _detail(species: SpeciesData) -> Control:
 	head.add_child(sprite)
 	var titles := VBoxContainer.new()
 	head.add_child(titles)
-	titles.add_child(MenuStyle.label("N.º %04d  ·  Regional %03d" % [species.dex_id, regional_number(species)], 18, MenuStyle.MUTED))
+	var regional := regional_number(species)
+	titles.add_child(MenuStyle.label("N.º %04d  ·  Regional %s" % [species.dex_id, ("%03d" % regional) if regional > 0 else "—"], 18, MenuStyle.MUTED))
 	titles.add_child(MenuStyle.label(species.display_name if seen else "???", 34, MenuStyle.ACCENT))
 	if not seen:
 		titles.add_child(MenuStyle.wrapped("Todavía no lo has visto. Explora sus zonas para registrarlo.", 18))
@@ -362,9 +363,10 @@ func _disc(image: Image, center: Vector2, radius: float, color: Color) -> void:
 				image.set_pixel(x, y, image.get_pixel(x, y).blend(color))
 
 
-## Número regional: orden de la Pokédex de tu región (especies con zonas, por hábitat).
+## Número regional (ver WildSpawner.regional_number): por cercanía al pueblo inicial.
 func regional_number(species: SpeciesData) -> int:
-	return (species.habitats[0] if not species.habitats.is_empty() else 0) * 200 + species.dex_id % 200
+	var spawner := _menu.main.get_node_or_null("Spawner") as WildSpawner if _menu.main != null else null
+	return spawner.regional_number(species.identifier) if spawner != null else 0
 
 
 func _play_cry(species: SpeciesData) -> void:

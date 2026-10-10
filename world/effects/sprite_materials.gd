@@ -8,14 +8,16 @@ const SHADER := preload("res://world/effects/sprite_billboard.gdshader")
 static var _cache := {}
 
 
-static func for_texture(texture: Texture2D, tint: Color = Color.WHITE) -> ShaderMaterial:
-	var key := "%d:%s" % [texture.get_instance_id(), tint.to_html()]
+static func for_texture(texture: Texture2D, tint: Color = Color.WHITE, glow: float = 0.0, seasonal: bool = false) -> ShaderMaterial:
+	var key := "%d:%s:%.1f:%s" % [texture.get_instance_id(), tint.to_html(), glow, seasonal]
 	if _cache.has(key):
 		return _cache[key]
 	var material := ShaderMaterial.new()
 	material.shader = SHADER
 	material.set_shader_parameter("sprite_texture", texture)
 	material.set_shader_parameter("tint", tint)
+	material.set_shader_parameter("glow", glow)
+	material.set_shader_parameter("seasonal", 1.0 if seasonal else 0.0)
 	_cache[key] = material
 	return material
 

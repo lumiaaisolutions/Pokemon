@@ -35,3 +35,18 @@ Fernando probó la 2.8 y pidió: vista despejada (Pokémon grandes tapaban), mir
 ## Fase 2.9 — Personaje y menú (en curso)
 - **Bloque 1, personaje:** pantalla inicial con chico o chica, 5 personajes de cada uno (protagonistas de cada generación) con vista previa que camina y gira, nombre y dificultad (Fácil, Normal, Difícil: daño de salvajes, dinero perdido y tiempo de recuperación). Los textos usan el nombre elegido. Hojas descargadas de Spriters Resource y DeviantArt (las de DeviantArt desde su CDN, porque Chrome bloqueaba descargas repetidas del sitio) y convertidas con `tools/protagonist_sheets.py`.
 - Siguientes bloques: ver el [plan](sistemas/menu_y_personaje.md).
+
+## Mundo grande, pueblos, interiores, clima y montar (2026-10-10, `57ee187` y siguiente)
+Pedido de Fernando: "el mundo es muy pequeño", con más biomas generados, estructuras ancestrales, alcantarillas, cuevas que llevan a otros lados, monturas, vuelo y bicicleta; y terminar todo lo pendiente de las fases anteriores.
+- **Región de 4 × 4 km por semilla** (`RegionLayout`): 17 biomas por temperatura, humedad y altura; ríos que bajan al mar (o terminan en un lago si se atoran); lagos, oasis y lagos congelados; 13 asentamientos con edificios; caminos; ~80 lugares.
+- **Construcción por zonas de 128 m** con hilos, dos niveles de detalle y faldas; navegación horneada por zona; mapa a 8 m/px en un hilo con caché. Arranque: 2.7 s (antes 5–6.5 s con un mundo 70 veces más chico).
+- **Pueblos e interiores:** Centro Pokémon (cura, reaparición y autoguardado), tienda con MT, gimnasios con medallas, Liga con Calle Victoria, concursos, guardería, Safari, laboratorio (bicicleta, licencias, fósiles), tutores, casas; mazmorras generadas (cuevas por pares, alcantarillas, torre, mansión, central, laboratorio, minas, base del equipo criminal, distorsión de los portales, barco hundido).
+- **Lugares:** ruinas con acertijo, grutas sin carga, ranchos, huertos, comerciantes, aguas termales y fuentes, ruinas flotantes, territorios Alfa, arrecife con corales, cascadas.
+- **Clima por bioma y estaciones**, **eventos** (brotes, lluvia de estrellas, dominantes, Alfas).
+- **Bicicleta, montura** (con escaladores) **y vuelo libre**, con licencias del profesor.
+- **Opciones completas:** resolución, calidad, velocidad del texto, idioma, daltonismo y reasignar botones. Avisos en fila.
+- **Pokédex regional definitiva** según el mundo generado.
+- Problemas encontrados y corregidos: la navegación de las zonas con edificios salía vacía (cada lectura de geometría reemplazaba la anterior; ahora se combinan), los bordes de río dentro de lagos contaban como agua flotante, tierra adentro bajo el nivel del mar (ahora se comprime hacia arriba), un legendario volador que no subía al escapar de una cumbre (el arco ahora sube sobre el punto más alto) y el orden de inicialización de los servicios.
+
+## Fase 2.7 — Habitantes con rutina (2026-10-10)
+Habitantes por pueblo con casa, oficio y horario según la hora y el clima; hablan con saludo, oficio y comentario del clima; tienda y gimnasio con horario. El día/noche y el clima por bioma ya estaban hechos.

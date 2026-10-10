@@ -690,6 +690,21 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 			decor[group] = PackedVector3Array()
 		var width := texture.get_size().x * config.pixel_size
 		(decor[group] as PackedVector3Array).append(Vector3(x, _local_base(heights, key, x, z, width * 0.5) - config.decor_sink, z))
+	# Arrecife: corales en el fondo del mar.
+	for i in 40:
+		var x := x0 + rng.randf() * CHUNK
+		var z := z0 + rng.randf() * CHUNK
+		var pick := rng.randi()
+		if layout.biome_at(x, z) != RegionLayout.Biome.SEA:
+			continue
+		var depth := layout.sea_level - _local_height(heights, key, x, z)
+		if depth < 2.0 or depth > 14.0:
+			continue
+		var texture := PropArt.texture("coral") if pick % 2 == 0 else PropArt.texture("coral_blue")
+		var group := [texture, Color.WHITE]
+		if not decor.has(group):
+			decor[group] = PackedVector3Array()
+		(decor[group] as PackedVector3Array).append(Vector3(x, _local_height(heights, key, x, z) - 0.05, z))
 	var patches: Array = []
 	for i in GRASS_TRIES:
 		var roll := rng.randf()
@@ -987,7 +1002,7 @@ func _instantiate(key: Vector2i, data: Dictionary) -> void:
 			var quad := QuadMesh.new()
 			quad.size = size
 			quad.center_offset = Vector3(0, size.y * 0.5, 0)
-			quad.material = SpriteMaterials.for_texture(texture, group[1])
+			quad.material = SpriteMaterials.for_texture(texture, group[1], 0.0, true)
 			root.add_child(_multimesh("FarTrees", quad, far[group], 0.0))
 	_chunks[key] = chunk
 	_rebuild_patch_lists()
@@ -1002,7 +1017,7 @@ func _build_props(root: Node3D, props: Dictionary, chunk: Dictionary) -> void:
 	for entry: Array in props["obstacles"]:
 		count += 1
 		var is_tree: bool = entry[5]
-		var body := _obstacle(("Tree%d" if is_tree else "Rock%d") % count, entry[0], entry[1], entry[2], entry[3], entry[4])
+		var body := _obstacle(("Tree%d" if is_tree else "Rock%d") % count, entry[0], entry[1], entry[2], entry[3], entry[4], is_tree)
 		if is_tree:
 			body.add_to_group(TREES_GROUP)
 		root.add_child(body)
@@ -1142,6 +1157,7 @@ func _build_water() -> void:
 		water.add_child(_water_disc("Lake", Vector2(lake.x, lake.y), lake.z + RegionLayout.LAKE_BANK * RegionLayout.WATER_EDGE, lake.w, _water_fresh, 48))
 	for river in layout.rivers:
 		water.add_child(_river_ribbon(river))
+		_build_waterfalls(water, river)
 
 
 func _water_disc(disc_name: String, center: Vector2, radius: float, level: float, material: Material, segments: int) -> MeshInstance3D:
@@ -1187,6 +1203,51 @@ func _river_ribbon(river: Dictionary) -> MeshInstance3D:
 	instance.material_override = _water_fresh
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
+
+
+## Cascadas: donde el río baja más de 1.2 m entre dos puntos, una cortina de agua con espuma.
+func _build_waterfalls(parent: Node3D, river: Dictionary) -> void:
+	var pts: PackedVector2Array = river["points"]
+	var levels: PackedFloat32Array = river["levels"]
+	var width := float(river["width"])
+	for i in pts.size() - 1:
+		var drop := levels[i] - levels[i + 1]
+		if drop < 1.2:
+			continue
+		var mid := (pts[i] + pts[i + 1]) * 0.5
+		var dir := (pts[i + 1] - pts[i]).normalized()
+		var fall := MeshInstance3D.new()
+		fall.name = "Waterfall"
+		var quad := QuadMesh.new()
+		quad.size = Vector2(width + 2.0, drop + 0.6)
+		fall.mesh = quad
+		fall.material_override = _water_fresh
+		fall.position = Vector3(mid.x, (levels[i] + levels[i + 1]) * 0.5, mid.y)
+		fall.rotation.y = atan2(dir.x, dir.y)
+		fall.rotation.x = -0.25
+		fall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(fall)
+		var foam := CPUParticles3D.new()
+		foam.amount = 24
+		foam.lifetime = 1.0
+		foam.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		foam.emission_box_extents = Vector3(width * 0.5, 0.2, 0.5)
+		foam.direction = Vector3.UP
+		foam.initial_velocity_min = 1.0
+		foam.initial_velocity_max = 2.5
+		foam.gravity = Vector3(0, -4, 0)
+		var mesh := QuadMesh.new()
+		mesh.size = Vector2(0.25, 0.25)
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		material.albedo_color = Color(1, 1, 1, 0.8)
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mesh.material = material
+		foam.mesh = mesh
+		foam.position = Vector3(pts[i + 1].x, levels[i + 1] + 0.1, pts[i + 1].y)
+		foam.visibility_range_end = 150.0
+		parent.add_child(foam)
 
 
 func _build_ponds(root: Node3D, key: Vector2i) -> void:
@@ -1271,7 +1332,7 @@ func _multimesh(instance_name: String, mesh: Mesh, positions: PackedVector3Array
 
 ## Sprite apoyado en el suelo (posición ya con la altura) con sombra de contacto y
 ## colisión en la capa de obstáculos.
-func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, position_3d: Vector3, tint: Color) -> StaticBody3D:
+func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, position_3d: Vector3, tint: Color, foliage: bool = false) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = obstacle_name
 	body.collision_layer = LAYER_OBSTACLES
@@ -1288,7 +1349,9 @@ func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, r
 	sprite.double_sided = true
 	sprite.layers = VISUAL_LAYER_SPRITES
 	SpriteMaterials.apply(sprite)
-	sprite.material_override = SpriteMaterials.for_texture(texture, tint)
+	# Los hongos luminosos brillan de noche; el follaje cambia con la estación.
+	var glow := 1.0 if texture == PropArt.texture("glow_mushroom") else 0.0
+	sprite.material_override = SpriteMaterials.for_texture(texture, tint, glow, foliage and glow == 0.0 and texture != PropArt.texture("cactus"))
 	sprite.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
 	body.add_child(sprite)
 	var shape := CylinderShape3D.new()

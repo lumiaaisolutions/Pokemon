@@ -27,6 +27,7 @@ var _preview_atlas: AtlasTexture
 var _preview_name: Label
 var _card_atlases: Array[AtlasTexture] = []
 var _name_edit: LineEdit
+var _seed_edit: LineEdit
 var _back_hint: Label
 
 
@@ -165,6 +166,13 @@ func _show_step(step: Step) -> void:
 			_subtitle.text = ""
 			var summary := _label("%s (%s, de %s)\nDificultad: %s" % [_player_name(), _character["name"], _character["region"], GameState.DIFFICULTIES[_difficulty]["name"]], 30, Color.WHITE)
 			_content.add_child(summary)
+			# Semilla del mundo: vacía = un mundo nuevo al azar; un número repite ese mundo.
+			_seed_edit = LineEdit.new()
+			_seed_edit.placeholder_text = "Semilla del mundo (vacío = al azar)"
+			_seed_edit.custom_minimum_size = Vector2(520, 52)
+			_seed_edit.add_theme_font_size_override("font_size", 24)
+			_seed_edit.max_length = 10
+			_content.add_child(_seed_edit)
 			var start := _button("¡Comenzar la aventura!")
 			start.pressed.connect(_start)
 			_content.add_child(start)
@@ -215,7 +223,8 @@ func _start() -> void:
 	GameState.bag = Items.starting_bag()
 	GameState.play_time = 0.0
 	# Cada partida nueva tiene su propio mundo.
-	GameState.world_seed = randi_range(1, 1 << 30)
+	var typed := _seed_edit.text.strip_edges() if _seed_edit != null and is_instance_valid(_seed_edit) else ""
+	GameState.world_seed = int(typed) if typed.is_valid_int() and int(typed) > 0 else randi_range(1, 1 << 30)
 	GameState.world_flags = {}
 	GameState.character_id = _character["id"]
 	GameState.gender = _gender

@@ -117,6 +117,8 @@ func _ready() -> void:
 		var old := scene.get("companion") as PokemonActor
 		if old != null:
 			old.queue_free()
+		GameState.world_flags["ride_license"] = true
+		GameState.world_flags["fly_license"] = true
 		scene.call("_create_companion", load("res://creatures/data/species/charizard.tres"), false, player.global_position + Vector3(1.5, 0.3, 0.0))
 		for i in 10:
 			await get_tree().process_frame

@@ -22,6 +22,10 @@ static func texture(kind: String) -> Texture2D:
 			image = _mushroom(Color(0.45, 0.55, 1.0), Color(0.75, 1.0, 1.0))
 		"acacia":
 			image = _acacia()
+		"coral":
+			image = _coral(Color(1.0, 0.45, 0.55))
+		"coral_blue":
+			image = _coral(Color(0.4, 0.7, 1.0))
 		_:
 			image = Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
 	_outline(image)
@@ -92,6 +96,20 @@ static func _acacia() -> Image:
 	for x in range(4, 60):
 		var top := 6 + int(absf(x - 32) * 0.12)
 		_rect(image, x, top, 1, 10, crown if (x / 3) % 2 else crown_dark)
+	return image
+
+
+static func _coral(color: Color) -> Image:
+	var image := Image.create_empty(30, 30, false, Image.FORMAT_RGBA8)
+	# Ramas que suben desde la base.
+	for branch in 5:
+		var x := 6 + branch * 4.5
+		var lean := (branch - 2) * 0.35
+		for y in range(29, 6 + (branch % 2) * 5, -1):
+			var px := int(x + (29 - y) * lean * 0.3)
+			_rect(image, px, y, 3, 1, color if y % 5 else color.lightened(0.3))
+			if y % 7 == 0:
+				_rect(image, px - 2, y, 2, 2, color.darkened(0.2))
 	return image
 
 

@@ -262,3 +262,7 @@ time_tint={
 "type": "color",
 "value": Color(1, 1, 1, 1)
 }
+season_tint={
+"type": "color",
+"value": Color(1, 1, 1, 1)
+}

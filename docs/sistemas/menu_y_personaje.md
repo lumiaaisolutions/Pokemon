@@ -50,6 +50,7 @@
 | Coleccionables | Notas de investigación, cartas e insignias (sección aparte) |
 
 ## Opciones
+Hecho; lo implementado está en [mochila y Pokédex](mochila_y_pokedex.md). Del plan quedaron fuera, por decisión, el inglés (el juego está escrito en español), la vibración, el límite de FPS y el tamaño del texto.
 - **Cámara y control:** sensibilidad de mouse y stick, invertir Y, vibración y reasignar botones.
 - **Video:** pantalla completa o ventana, resolución, calidad (sombras, distancia de pasto, desenfoque), límite de FPS y mostrar FPS.
 - **Audio:** volumen general, de música, de efectos y de gritos.
@@ -63,9 +64,9 @@
 
 ## Bloques de construcción
 1. ✅ Selección de personaje, nombre y dificultad (descarga y conversión de las 10 hojas). Código: `ui/character_select/`, `core/player_characters.gd`, `GameState.character_id/player_name/gender/difficulty`.
-2. ✅ Marco del menú con pestañas y tira del equipo; pestañas Equipo, Ficha y Controles (falta la rueda de cambio rápido).
-3. ✅ Datos de objetos y Mochila (todos los bolsillos) y fabricación (falta la recolección en el mundo).
-4. ✅ Pokédex con investigación (falta la Caja).
+2. ✅ Marco del menú con pestañas y tira del equipo; pestañas Equipo, Ficha y Controles; rueda de cambio rápido.
+3. ✅ Datos de objetos y Mochila (todos los bolsillos), fabricación y recolección en el mundo.
+4. ✅ Pokédex con investigación y Caja.
 5. ✅ Guardado (3 ranuras y autoguardado) y Opciones.
 Detalle de lo hecho en [mochila y Pokédex](mochila_y_pokedex.md).
 6. Diario, logros, estadísticas, dinero y guía inicial.

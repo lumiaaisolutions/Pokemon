@@ -9,6 +9,10 @@ const STOCK := ["poke-ball", "great-ball", "potion", "super-potion", "full-heal"
 const BADGE_STOCK := [[2, "ultra-ball"], [2, "hyper-potion"], [3, "max-repel"], [4, "repeat-ball"], [5, "luxury-ball"], [6, "heavy-ball"]]
 const TM_PER_DAY := 4
 
+var title := "Tienda Pokémon"
+## Surtido propio (comerciante viajero) y multiplicador de precio de compra.
+var custom_stock: Array[String] = []
+var price_factor := 1.0
 var _selling := false
 var _list: VBoxContainer
 var _money: Label
@@ -32,7 +36,7 @@ func open() -> void:
 	panel.add_child(box)
 	var header := HBoxContainer.new()
 	box.add_child(header)
-	header.add_child(MenuStyle.label("Tienda Pokémon", 28, MenuStyle.ACCENT))
+	header.add_child(MenuStyle.label(title, 28, MenuStyle.ACCENT))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
@@ -80,12 +84,22 @@ static func stock() -> Array[String]:
 	return result.filter(func(id: String) -> bool: return Items.exists(id))
 
 
+## Con mala reputación (promedio menor a 30) todo cuesta 20 % más.
+static func reputation_factor() -> float:
+	if GameState.reputation.is_empty():
+		return 1.0
+	var total := 0.0
+	for group: String in GameState.reputation:
+		total += float(GameState.reputation[group])
+	return 1.2 if total / GameState.reputation.size() < 30.0 else 1.0
+
+
 static func sell_price(id: String) -> int:
 	return int(Items.get_item(id).get("price", 0)) / 2
 
 
-static func buy(id: String, amount: int) -> bool:
-	var cost := int(Items.get_item(id).get("price", 0)) * amount
+static func buy(id: String, amount: int, factor: float = 1.0) -> bool:
+	var cost := int(Items.get_item(id).get("price", 0) * factor * reputation_factor()) * amount
 	if cost <= 0 or GameState.money < cost:
 		return false
 	GameState.add_money(-cost, "Compra: %s × %d" % [Items.display_name(id), amount])
@@ -113,7 +127,7 @@ func _refresh() -> void:
 			if GameState.item_count(id) > 0 and sell_price(id) > 0 and Items.get_item(id).get("pocket", "") != "clave":
 				ids.append(id)
 	else:
-		ids = stock()
+		ids = custom_stock if not custom_stock.is_empty() else stock()
 	if ids.is_empty():
 		_list.add_child(MenuStyle.label("No tienes nada que vender." if _selling else "Sin surtido.", 18, MenuStyle.MUTED))
 	var first: Button
@@ -126,12 +140,12 @@ func _refresh() -> void:
 		name.tooltip_text = str(Items.get_item(id).get("desc", ""))
 		name.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(name)
-		var price := sell_price(id) if _selling else int(Items.get_item(id).get("price", 0))
+		var price := sell_price(id) if _selling else int(Items.get_item(id).get("price", 0) * price_factor * reputation_factor())
 		row.add_child(MenuStyle.label("$%d" % price, 18))
 		for amount in [1, 10]:
 			var button := MenuStyle.button(("Vender ×%d" if _selling else "Comprar ×%d") % amount, 16)
 			button.pressed.connect(func() -> void:
-				var ok := sell(id, amount) if _selling else buy(id, amount)
+				var ok := sell(id, amount) if _selling else buy(id, amount, price_factor)
 				if not ok:
 					GameState.notice.emit("No alcanza." if not _selling else "No tienes suficientes.")
 				_refresh())

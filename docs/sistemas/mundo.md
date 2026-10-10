@@ -1,5 +1,8 @@
 # Mundo abierto
 
+
+> **Reemplazado** por el [mundo grande](mundo_grande.md) (2026-10-10): el mundo fijo de 480 m de este documento ya no existe; se conservan aquí el arte, el agua y el rendimiento de esa versión como referencia.
+
 [← Índice](../README.md) · Código: `world/world_builder.gd`, `world/world_config.tres`, `world/biomes/*.tres`, `world/terrain/*.gdshader`
 
 ## Trazado (480 × 480 m, sin pantallas de carga)

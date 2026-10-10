@@ -805,6 +805,78 @@
       "price": 3000,
       "tm": 17,
       "desc": "Enseña a tu compañero un movimiento de tipo Hada de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "moomoo-milk",
+      "name": "Leche Mu-mu",
+      "pocket": "bayas",
+      "price": 500,
+      "heal_hearts": 8,
+      "desc": "Leche del rancho: recupera 4 corazones."
+    },
+    {
+      "id": "helix-fossil",
+      "name": "Fósil Hélix",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "dome-fossil",
+      "name": "Fósil Domo",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "root-fossil",
+      "name": "Fósil Raíz",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "claw-fossil",
+      "name": "Fósil Garra",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "skull-fossil",
+      "name": "Fósil Cráneo",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "armor-fossil",
+      "name": "Fósil Coraza",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "cover-fossil",
+      "name": "Fósil Tapa",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "plume-fossil",
+      "name": "Fósil Pluma",
+      "pocket": "tesoros",
+      "price": 1000,
+      "fossil": true,
+      "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
     }
   ],
   "recipes": [

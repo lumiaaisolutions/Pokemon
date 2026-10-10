@@ -12,6 +12,15 @@ const SAFARI_BALLS := 30
 const SAFARI_RADIUS := 40.0
 const DAYCARE_POINTS_PER_DAY := 2
 const HEAL_SPOT_RATE := 0.25
+const TUTOR_PRICE := 2000
+## Salvajes que curan al jugador si te acercas.
+const HEALERS := ["chansey", "blissey", "audino", "happiny"]
+## Símbolos de las piedras de las ruinas (el orden correcto sale de la inscripción).
+const RUIN_SYMBOLS := ["sol", "luna", "estrella"]
+const FOSSILS := {"helix-fossil": "omanyte", "dome-fossil": "kabuto", "root-fossil": "lileep", "claw-fossil": "anorith",
+		"skull-fossil": "cranidos", "armor-fossil": "shieldon", "cover-fossil": "tirtouga", "plume-fossil": "archen"}
+const MERCHANT_GOODS := ["fire-stone", "water-stone", "thunderstone", "leaf-stone", "moon-stone", "sun-stone", "shiny-stone", "dusk-stone",
+		"dawn-stone", "rare-candy", "lucky-egg", "leftovers", "choice-band", "choice-scarf", "big-pearl", "max-repel", "ultra-ball", "quick-ball", "lum-berry"]
 ## Pokémon raros de la Zona Safari (los que no existan se ignoran).
 const SAFARI_POOL := ["kangaskhan", "tauros", "scyther", "pinsir", "chansey", "dratini", "exeggcute", "rhyhorn", "nidorino", "nidorina",
 		"girafarig", "heracross", "phanpy", "larvitar", "bagon", "gible", "axew", "deino", "goomy", "jangmo-o", "frigibax"]
@@ -100,6 +109,10 @@ func enter_interior(kind: String, settlement: Dictionary, data: Dictionary) -> v
 	var p := player()
 	if p == null:
 		return
+	var hour := GameState.clock_hour()
+	if not TownNPCs.is_open(kind, hour):
+		GameState.notice.emit("%s está cerrado. Abre a las %s." % [Structures.BUILDING_NAMES.get(kind, "El lugar"), "8:00" if kind == "mart" else "7:00"])
+		return
 	interiors.enter(kind, settlement, data, p.global_position + Vector3.UP * 0.3)
 
 
@@ -182,6 +195,27 @@ func talk_professor() -> void:
 	GameState.notice.emit(text)
 	for message in rewards:
 		GameState.notice.emit(message)
+	# Bicicleta y licencias de montura y vuelo (por medallas o actividades cumplidas).
+	if GameState.item_count("bicycle") <= 0 and not _flags().get("bike_given", false):
+		_flags()["bike_given"] = true
+		GameState.add_item("bicycle", 1)
+		GameState.notice.emit("Prof. %s: toma esta Bicicleta para recorrer la región (V / cruceta ←)." % GameState.professor)
+	var done := GameState.activities.filter(func(a: Dictionary) -> bool: return a.get("done", false)).size()
+	if not _flags().get("ride_license", false) and (badges().size() >= 1 or done >= 2):
+		_flags()["ride_license"] = true
+		GameState.notice.emit("Prof. %s: ¡te ganaste la Licencia de Montura! Ya puedes montar Pokémon grandes." % GameState.professor)
+	if not _flags().get("fly_license", false) and (badges().size() >= 3 or done >= 5):
+		_flags()["fly_license"] = true
+		GameState.notice.emit("Prof. %s: ¡Licencia de Vuelo! Monta a un volador grande y salta para despegar." % GameState.professor)
+	# Revive fósiles.
+	for fossil: String in FOSSILS:
+		if GameState.item_count(fossil) > 0:
+			var species := MenuStyle.species(FOSSILS[fossil])
+			if species == null:
+				continue
+			GameState.use_item(fossil)
+			var where := GameState.add_caught(species, false, 1.0)
+			GameState.notice.emit("Prof. %s: ¡revivimos tu %s! Es un %s (va a tu %s)." % [GameState.professor, Items.display_name(fossil), species.display_name, where])
 
 
 # --- Retos: gimnasio, Liga y concursos --------------------------------------------------
@@ -348,9 +382,135 @@ func read_ruins(place: Dictionary) -> void:
 	var lines := ["\"Los que cayeron del cielo duermen bajo la montaña.\"", "\"Veintiocho formas, una sola palabra.\"",
 			"\"El árbol más viejo recuerda el primer amanecer.\"", "\"Cruza la puerta violeta y estarás lejos.\""]
 	var text: String = lines[int(place["id"]) % lines.size()]
+	var order := ruin_order(place)
+	text += " Debajo: \"Despierta primero al %s, luego a la %s y al final a la %s.\"" % [RUIN_SYMBOLS[order[0]], RUIN_SYMBOLS[order[1]], RUIN_SYMBOLS[order[2]]]
 	if _discovery("ruins:%d" % int(place["id"]), "inscripción de las Ruinas Antiguas"):
 		text += " (Descubrimiento registrado)"
 	GameState.notice.emit("Las inscripciones dicen: " + text)
+
+
+## Orden de las piedras de unas ruinas (fijo por semilla y lugar).
+func ruin_order(place: Dictionary) -> Array:
+	var orders := [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+	return orders[absi(hash([int(place["id"]), structures.world.layout.seed])) % orders.size()]
+
+
+## Tocar una piedra: si sigue el orden avanza; al completarlo, el premio (una vez).
+func ruin_stone(place: Dictionary, symbol: int) -> void:
+	var key := "ruin_solved:%d" % int(place["id"])
+	if _flags().get(key, false):
+		GameState.notice.emit("Las piedras ya están despiertas.")
+		return
+	var progress_key := "ruin_progress:%d" % int(place["id"])
+	var progress := int(_flags().get(progress_key, 0))
+	var order := ruin_order(place)
+	if order[progress] != symbol:
+		_flags()[progress_key] = 0
+		GameState.notice.emit("La piedra del %s se apaga... El orden no era ese." % RUIN_SYMBOLS[symbol])
+		return
+	progress += 1
+	_flags()[progress_key] = progress
+	if progress < 3:
+		GameState.notice.emit("La piedra del %s brilla (%d/3)." % [RUIN_SYMBOLS[symbol], progress])
+		return
+	_flags()[key] = true
+	GameState.add_item("star-piece", 2)
+	GameState.add_item("old-charm", 1)
+	_discovery("ruin_puzzle:%d" % int(place["id"]), "el acertijo de las Ruinas Antiguas")
+	GameState.notice.emit("¡Las tres piedras despertaron! Encontraste 2 Trozos Estrella y un Amuleto Antiguo. Los Unown se acercan...")
+	var unown := MenuStyle.species("unown")
+	var p := player()
+	if unown != null and p != null:
+		for i in 3:
+			spawn_wild(unown, p.global_position + Vector3(cos(i * 2.1) * 4.0, 0.3, sin(i * 2.1) * 4.0))
+
+
+## Tutor: enseña a tu compañero el siguiente movimiento de su lista oficial.
+func tutor() -> void:
+	if GameState.party.is_empty():
+		return
+	var entry: Dictionary = GameState.party[GameState.companion_index]
+	var name := MenuStyle.species(entry["species"]).display_name
+	Moves.ensure_entry(entry)
+	if Moves.next_unlock(entry) == "":
+		GameState.notice.emit("Tutor: %s ya conoce todos sus movimientos." % name)
+		return
+	if GameState.money < TUTOR_PRICE:
+		GameState.notice.emit("Tutor: mis clases cuestan $%d." % TUTOR_PRICE)
+		return
+	GameState.add_money(-TUTOR_PRICE, "Tutor de movimientos")
+	var learned := Moves.unlock_next(entry)
+	GameState.notice.emit("Tutor: ¡%s aprendió %s! Equípalo en el menú (Equipo)." % [name, Moves.get_move(learned)["name"]])
+
+
+## Rancho: Leche Mu-mu.
+func buy_milk() -> void:
+	if GameState.money < 500:
+		GameState.notice.emit("Ranchero: la leche cuesta $500.")
+		return
+	GameState.add_money(-500, "Leche Mu-mu")
+	GameState.add_item("moomoo-milk", 1)
+	GameState.notice.emit("Ranchero: ¡recién ordeñada! (Leche Mu-mu +1)")
+
+
+## Huerto: cada fila se cosecha una vez por día.
+func harvest(place: Dictionary, row: int) -> void:
+	var key := "harvest:%d:%d" % [int(place["id"]), row]
+	if int(_flags().get(key, -1)) == GameState.game_day():
+		GameState.notice.emit("Esta fila ya se cosechó hoy. Vuelve mañana.")
+		return
+	_flags()[key] = GameState.game_day()
+	var berry: String = ["oran-berry", "pecha-berry", "cheri-berry", "sitrus-berry"][row % 4]
+	var amount := _rng.randi_range(2, 4)
+	GameState.add_item(berry, amount)
+	GameState.gathered.emit(berry, amount)
+	GameState.notice.emit("Cosechaste %d %s." % [amount, Items.display_name(berry)])
+
+
+## Comerciante viajero: 5 objetos raros distintos cada día (precio ×1.5).
+func merchant_stock(place: Dictionary) -> Array[String]:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([int(place["id"]), GameState.game_day(), structures.world.layout.seed])
+	var goods: Array = MERCHANT_GOODS.duplicate()
+	var result: Array[String] = []
+	for i in 5:
+		var id: String = goods.pop_at(rng.randi() % goods.size())
+		if Items.exists(id):
+			result.append(id)
+	return result
+
+
+func open_merchant(place: Dictionary) -> void:
+	var layer := main().get_node_or_null("MenuLayer") as CanvasLayer
+	if layer == null or layer.has_node("Shop"):
+		return
+	var shop := ShopUI.new()
+	shop.name = "Shop"
+	shop.title = "Comerciante Viajero"
+	shop.custom_stock = merchant_stock(place)
+	shop.price_factor = 1.5
+	layer.add_child(shop)
+	shop.open()
+
+
+## Base secreta: el jefe del equipo criminal reta con sus Pokémon Siniestro y Veneno.
+func villain_challenge(arena: Vector3) -> void:
+	if not _trial.is_empty():
+		return
+	if _flags().get("villain_defeated", false):
+		GameState.notice.emit("La base está vacía. %s huyó de la región." % GameState.villain_team)
+		return
+	var team: Array[SpeciesData] = []
+	team.append_array(_team_of_type(PokemonTypes.Type.DARK, 2, 0.6))
+	team.append_array(_team_of_type(PokemonTypes.Type.POISON, 2, 0.7))
+	_start_trial("Jefe del %s" % GameState.villain_team, team, arena, func() -> void:
+		_flags()["villain_defeated"] = true
+		for group: String in GameState.reputation:
+			GameState.reputation[group] = mini(int(GameState.reputation[group]) + 15, 100)
+		GameState.occupied_zones.clear()
+		GameState.add_money(8000, "Base del %s" % GameState.villain_team)
+		GameState.add_news("¡%s desmanteló la base secreta del %s! Las zonas tomadas quedan libres." % [GameState.player_name, GameState.villain_team])
+		GameState.notice.emit("¡Derrotaste al jefe del %s! Las zonas tomadas quedan libres." % GameState.villain_team))
 
 
 func giant_tree(place: Dictionary) -> void:
@@ -471,6 +631,14 @@ func place_treasure(owner_interiors: Interiors, root: Node3D, at: Vector3, key: 
 	sprite.position = at + Vector3.UP * 0.4
 	root.add_child(sprite)
 	var loot := ["ultra-ball", "hyper-potion", "nugget", "star-piece", "rare-candy", "fire-stone", "water-stone", "thunderstone", "moon-stone", "max-repel", "big-pearl"]
+	if key.begins_with("mine:"):
+		loot = FOSSILS.keys() + ["hard-stone", "red-shard", "blue-shard", "nugget"]
+	elif key.begins_with("shipwreck:"):
+		loot = ["big-pearl", "pearl", "nugget", "star-piece", "dive-ball"]
+	# Una de cada cuatro veces, una MT al azar.
+	if rng.randf() < 0.25:
+		loot = ["tm-normal", "tm-fighting", "tm-flying", "tm-poison", "tm-ground", "tm-rock", "tm-bug", "tm-ghost", "tm-steel", "tm-fire",
+				"tm-water", "tm-grass", "tm-electric", "tm-psychic", "tm-ice", "tm-dragon", "tm-dark", "tm-fairy"]
 	var item: String = loot[rng.randi() % loot.size()]
 	var point: Dictionary = {}
 	point = structures.add_point(Interiors.ORIGIN + at + Vector3.UP * 0.5, "Recoger el objeto", func() -> void:
@@ -499,6 +667,17 @@ func _process(delta: float) -> void:
 			if _healing_notice <= 0.0:
 				_healing_notice = 20.0
 				GameState.notice.emit("%s: te recuperas poco a poco." % spot["title"])
+			break
+	# Salvajes amables (Chansey, Blissey, Audino, Happiny) te curan si estás cerca.
+	for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+		var wild := node as PokemonActor
+		if wild != null and wild.species.identifier in HEALERS and wild.global_position.distance_to(p.global_position) < 4.0 \
+				and wild.state not in [PokemonActor.State.FIGHT, PokemonActor.State.CHASE, PokemonActor.State.STUNNED]:
+			if p.health < p.config.health_max:
+				p.heal(p.config.health_max * 0.15 * delta)
+				if _healing_notice <= 0.0:
+					_healing_notice = 20.0
+					GameState.notice.emit("%s te está curando." % wild.species.display_name)
 			break
 	# Las Safari Balls se devuelven al salir de la Zona Safari.
 	var inside := not safari_place_at(p.global_position).is_empty()

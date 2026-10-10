@@ -202,6 +202,48 @@ func _refresh_nomads() -> void:
 			_home_areas[identifier] = _areas_for(species, rng, half)
 
 
+var _regional := {}
+
+
+## Número de la Pokédex regional (1…): las líneas evolutivas ordenadas por qué tan cerca
+## del pueblo inicial viven (como en los juegos, lo primero que ves va primero), cada
+## línea con sus evoluciones seguidas; los legendarios al final. 0 = no vive en la región.
+func regional_number(identifier: String) -> int:
+	if _regional.is_empty():
+		_build_regional()
+	return int(_regional.get(identifier, 0))
+
+
+func regional_size() -> int:
+	if _regional.is_empty():
+		_build_regional()
+	return _regional.size()
+
+
+func _build_regional() -> void:
+	var start := Vector2(_world.layout.start)
+	var chain_distance := {}
+	for identifier: String in _home_areas:
+		var species := MenuStyle.species(identifier)
+		if species == null:
+			continue
+		for area: Vector3 in _home_areas[identifier]:
+			var d := Vector2(area.x, area.y).distance_to(start)
+			chain_distance[species.evolution_chain] = minf(float(chain_distance.get(species.evolution_chain, INF)), d)
+	var chains: Array = chain_distance.keys()
+	chains.sort_custom(func(a: int, b: int) -> bool: return float(chain_distance[a]) < float(chain_distance[b]))
+	var number := 0
+	for chain: int in chains:
+		for species: SpeciesData in _by_chain.get(chain, []):
+			if not _regional.has(species.identifier):
+				number += 1
+				_regional[species.identifier] = number
+	for species: SpeciesData in ALL_SPECIES.species:
+		if (species.is_legendary or species.is_mythical) and not _regional.has(species.identifier):
+			number += 1
+			_regional[species.identifier] = number
+
+
 ## Áreas donde vive la especie (Vector3(x, z, radio)); vacío si no tiene.
 func home_areas(identifier: String) -> Array[Vector3]:
 	var areas: Array[Vector3] = []
@@ -373,6 +415,11 @@ func spawn_one() -> PokemonActor:
 				water_mode = 1
 		var habitat := _world.habitat_at(point.x, point.z)
 		var species := pick_species(habitat, water_mode, zone, point)
+		# Arrecife: en el mar del sur salen nadadores propios del fondo.
+		if water_mode == 2 and _world.region_biome_at(point.x, point.z) == RegionLayout.Biome.SEA and _rng.randf() < 0.4:
+			var reef := MenuStyle.species(REEF_POOL[_rng.randi() % REEF_POOL.size()])
+			if reef != null and reef.swims:
+				species = reef
 		# Lugares con Pokémon propios (Zona Safari, ruinas) y eventos del mundo.
 		if water_mode == 0:
 			var special := special_pick(point)
@@ -412,9 +459,26 @@ func special_pick(point: Vector3) -> SpeciesData:
 			return pool[_rng.randi() % pool.size()]
 	if _world.structures != null:
 		var place := _world.structures.place_at(point.x, point.z, 50.0)
-		if not place.is_empty() and place["kind"] == "ruins" and _rng.randf() < 0.5:
-			return MenuStyle.species("unown")
+		if not place.is_empty():
+			var pool: Array = PLACE_POOLS.get(place["kind"], [])
+			var chance := 0.5 if place["kind"] == "ruins" else 0.6
+			if not pool.is_empty() and _rng.randf() < chance:
+				return MenuStyle.species(pool[_rng.randi() % pool.size()])
 	return null
+
+
+## Pokémon propios de algunos lugares (cerca de ellos).
+const PLACE_POOLS := {
+	"ruins": ["unown"],
+	"ranch": ["miltank", "mareep", "tauros", "ponyta", "wooloo", "skiddo", "mudbray", "lechonk"],
+	"grotto": ["carbink", "sableye", "zubat", "geodude", "roggenrola", "nosepass", "noibat"],
+	"berry_farm": ["combee", "cutiefly", "pichu", "bounsweet", "applin", "skwovet"],
+	"oasis": ["lotad", "marill", "maractus", "sandile", "trapinch", "cacnea"],
+	"power_plant": ["voltorb", "magnemite", "electrike"],
+	"tower": ["gastly", "litwick", "duskull"],
+}
+## Arrecife: nadadores del fondo del mar del sur.
+const REEF_POOL := ["corsola", "luvdisc", "clamperl", "relicanth", "mantine", "wailmer", "lanturn", "alomomola", "finneon", "staryu", "qwilfish"]
 
 
 ## Peso por el clima del momento (ver Weather): lluvia más Agua, nieve más Hielo…

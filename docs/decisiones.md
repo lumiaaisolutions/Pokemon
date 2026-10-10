@@ -68,3 +68,16 @@ Todas tomadas por Fernando el 2026-10-09, salvo las marcadas como *(Claude)*.
 - Recuadro de vida de los salvajes al estilo B2W2: nombre, etiqueta "PS" y barra de color.
 - Pokéballs: cruceta ↑↓ (teclado R / F) para cambiar de tipo; ícono, nombre, cantidad y efecto en el HUD; aviso si no quedan.
 - Mundo grande de 4 × 4 km por zonas, con muchos biomas, estructuras, interiores mixtos, monturas, vuelo libre y bicicleta. Ver [mundo grande](sistemas/mundo_grande.md).
+
+## 2026-10-10 — Mundo grande y cierre de pendientes (decisiones tomadas al implementar)
+- **Origen del mundo:** el mundo usa las coordenadas de la región (el centro es 0, 0) y el jugador empieza en la plaza del pueblo inicial; así los límites ±2,048 m sirven para todo.
+- **Semilla:** al azar en cada partida nueva, o escrita en la pantalla final de la selección; las pruebas usan la semilla 1.
+- **Zonas de 128 m:** 5 × 5 cercanas con colisión (2 m por celda) y hasta 13 × 13 lejanas (8 m), calculadas en hilos.
+- **Interiores lejos del mapa** (x = 20 km) en lugar de escenas aparte: reutilizan Pokémon, peleas y captura sin cambios. Las grutas pequeñas no tienen fundido (las grandes sí), como se decidió (interiores mixtos).
+- **Muros bajos en interiores** (estilo HD-2D) y sin choque con la cámara, para ver toda la sala.
+- **Retos de entrenador** (gimnasio, Liga, base criminal) con el sistema de peleas del mundo: un Pokémon a la vez, no se capturan.
+- **Licencias:** montar requiere 1 medalla o 2 actividades; volar, 3 medallas o 5 actividades (el plan decía "se desbloquean con misiones"). La bicicleta la da el profesor al hablarle.
+- **Mando:** el botón de montar va en cruceta ←; el zoom queda en cruceta → y da la vuelta (no había más botones libres).
+- **Idioma:** solo español (el juego está escrito en español); la opción queda para el futuro.
+- **Habitantes (2.7):** con los sprites de los 10 protagonistas teñidos; caminan pasando por la plaza.
+- **Pokédex regional:** por cercanía de cada línea evolutiva al pueblo inicial.

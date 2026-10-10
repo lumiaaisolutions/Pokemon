@@ -13,6 +13,8 @@ const NAMES := ["Despejado", "Nublado", "Lluvia", "Tormenta", "Nieve", "Ventisca
 const ICONS := ["☀", "☁", "☂", "⚡", "❄", "❄", "≋", "≋", "≡"]
 const SEASONS := ["Primavera", "Verano", "Otoño", "Invierno"]
 const SEASON_DAYS := 7
+## Color de cada estación para el pasto y el follaje.
+const SEASON_TINTS := [Color(1.0, 1.04, 1.0), Color(1.06, 1.03, 0.88), Color(1.15, 0.9, 0.65), Color(0.96, 1.0, 1.1)]
 const HOURS_PER_SLOT := 2.0
 ## Luz del sol y niebla extra por clima.
 const LIGHT := [1.0, 0.7, 0.55, 0.38, 0.7, 0.5, 0.6, 0.5, 0.65]
@@ -134,6 +136,7 @@ func _process(delta: float) -> void:
 	if forced >= 0 and not indoors:
 		kind = forced as Kind
 	current = kind
+	RenderingServer.global_shader_parameter_set("season_tint", SEASON_TINTS[season(GameState.game_day())])
 	flash = move_toward(flash, 0.0, delta * 8.0)
 	light_factor = move_toward(light_factor, LIGHT[kind], delta * 0.3)
 	fog_extra = move_toward(fog_extra, FOG[kind], delta * 0.004)

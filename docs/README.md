@@ -4,7 +4,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 
 ## Empezar
 - Jugar: `godot --path .` (o abrir el proyecto en Godot).
-- Pruebas: `tools/run_tests.sh` (unos 4 min; deben pasar todas antes de cada commit).
+- Pruebas: `tools/run_tests.sh` (unos 6 min, 10 pruebas; deben pasar todas antes de cada commit).
 - Regenerar datos y sprites: ver [herramientas.md](herramientas.md).
 
 ## Documentos
@@ -21,7 +21,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Sistema | Documento |
 |---|---|
 | Dirección de arte y assets | [sistemas/arte.md](sistemas/arte.md) |
-| Mundo (biomas, agua, vegetación, rendimiento) | [sistemas/mundo.md](sistemas/mundo.md) |
+| Mundo fijo de 480 m (versión anterior, referencia) | [sistemas/mundo.md](sistemas/mundo.md) |
 | Jugador, controles y cámara | [sistemas/jugador.md](sistemas/jugador.md) |
 | Pokémon salvajes (datos, aparición, IA, compañero) | [sistemas/pokemon_salvajes.md](sistemas/pokemon_salvajes.md) |
 | Legendarios | [sistemas/legendarios.md](sistemas/legendarios.md) |
@@ -29,9 +29,13 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Captura | [sistemas/captura.md](sistemas/captura.md) |
 | Mapa y minimapa | [sistemas/mapa.md](sistemas/mapa.md) |
 | Menú, mochila, Pokéballs, Pokédex, guardado y opciones (hecho) | [sistemas/mochila_y_pokedex.md](sistemas/mochila_y_pokedex.md) |
-| Personaje, menú, mochila, Pokédex, guardado y opciones (plan 2.9) | [sistemas/menu_y_personaje.md](sistemas/menu_y_personaje.md) |
-| Historia, caminos, tiempo, mundo aleatorio, curación y agua (plan) | [sistemas/historia_y_mundo_aleatorio.md](sistemas/historia_y_mundo_aleatorio.md) |
-| Mundo grande generado: 4 × 4 km, biomas, estructuras, interiores, monturas y vuelo (plan) | [sistemas/mundo_grande.md](sistemas/mundo_grande.md) |
+| Personaje, menú, mochila, Pokédex, guardado y opciones (2.9, hecho) | [sistemas/menu_y_personaje.md](sistemas/menu_y_personaje.md) |
+| Historia, caminos, tiempo, mundo aleatorio, curación y agua (hecho) | [sistemas/historia_y_mundo_aleatorio.md](sistemas/historia_y_mundo_aleatorio.md) |
+| Mundo grande generado: 4 × 4 km por zonas, 17 biomas, agua, lugares, navegación y mapa (hecho) | [sistemas/mundo_grande.md](sistemas/mundo_grande.md) |
+| Pueblos, lugares especiales, interiores, tienda, gimnasios, retos y MT (hecho) | [sistemas/pueblos_e_interiores.md](sistemas/pueblos_e_interiores.md) |
+| Clima por bioma, estaciones y eventos del mundo (hecho) | [sistemas/clima_y_eventos.md](sistemas/clima_y_eventos.md) |
+| Bicicleta, montura y vuelo (hecho) | [sistemas/montar_y_volar.md](sistemas/montar_y_volar.md) |
+| Habitantes con rutina, Fase 2.7 (hecho) | [sistemas/habitantes.md](sistemas/habitantes.md) |
 | Movimientos y crecimiento sin niveles (hecho) | [sistemas/movimientos_y_crecimiento.md](sistemas/movimientos_y_crecimiento.md) |
 | Combate y megaevolución (por hacer) | [sistemas/combate.md](sistemas/combate.md) |
 | Progresión, iniciales, misiones y entrenadores (por hacer) | [sistemas/progresion.md](sistemas/progresion.md) |

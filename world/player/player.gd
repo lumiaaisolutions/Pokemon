@@ -20,7 +20,11 @@ enum Mode { WALK, SWIM, DIVE, DOWNED }
 ## Cómo se desplaza en tierra: a pie, en bicicleta, montando a su compañero o volando sobre él.
 enum Ride { NONE, BIKE, MOUNT, FLY }
 
-const BIKE_SPEED_FACTOR := 1.7
+const BIKE_SPEED_FACTOR := 1.5
+## En caminos y pueblos la bicicleta rinde más.
+const BIKE_ROAD_FACTOR := 2.0
+## Pendiente máxima que suben los escaladores (Roca y Tierra) montados.
+const CLIMB_MAX_ANGLE := 68.0
 const FLY_SPEED := 15.0
 const FLY_FAST_SPEED := 24.0
 const FLY_CLIMB := 7.0
@@ -43,6 +47,7 @@ var ride: Ride = Ride.NONE
 ## Compañero que monta (en tierra o en el aire).
 var mount: PokemonActor
 var _bike: Sprite3D
+var _default_floor_angle := -1.0
 var health: float = 20.0
 var stamina: float = 100.0
 ## Segundos de aire que le quedan bajo el agua.
@@ -112,7 +117,9 @@ func _physics_process(delta: float) -> void:
 	_update_stamina(running, swimming and riding == null and input.length() > 0.1, delta)
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
 	if ride == Ride.BIKE and not swimming:
-		target_speed = config.run_speed * BIKE_SPEED_FACTOR
+		var on_road := _world != null and (_world.distance_to_paths(global_position.x, global_position.z) < 4.0 \
+				or not _world.settlement_at(global_position.x, global_position.z).is_empty())
+		target_speed = config.run_speed * (BIKE_ROAD_FACTOR if on_road else BIKE_SPEED_FACTOR)
 	elif ride == Ride.MOUNT and not swimming and mount != null:
 		target_speed = mount_speed(mount) * (1.25 if wants_run else 1.0)
 	if swimming and riding != null:
@@ -138,7 +145,7 @@ func _physics_process(delta: float) -> void:
 	elif is_on_floor():
 		velocity.y = 0.0
 		if Input.is_action_just_pressed("jump"):
-			if ride == Ride.MOUNT and mount != null and can_carry_flying(mount):
+			if ride == Ride.MOUNT and mount != null and can_carry_flying(mount) and GameState.world_flags.get("fly_license", false):
 				take_off()
 			else:
 				velocity.y = config.jump_velocity
@@ -529,6 +536,12 @@ static func can_mount(actor: PokemonActor) -> bool:
 	return actor.species.height_m >= 1.0 and not (water_only and not actor.can_fly())
 
 
+## ¿Sube paredes empinadas? (Roca o Tierra, o especies trepadoras)
+static func can_climb(actor: PokemonActor) -> bool:
+	return actor.species.types.has(PokemonTypes.Type.ROCK) or actor.species.types.has(PokemonTypes.Type.GROUND) \
+			or actor.species.identifier in ["sceptile", "lycanroc", "skiddo", "gogoat", "ariados", "galvantula"]
+
+
 ## ¿Puede volar llevándolo? (vuela y es lo bastante grande)
 static func can_carry_flying(actor: PokemonActor) -> bool:
 	return actor.can_fly() and actor.species.height_m >= 1.0
@@ -555,6 +568,10 @@ func start_mount(actor: PokemonActor) -> void:
 	mount = actor
 	ride = Ride.MOUNT
 	actor.set_ridden(self)
+	if _default_floor_angle < 0.0:
+		_default_floor_angle = floor_max_angle
+	if can_climb(actor):
+		floor_max_angle = deg_to_rad(CLIMB_MAX_ANGLE)
 	_update_ride_visuals()
 
 
@@ -572,6 +589,8 @@ func end_ride() -> void:
 		mount.global_position = global_position + _camera_relative(Vector2(1, 0)) * 1.5 + Vector3.UP * 0.2
 	mount = null
 	ride = Ride.NONE
+	if _default_floor_angle >= 0.0:
+		floor_max_angle = _default_floor_angle
 	_air_peak_y = global_position.y
 	_update_ride_visuals()
 

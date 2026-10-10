@@ -1,40 +1,45 @@
-# Mundo grande generado (plan)
+# Mundo grande generado
 
-[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **plan**. Complementa [historia y mundo aleatorio](historia_y_mundo_aleatorio.md).
+[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **hecho** (2026-10-10). Código: `world/region/`, `world/world_builder.gd`, `world/navigation/`, `ui/map/`. Complementa [historia y mundo aleatorio](historia_y_mundo_aleatorio.md), [pueblos e interiores](pueblos_e_interiores.md), [clima y eventos](clima_y_eventos.md) y [montar y volar](montar_y_volar.md).
 
-## Tamaño y generación
-- **4 × 4 km** (unas 70 veces el mundo actual de 480 m), generado con la **semilla** de la partida.
-- Se genera y carga **por zonas** alrededor del jugador: terreno, vegetación, Pokémon y estructuras aparecen y se descargan según la distancia, para que la Mac M1 no se trabe.
-- Límite: mar y cordillera (ya hecho para el mapa actual; se extiende al grande).
+## Tamaño, semilla y carga por zonas
+- **4 × 4 km** (unas 70 veces el mundo de 480 m). Cada partida nueva elige una **semilla** al azar (`GameState.world_seed`, se guarda); misma semilla, mismo mundo. Las pruebas usan la de `WorldConfig` (1).
+- `RegionLayout` (`world/region/region_layout.gd`) decide todo con funciones puras de (x, z): clima (temperatura y humedad), altura, bioma, ríos, lagos, pueblos, caminos y lugares. Tarda ~15 ms.
+- `WorldBuilder` construye **zonas de 128 m** alrededor del jugador:
+  - **Cercanas** (5 × 5 zonas): malla de 2 m con colisión, árboles y rocas con colisión, decoración, hierba alta, charcas y corales. 
+  - **Lejanas** (hasta 6 zonas según la calidad): malla de 8 m sin colisión y árboles de lejos.
+  - Los datos de cada zona se calculan en **hilos** (WorkerThreadPool); en el hilo principal solo se crean los nodos (1 cercana y 4 lejanas por cuadro). Al teletransportarse (portal, interior, carga) se construye de golpe con `ensure_area`.
+  - **Faldas** de 5 m en el borde de cada zona tapan las rendijas entre zonas de distinto detalle.
+- El inicio es la **plaza del pueblo inicial**. Arranque del mundo: ~2.7 s.
+- Interiores: desde `INTERIOR_X` (x ≥ 10 km) el mundo responde suelo plano en y = 0, sin agua y el hábitat del interior.
 
-## Biomas (además de pradera, bosque, pantano, montaña con nieve, río, lago y mar)
-- Desierto y cañón (dunas, oasis, roca roja, tormentas de arena).
-- Volcán (lava, ceniza, aguas termales) y tundra (glaciares, lagos congelados).
-- Selva tropical (árboles gigantes, cascadas) y archipiélago (islas a las que se llega surfeando).
-- Sabana (llanuras doradas con manadas) y campos de flores (Hada y Bicho).
-- Bosque de hongos (bioluminiscente de noche) y bosque oscuro (niebla; Fantasma y Siniestro).
-- Arrecife y fondo marino (corales, cuevas submarinas; Pokémon que solo viven bajo el agua).
-- Mesetas y cascadas (lagos colgantes; se suben escalando o volando).
-- Pantano tóxico y cementerio con Torre Pokémon.
-- **Clima por bioma** (lluvia, tormenta eléctrica, nieve, niebla, arena) que cambia qué Pokémon aparecen; **estaciones** opcionales que cambian el color del mundo.
+## Biomas (17)
+Pradera, Bosque, Montaña, Costa, Desierto, Cañón, Sabana, Selva, Tundra, Volcán, Campo de flores, Bosque de hongos, Bosque oscuro, Pantano, Pantano tóxico, Mesetas y Mar.
+- Temperatura más fría al norte y con la altura; la humedad y un ruido especial deciden la variante (oasis, flores, hongos, tóxico…).
+- Cada bioma tiene **familia de suelo** (pasto, bosque, roca, arena, pantano), **tinte**, **hábitat de Pokémon** y **afinidad de tipos** (desierto: Tierra ×4 y Agua ×0.05; volcán: Fuego ×8…).
+- Vegetación por bioma: árboles B2W2 y arte generado (`PropArt`): cactus, palmeras, acacias, hongos gigantes y **hongos luminosos que brillan de noche**, corales.
+- Mar al sur con **islas** (archipiélago) y **arrecife**: corales en el fondo y nadadores propios (Corsola, Luvdisc, Relicanth…).
+- **Mesetas** escalonadas y **cascadas** donde el río baja más de 1.2 m.
+- **Lagos congelados** en la tundra (hielo plano que se pisa) y **oasis** en el desierto.
+- Tierra adentro nunca queda bajo el nivel del mar.
+- Nieve por altura (salvo en biomas cálidos) y en toda la tundra. Las **estaciones** tiñen el pasto y el follaje ([clima](clima_y_eventos.md)).
 
-## Estructuras
-- Pueblos, ciudades, aldeas, granjas, ranchos (Miltank, Mareep), granjas de bayas, comerciantes en los caminos y campamentos.
-- **Ruinas ancestrales**: templos, pilares y altares con acertijos, Unown y entradas a mazmorras.
-- **Cuevas que conectan** zonas lejanas, minas abandonadas, grutas de cristal y lagos subterráneos.
-- **Ciudad subterránea**: alcantarillas bajo las ciudades, metro abandonado y bases secretas del equipo criminal.
-- **Lugares especiales**: torre antigua, mansión embrujada, central eléctrica, barco hundido, faro, laboratorio en ruinas y árbol gigante.
-- **Liga Pokémon** en una cima, a la que se llega por la **Calle Victoria**.
-- **Ruinas flotantes** y **portales de distorsión** a mapas extraños temporales.
-- **Zona Safari** (solo Safari Balls) y **guardería**.
-- **Zonas élite con Pokémon Alfa** (más grandes, ojos rojos y más fuertes) que custodian objetos raros.
-- **Eventos del mundo**: brotes masivos, lluvias de meteoros con fragmentos, Pokémon Dominantes y apariciones raras que avisa el Rotom Móvil.
+## Agua
+- Mar: un plano a nivel −1.5 m bajo todo el mundo; el terreno baja al sur.
+- 6 ríos que nacen en la montaña y bajan siguiendo la pendiente; si un río da vueltas en una hondonada, termina en un lago nuevo.
+- 9–15 lagos en hondonadas, oasis y finales de río; charcas en las zonas de pantano.
+- El borde del agua siempre queda bajo el terreno (prueba `test_world`, ~600 bordes).
 
-## Interiores (mezcla)
-- Cuevas cercanas a la superficie: sin pantalla de carga (espacios reales bajo el terreno; la cámara y la luz cambian).
-- Mazmorras grandes, edificios y alcantarillas: transición corta (fundido) a un interior separado.
+## Borde del mundo
+Cordillera exterior (norte, este y oeste) y mar abierto al sur, con colisión propia para la cámara; muros invisibles de 800 m en el borde; corriente que regresa a la costa.
 
-## Moverse
-- **Montar Pokémon** grandes (Rapidash, Mudsdale, Stoutland) para correr y escaladores para subir paredes; se desbloquean con misiones.
-- **Volar libremente**: controlas al Pokémon volador (Corviknight, Charizard…) en el cielo, viendo todo el mundo mientras vuelas, y vas a donde quieras.
-- **Bicicleta**: más rápida en caminos y ciudades.
+## Navegación y mapa
+- Navegación **horneada por zona** al construirse (terreno, árboles, edificios y lugares; el agua profunda se excluye), unida por los bordes; se libera con la zona. Los interiores tienen la suya.
+- Mapa de la región a **8 m por píxel** (512 px) calculado en un hilo y guardado en `user://map_<semilla>_v2.png`. Niebla de exploración guardada en la partida. Pueblos (rojo = ciudad) y lugares descubiertos con nombre. Ver [mapa](mapa.md).
+
+## Lugares de la región (por semilla)
+13 asentamientos (ciudades, pueblos, aldeas y cabañas) unidos por caminos y ~80 lugares: ruinas (5), cuevas por pares (8), santuarios (8 + la cumbre), torre con cementerio, mansión, central eléctrica, barcos hundidos (2), faros (2), laboratorio en ruinas, árbol milenario, Liga Pokémon con Calle Victoria, ruinas flotantes (2), portales (2), Zona Safari, guardería, aguas termales (4), territorios Alfa (8), fuentes (3), ranchos (3), huertos de bayas (3), minas (2), grutas de cristal (6), base secreta del equipo criminal, comerciantes en los caminos (4), oasis y volcanes (2). Qué hace cada uno: [pueblos e interiores](pueblos_e_interiores.md).
+
+## Rendimiento
+- Zona cercana: ~60 ms de cálculo en un hilo; instanciar ~3 ms. Caminar y volar no traban el cuadro.
+- Calidad (Opciones): baja/media/alta cambia la escala de render, sombras, MSAA y la distancia de dibujo (4, 5 o 6 zonas).

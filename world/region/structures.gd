@@ -18,6 +18,8 @@ const PLACE_NAMES := {
 	"giant_tree": "Árbol Milenario", "league": "Liga Pokémon", "floating_ruins": "Ruinas Flotantes", "portal": "Portal",
 	"safari": "Zona Safari", "daycare": "Guardería Pokémon", "hot_spring": "Aguas Termales", "alpha": "Territorio Alfa",
 	"fountain": "Fuente Sanadora", "volcano": "Volcán", "victory_road": "Calle Victoria",
+	"ranch": "Rancho", "berry_farm": "Huerto de Bayas", "mine": "Mina Abandonada", "grotto": "Gruta de Cristal",
+	"villain_base": "Base Secreta", "merchant": "Comerciante Viajero", "oasis": "Oasis",
 }
 const BUILDING_NAMES := {
 	"center": "Centro Pokémon", "mart": "Tienda Pokémon", "gym": "Gimnasio", "contest": "Sala de Concursos", "lab": "Laboratorio",
@@ -85,8 +87,11 @@ func _process(_delta: float) -> void:
 	var best: Dictionary = {}
 	var best_distance := INF
 	var walking := not (_player is Player) or (_player as Player).mode == Player.Mode.WALK
-	if walking:
+	var swimming := _player is Player and (_player as Player).mode in [Player.Mode.SWIM, Player.Mode.DIVE]
+	if walking or swimming:
 		for point in _points:
+			if swimming and not point.get("any_mode", false):
+				continue
 			var distance := (point["pos"] as Vector3).distance_to(_player.global_position)
 			if distance < float(point["radius"]) and distance < best_distance:
 				best_distance = distance
@@ -195,7 +200,7 @@ func _cylinder(parent: Node3D, radius: float, height: float, center: Vector3, co
 
 
 ## Techo a dos aguas: la cumbrera va a lo largo de X.
-func _roof(parent: Node3D, width: float, depth: float, height: float, base_y: float, color: Color) -> void:
+func _roof(parent: Node3D, width: float, depth: float, height: float, base_y: float, color: Color) -> MeshInstance3D:
 	var mesh := PrismMesh.new()
 	mesh.size = Vector3(depth + 0.6, height, width + 0.6)
 	var instance := MeshInstance3D.new()
@@ -205,6 +210,7 @@ func _roof(parent: Node3D, width: float, depth: float, height: float, base_y: fl
 	instance.material_override = _material(color)
 	instance.visibility_range_end = VIEW_DISTANCE
 	parent.add_child(instance)
+	return instance
 
 
 func _collider(parent: Node3D, size: Vector3, center: Vector3) -> StaticBody3D:
@@ -372,6 +378,12 @@ func _place(place: Dictionary) -> Node3D:
 				_collider(root, Vector3(1.2, height, 1.2), Vector3(cos(angle) * 6.0, height * 0.5, sin(angle) * 6.0))
 			_box(root, Vector3(3, 2.2, 0.6), Vector3(0, 1.1, 0), stone.darkened(0.3))
 			add_point(root.position + Vector3(0, 1, 1.2), "Leer las inscripciones", services.read_ruins.bind(place))
+			# Acertijo: tres piedras con símbolos; tocarlas en el orden de la inscripción.
+			for i in 3:
+				var angle := TAU * i / 3.0 + 0.5
+				var at := Vector3(cos(angle) * 3.5, 0.0, sin(angle) * 3.5)
+				_box(root, Vector3(0.9, 1.0, 0.9), at + Vector3(0, 0.5, 0), [Color(1.0, 0.8, 0.3), Color(0.6, 0.7, 1.0), Color(1.0, 1.0, 0.85)][i], 0.35)
+				add_point(root.position + at + Vector3.UP * 0.5, "Tocar la piedra del %s" % TownServices.RUIN_SYMBOLS[i], services.ruin_stone.bind(place, i), 1.6)
 		"cave", "victory_road":
 			_box(root, Vector3(9, 6, 4), Vector3(0, 3, 0), Color(0.42, 0.38, 0.34))
 			_box(root, Vector3(3.4, 3.4, 0.4), Vector3(0, 1.7, 2.05), Color(0.05, 0.04, 0.04))
@@ -393,6 +405,11 @@ func _place(place: Dictionary) -> Node3D:
 				_roof(root, size.x, size.z, 4.0, size.y, Color(0.25, 0.2, 0.25))
 			elif kind == "tower":
 				_cylinder(root, size.x * 0.6, 6.0, Vector3(0, size.y + 3.0, 0), color.darkened(0.3), 0.0, 6)
+				# Cementerio alrededor de la torre.
+				for i in 18:
+					var gx := rng.randf_range(-16.0, 16.0)
+					var gz := rng.randf_range(8.0, 22.0)
+					_box(root, Vector3(0.7, 1.0, 0.25), Vector3(gx, 0.5, gz), Color(0.55, 0.55, 0.58))
 			elif kind == "power_plant":
 				_cylinder(root, 1.4, 8.0, Vector3(size.x * 0.3, size.y + 4.0, 0), Color(0.55, 0.52, 0.5))
 				_box(root, Vector3(2, 1, 0.2), Vector3(0, size.y - 1.5, size.z * 0.5 + 0.1), Color(1.0, 0.85, 0.2), 0.8)
@@ -404,6 +421,9 @@ func _place(place: Dictionary) -> Node3D:
 			hull.rotation = Vector3(0.15, 0.4, 0.3)
 			var mast := _cylinder(root, 0.3, 10.0, Vector3(0, 6, 2), Color(0.35, 0.25, 0.16))
 			mast.rotation.z = 0.35
+			# Se explora nadando o buceando junto al casco.
+			var dive_point := add_point(Vector3(x, world.layout.sea_level - 0.5, z + 7.0), "Explorar el barco hundido", services.enter_interior.bind("shipwreck", {}, place), 4.0)
+			dive_point["any_mode"] = true
 		"lighthouse":
 			_cylinder(root, 3.0, 2.0, Vector3(0, 0.0, 0), stone)
 			for i in 5:
@@ -448,7 +468,7 @@ func _place(place: Dictionary) -> Node3D:
 			ring.material_override = _material(Color(0.7, 0.4, 1.0), 2.5)
 			root.add_child(ring)
 			_cylinder(root, 2.2, 0.05, Vector3(0, 3.0, 0), Color(0.5, 0.2, 0.9, 0.55), -1.0, 20).rotation.x = PI * 0.5
-			add_point(root.position + Vector3(0, 1.0, 0), "Cruzar el portal", services.portal.bind(place), 3.0)
+			add_point(root.position + Vector3(0, 1.0, 0), "Cruzar el portal", services.enter_interior.bind("distortion", {}, place), 3.0)
 		"safari":
 			for i in 24:
 				var angle := TAU * i / 24.0
@@ -482,6 +502,71 @@ func _place(place: Dictionary) -> Node3D:
 				var angle := TAU * i / 4.0 + 0.4
 				var post := _box(root, Vector3(0.6, 3.0, 0.6), Vector3(cos(angle) * 9.0, 1.5, sin(angle) * 9.0), Color(0.5, 0.15, 0.15))
 				post.material_override = _material(Color(0.75, 0.15, 0.15), 0.4)
+		"ranch":
+			for i in 28:
+				var angle := TAU * i / 28.0
+				_box(root, Vector3(0.25, 1.2, 3.6), Vector3(cos(angle) * 16.0, 0.6, sin(angle) * 16.0), Color(0.95, 0.95, 0.92)).rotation.y = -angle
+			_box(root, Vector3(9, 5, 7), Vector3(0, 2.5, -10), Color(0.75, 0.2, 0.18))
+			_roof(root, 9, 7, 2.5, 5.0, Color(0.3, 0.25, 0.22)).position.z = -10
+			_collider(root, Vector3(9, 6, 7), Vector3(0, 2.5, -10))
+			_sign(root, "RANCHO", Vector3(0, 8.2, -6.4), Color(1.0, 0.95, 0.8))
+			add_point(root.position + Vector3(0, 0.5, -5.6), "Comprar Leche Mu-mu ($500)", services.buy_milk)
+		"berry_farm":
+			for row in 4:
+				for col in 6:
+					var at := Vector3(-7.5 + col * 3.0, 0, -6 + row * 4.0)
+					_cylinder(root, 0.7, 1.0, at + Vector3(0, 0.5, 0), Color(0.25, 0.55, 0.25), 0.4, 8)
+					_box(root, Vector3(0.25, 0.25, 0.25), at + Vector3(0.3, 0.9, 0.2), [Color(0.3, 0.4, 1.0), Color(1.0, 0.5, 0.7), Color(1.0, 0.3, 0.3), Color(1.0, 0.9, 0.3)][(row + col) % 4], 0.3)
+			_sign(root, "HUERTO DE BAYAS", Vector3(0, 2.6, 9.5), Color(0.9, 1.0, 0.8))
+			for row in 4:
+				add_point(root.position + Vector3(0, 0.5, -6 + row * 4.0 + 1.6), "Cosechar bayas (fila %d)" % (row + 1), services.harvest.bind(place, row), 3.2)
+		"mine":
+			_box(root, Vector3(8, 5, 4), Vector3(0, 2.5, 0), Color(0.4, 0.33, 0.28))
+			_box(root, Vector3(3.6, 3.6, 0.3), Vector3(0, 1.8, 2.05), Color(0.05, 0.04, 0.04))
+			for side: float in [-1.0, 1.0]:
+				_box(root, Vector3(0.4, 4.0, 0.4), Vector3(side * 2.0, 2.0, 2.3), Color(0.5, 0.35, 0.2))
+			_box(root, Vector3(4.6, 0.4, 0.4), Vector3(0, 4.0, 2.3), Color(0.5, 0.35, 0.2))
+			_collider(root, Vector3(8, 5, 4), Vector3(0, 2.5, 0))
+			add_point(root.position + Vector3(0, 0.5, 3.6), "Entrar: %s" % title, services.enter_interior.bind("mine", {}, place))
+		"grotto":
+			# Gruta poco profunda sin pantalla de carga: paredes y techo de roca con cristales.
+			var rock := Color(0.38, 0.36, 0.42)
+			_box(root, Vector3(1.5, 4.0, 12.0), Vector3(-5.0, 2.0, 0), rock)
+			_box(root, Vector3(1.5, 4.0, 12.0), Vector3(5.0, 2.0, 0), rock)
+			_box(root, Vector3(11.5, 1.5, 1.5), Vector3(0, 2.0, -5.5), rock)
+			_box(root, Vector3(11.5, 1.2, 12.0), Vector3(0, 4.4, 0), rock)
+			for side: float in [-1.0, 1.0]:
+				_collider(root, Vector3(1.5, 4.0, 12.0), Vector3(side * 5.0, 2.0, 0))
+			_collider(root, Vector3(11.5, 4.0, 1.5), Vector3(0, 2.0, -5.5))
+			for i in 6:
+				var crystal := _box(root, Vector3(0.4, rng.randf_range(0.6, 1.4), 0.4), Vector3(rng.randf_range(-3.8, 3.8), 0.5, rng.randf_range(-4.5, 3.0)), [Color(0.6, 0.85, 1.0), Color(0.85, 0.6, 1.0)][i % 2], 1.5)
+				crystal.rotation.z = rng.randf_range(-0.4, 0.4)
+			var glow := OmniLight3D.new()
+			glow.light_color = Color(0.7, 0.8, 1.0)
+			glow.omni_range = 7.0
+			glow.position = Vector3(0, 2.0, -1.0)
+			root.add_child(glow)
+		"villain_base":
+			_box(root, Vector3(16, 3, 12), Vector3(0, -1.2, 0), stone.darkened(0.3))
+			_box(root, Vector3(14, 6, 10), Vector3(0, 3, 0), Color(0.22, 0.22, 0.26))
+			_collider(root, Vector3(14, 8, 10), Vector3(0, 3, 0))
+			_box(root, Vector3(2.4, 3, 0.2), Vector3(0, 1.5, 5.1), Color(0.6, 0.1, 0.1), 0.6)
+			_sign(root, GameState.villain_team.to_upper() if GameState.villain_team != "" else "PROHIBIDO EL PASO", Vector3(0, 7.2, 5.4), Color(1.0, 0.4, 0.4))
+			add_point(root.position + Vector3(0, 0.5, 6.4), "Infiltrarse en la base", services.enter_interior.bind("villain_base", {}, place))
+		"merchant":
+			_box(root, Vector3(3.0, 1.2, 1.8), Vector3(0, 0.9, 0), Color(0.6, 0.42, 0.25))
+			_box(root, Vector3(3.4, 0.15, 2.2), Vector3(0, 2.6, 0), Color(0.9, 0.3, 0.3))
+			for side: float in [-1.0, 1.0]:
+				_cylinder(root, 0.4, 0.15, Vector3(side * 1.2, 0.4, 1.0), Color(0.3, 0.2, 0.12)).rotation.x = PI * 0.5
+			_collider(root, Vector3(3.0, 2.0, 1.8), Vector3(0, 1.0, 0))
+			add_point(root.position + Vector3(0, 0.5, 2.0), "Ver lo que vende el comerciante", services.open_merchant.bind(place))
+		"oasis":
+			for i in 7:
+				var angle := TAU * i / 7.0 + rng.randf_range(-0.2, 0.2)
+				var px := cos(angle) * rng.randf_range(16.0, 22.0)
+				var pz := sin(angle) * rng.randf_range(16.0, 22.0)
+				var base := world.ground_base_height(x + px, z + pz, 1.0)
+				root.add_child(world._obstacle("Palm%d" % i, PropArt.texture("palm"), 1.0, 0.4, Vector3(px, base - y - 0.1, pz), Color.WHITE))
 		"volcano":
 			var top := Vector3(0, world.layout.base_height(x, z) - y + 2.0, 0)
 			var smoke := _steam(Color(0.35, 0.32, 0.3, 0.7))

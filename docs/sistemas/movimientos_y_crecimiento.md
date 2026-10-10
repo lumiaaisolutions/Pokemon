@@ -4,7 +4,7 @@
 
 ## Movimientos
 - Cada Pokémon lleva **4 movimientos** en cualquier mezcla de físicos, especiales y de estado. Empieza con los primeros de su lista por nivel (al menos uno de daño).
-- **Desbloqueo** sin niveles: cada 15 usos de movimientos se desbloquea el siguiente de su lista, y la investigación de su especie en niveles 3, 6 y 9 desbloquea uno más. Se equipan en el menú (Equipo: toca un espacio y luego el movimiento). Faltan las MT halladas en el mundo y los tutores (llegarán con los pueblos).
+- **Desbloqueo** sin niveles: cada 15 usos de movimientos se desbloquea el siguiente de su lista, y la investigación de su especie en niveles 3, 6 y 9 desbloquea uno más. Se equipan en el menú (Equipo: toca un espacio y luego el movimiento). Además: **MT** (18, una por tipo; en la Tienda 4 distintas por día y como tesoro en mazmorras) y **tutores** en casas de las ciudades ($2000, el siguiente de su lista). Ver [pueblos](pueblos_e_interiores.md).
 - **Sin PP:** cada movimiento tiene su espera según su potencia (0.8 a 3.6 s; los de estado 4 s).
 - **Dominio:** 3 rangos por usos (0, 20 y 60): potencia ×1 / ×1.15 / ×1.3 y espera ×1 / ×0.85 / ×0.7. Se avisa al subir.
 - **Estilos:** al usarlo, mantener correr = **Fuerte** (×1.35 de daño, ×1.6 de espera); mantener bucear = **Ágil** (×0.75 de daño, ×0.55 de espera).

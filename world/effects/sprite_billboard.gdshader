@@ -18,6 +18,11 @@ uniform float max_tilt = 50.0;
 // el agua al nadar) e inclinación extra hacia atrás en radianes (nadar buceando).
 // Tinte de la hora del día (noche más oscura y azul); ver world/day_night.gd.
 global uniform vec4 time_tint;
+global uniform vec4 season_tint;
+// 1 = brilla con luz propia (hongos luminosos, cristales): de noche no se oscurece.
+uniform float glow = 0.0;
+// 1 = follaje: toma el color de la estación.
+uniform float seasonal = 0.0;
 instance uniform float cut_bottom = -1000.0;
 instance uniform float extra_tilt = 0.0;
 
@@ -51,5 +56,8 @@ void fragment() {
 	if (COLOR.a < 0.99 && COLOR.a <= threshold) {
 		discard;
 	}
-	ALBEDO = texel.rgb * COLOR.rgb * tint.rgb * time_tint.rgb;
+	vec3 season = mix(vec3(1.0), season_tint.rgb, seasonal);
+	vec3 color = texel.rgb * COLOR.rgb * tint.rgb * season;
+	ALBEDO = color * mix(time_tint.rgb, vec3(1.0), glow);
+	EMISSION = color * glow * 0.6;
 }

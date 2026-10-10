@@ -31,3 +31,10 @@
 - `tools/snapshot.tscn`: captura una escena con el render real para revisar cómo se ve (`godot --path . tools/snapshot.tscn -- <escena> <salida.png> [cuadros] [personaje] [paso] [desmayo]`).
 - Otros assets de terceros solo con licencia CC0, registrados en `CREDITS.md`.
 - Recursos sugeridos por Fernando para más adelante: Kenney y KayKit (CC0), ambientCG (CC0); Poly Pizza y OpenGameArt (licencia variable); Sonniss GDC Audio (licencia propia, no es CC0).
+
+## Arte generado para el mundo grande (2026-10-10)
+- `PropArt` (`world/region/prop_art.gd`): cactus, palmera, hongo gigante, hongo luminoso (brilla de noche), acacia y corales, con contorno oscuro estilo B2W2.
+- Edificios y lugares con piezas de colores (cajas, prismas y cilindros) en `Structures`: techos rojos del Centro, azules de la Tienda, gimnasios del color de su tipo.
+- Sprites de MT, Safari Ball, Leche Mu-mu y fósiles desde el paquete de íconos (`sprites/itemicons/`).
+- Uniformes globales: `time_tint` (hora) y `season_tint` (estación) para el pasto, la hierba alta y el follaje; los sprites tienen `glow` (luz propia) y `seasonal` (follaje).
+- Bicicleta pixel art generada (`Player._bike_texture`).

@@ -31,6 +31,8 @@ uniform float rock_height = 45.0;
 uniform float snow_height = 62.0;
 uniform vec3 snow_color = vec3(0.9, 0.94, 1.0);
 
+global uniform vec4 season_tint;
+
 varying vec3 world_pos;
 varying vec3 world_normal;
 varying vec4 families;
@@ -92,6 +94,10 @@ void fragment() {
 		color = tiled(beach_sand, meters);
 	}
 	color *= tint;
+	// La estación tiñe el pasto y el bosque (otoño anaranjado, invierno pálido).
+	if (family <= 1) {
+		color *= season_tint.rgb;
+	}
 	// Nieve: por altura (salvo en biomas cálidos, extras.b < 0) o por el bioma (tundra).
 	if ((world_pos.y + dither * 2.5 > snow_height && extras.b > -0.5) || extras.b + dither * 0.3 > 0.5) {
 		vec3 rock = tiled(mountain_grass_light, meters);

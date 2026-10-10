@@ -35,6 +35,12 @@ func _ready() -> void:
 	events.player_path = NodePath("../Player")
 	events.spawner_path = NodePath("../Spawner")
 	add_child(events)
+	# Habitantes de los pueblos con rutina (Fase 2.7).
+	var npcs := TownNPCs.new()
+	npcs.name = "TownNPCs"
+	npcs.world_path = NodePath("../World")
+	npcs.player_path = NodePath("../Player")
+	add_child(npcs)
 	# Menú (Esc / Options) en su propia capa, sobre el HUD.
 	var menu_layer := CanvasLayer.new()
 	menu_layer.name = "MenuLayer"
@@ -286,11 +292,16 @@ func toggle_ride() -> String:
 			var was_bike := _player.ride == Player.Ride.BIKE
 			_player.end_ride()
 			message = "Te bajaste de la bicicleta." if was_bike else "Te bajaste de %s." % companion.species.display_name
-	elif companion != null and companion_state == CompanionState.OUT and not companion.controlled and not _busy and Player.can_mount(companion):
+	elif companion != null and companion_state == CompanionState.OUT and not companion.controlled and not _busy and Player.can_mount(companion) \
+			and GameState.world_flags.get("ride_license", false):
 		_player.start_mount(companion)
-		message = "¡Montas a %s!%s" % [companion.species.display_name,
-				(" Salta (%s) para volar." % InputHints.hint("jump")) if Player.can_carry_flying(companion) else ""]
+		var flies: bool = Player.can_carry_flying(companion) and GameState.world_flags.get("fly_license", false)
+		message = "¡Montas a %s!%s%s" % [companion.species.display_name,
+				(" Salta (%s) para volar." % InputHints.hint("jump")) if flies else "",
+				" Puede subir paredes empinadas." if Player.can_climb(companion) else ""]
 		Achievements.add("rides")
+	elif companion != null and companion_state == CompanionState.OUT and Player.can_mount(companion) and not GameState.world_flags.get("ride_license", false):
+		message = "Aún no tienes la Licencia de Montura: pídesela al Prof. %s (1 medalla o 2 actividades del Rotom)." % GameState.professor
 	elif GameState.item_count("bicycle") > 0:
 		message = _player.toggle_bicycle()
 	elif companion != null and companion_state == CompanionState.OUT:

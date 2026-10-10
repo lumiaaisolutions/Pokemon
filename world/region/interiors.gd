@@ -25,15 +25,21 @@ const POOLS := {
 	"power_plant": ["magnemite", "voltorb", "electabuzz", "pikachu", "elekid", "rotom", "tynamo", "joltik", "pichu"],
 	"lab_ruins": ["porygon", "abra", "ditto", "natu", "solosis", "beldum", "elgyem", "grimer"],
 	"victory_road": ["machoke", "graveler", "onix", "golbat", "marowak", "rhyhorn", "sandslash", "lairon", "boldore", "tyranitar"],
+	"mine": ["geodude", "roggenrola", "drilbur", "nosepass", "carbink", "rolycoly", "aron", "onix", "diglett"],
+	"villain_base": ["koffing", "grimer", "zubat", "houndour", "murkrow", "sneasel", "purrloin", "trubbish", "stunky"],
+	"distortion": ["gastly", "misdreavus", "sableye", "spiritomb", "porygon", "baltoy", "chimecho", "sigilyph", "dreepy", "drifloon"],
+	"shipwreck": ["frillish", "tentacool", "shellder", "chinchou", "relicanth", "clamperl", "sandygast", "dhelmise", "pyukumuku"],
 }
-const HABITATS := {"cave": SpeciesData.Habitat.MOUNTAIN, "sewer": SpeciesData.Habitat.SWAMP, "victory_road": SpeciesData.Habitat.MOUNTAIN}
+const HABITATS := {"cave": SpeciesData.Habitat.MOUNTAIN, "sewer": SpeciesData.Habitat.SWAMP, "victory_road": SpeciesData.Habitat.MOUNTAIN,
+		"mine": SpeciesData.Habitat.MOUNTAIN, "shipwreck": SpeciesData.Habitat.SEA}
 const FLOORS := {
 	"center": Color(0.95, 0.85, 0.85), "mart": Color(0.85, 0.9, 0.95), "house": Color(0.75, 0.6, 0.45), "cabin": Color(0.6, 0.45, 0.3),
 	"lab": Color(0.92, 0.92, 0.92), "gym": Color(0.6, 0.6, 0.65), "contest": Color(0.95, 0.8, 0.88), "league": Color(0.7, 0.68, 0.85),
 	"cave": Color(0.4, 0.36, 0.32), "sewer": Color(0.35, 0.38, 0.35), "tower": Color(0.42, 0.38, 0.48), "mansion": Color(0.4, 0.3, 0.3),
 	"power_plant": Color(0.55, 0.55, 0.5), "lab_ruins": Color(0.7, 0.7, 0.72), "victory_road": Color(0.45, 0.4, 0.36),
+	"mine": Color(0.45, 0.38, 0.3), "villain_base": Color(0.25, 0.25, 0.3), "distortion": Color(0.35, 0.2, 0.45), "shipwreck": Color(0.35, 0.28, 0.22),
 }
-const DUNGEONS := ["cave", "sewer", "tower", "mansion", "power_plant", "lab_ruins", "victory_road"]
+const DUNGEONS := ["cave", "sewer", "tower", "mansion", "power_plant", "lab_ruins", "victory_road", "mine", "villain_base", "distortion", "shipwreck"]
 
 var structures: Structures
 var services: TownServices
@@ -76,7 +82,12 @@ func _set_indoor_look(inside: bool, dungeon: bool) -> void:
 	environment.background_mode = Environment.BG_COLOR if inside else Environment.BG_SKY
 	environment.background_color = Color(0.03, 0.03, 0.05)
 	environment.fog_enabled = not inside
-	DayNight.interior_light = (0.35 if dungeon else 0.85) if inside else 1.0
+	DayNight.interior_light = (0.35 if dungeon else 0.6) if inside else 1.0
+	# Cámara más alta y lejana adentro, para ver toda la sala.
+	var rig := structures.world.get_parent().get_node_or_null("CameraRig") as CameraRig
+	if rig != null and inside:
+		rig.set("_zoom", rig.zoom_max)
+		rig.set("_pitch_deg", 52.0)
 
 
 func _fade_to(alpha: float, seconds: float = 0.3) -> void:
@@ -108,7 +119,6 @@ func enter(kind: String, settlement: Dictionary, data: Dictionary, return_point:
 	services.navigation_bake_interior(root)
 	services.move_party_to(spawn)
 	entered.emit(kind)
-	GameState.notice.emit(_title(kind, settlement, data))
 	await _fade_to(0.0)
 	busy = false
 
@@ -208,7 +218,8 @@ func _light(parent: Node3D, at: Vector3, color: Color, range_m: float, energy: f
 func _room_shell(root: Node3D, size: Vector2, floor_color: Color, wall_color: Color) -> void:
 	_block(root, Vector3(size.x + 2, 1.0, size.y + 2), Vector3(0, -0.5, 0), floor_color, true, 0.0, WorldBuilder.LAYER_TERRAIN)
 	_block(root, Vector3(size.x + 2, WALL_H, 1), Vector3(0, WALL_H * 0.5, -size.y * 0.5 - 0.5), wall_color)
-	_block(root, Vector3(size.x + 2, WALL_H, 1), Vector3(0, WALL_H * 0.5, size.y * 0.5 + 0.5), wall_color)
+	# El muro del lado de la entrada (hacia la cámara) es bajo para no tapar la sala.
+	_block(root, Vector3(size.x + 2, 0.7, 1), Vector3(0, 0.35, size.y * 0.5 + 0.5), wall_color)
 	_block(root, Vector3(1, WALL_H, size.y + 2), Vector3(-size.x * 0.5 - 0.5, WALL_H * 0.5, 0), wall_color)
 	_block(root, Vector3(1, WALL_H, size.y + 2), Vector3(size.x * 0.5 + 0.5, WALL_H * 0.5, 0), wall_color)
 	_light(root, Vector3(0, 4.5, 0), Color(1.0, 0.95, 0.85), maxf(size.x, size.y) * 1.2, 1.6)
@@ -272,6 +283,10 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			var resident: String = PlayerCharacters.LIST[rng.randi() % PlayerCharacters.LIST.size()]["id"]
 			_npc(root, Vector3(-3.4, 0, -0.5), resident)
 			_point(Vector3(-3.4, 0.5, 0.8), "Hablar", services.talk_resident.bind(settlement, building))
+			# En las ciudades, algunas casas son de tutores de movimientos.
+			if settlement.get("kind", "") == "city" and int(building.get("color", 0)) % 2 == 0:
+				_npc(root, Vector3(2.6, 0, -1.5), PlayerCharacters.LIST[(rng.randi() + 3) % PlayerCharacters.LIST.size()]["id"])
+				_point(Vector3(2.6, 0.5, -0.2), "Tutor de movimientos ($%d)" % TownServices.TUTOR_PRICE, services.tutor)
 		"lab":
 			for i in 3:
 				_block(root, Vector3(3.0, 1.0, 1.2), Vector3(-5 + i * 5, 0.5, back + 1.5), Color(0.85, 0.88, 0.92))
@@ -340,7 +355,8 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 				_block(root, Vector3(CELL, h, CELL), to_local.call(c) + Vector3(0, h * 0.5, 0), wall_color)
 	# Luces a lo largo del recorrido.
 	var light_color: Color = {"sewer": Color(0.6, 1.0, 0.6), "tower": Color(0.7, 0.6, 1.0), "mansion": Color(1.0, 0.7, 0.5),
-			"power_plant": Color(1.0, 0.95, 0.6), "lab_ruins": Color(0.7, 0.9, 1.0)}.get(kind, Color(1.0, 0.85, 0.6))
+			"power_plant": Color(1.0, 0.95, 0.6), "lab_ruins": Color(0.7, 0.9, 1.0), "villain_base": Color(1.0, 0.3, 0.3),
+			"distortion": Color(0.8, 0.3, 1.0), "shipwreck": Color(0.4, 0.7, 1.0)}.get(kind, Color(1.0, 0.85, 0.6))
 	var index := 0
 	for c: Vector2i in open:
 		index += 1
@@ -357,8 +373,10 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 	var far_exit := _far_exit(kind, place)
 	var exit_local: Vector3 = to_local.call(exit_cell)
 	_block(root, Vector3(2.4, 0.05, 1.4), exit_local + Vector3(0, 0.02, -CELL * 0.35), Color(0.4, 0.75, 0.9), false, 0.5)
+	if kind == "villain_base":
+		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35 + 1.5), "Enfrentar al jefe del %s" % GameState.villain_team, services.villain_challenge.bind(ORIGIN + exit_local + Vector3(0, 0.3, 2.5)), 2.0)
 	if far_exit != Vector3.INF:
-		var label := "Salida al otro lado" if kind != "victory_road" else "Salir frente a la Liga Pokémon"
+		var label: String = {"victory_road": "Salir frente a la Liga Pokémon", "distortion": "Salir por el otro portal"}.get(kind, "Salida al otro lado")
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), label, func() -> void: exit_to(far_exit), 1.8)
 	else:
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), "Salir", func() -> void: exit_to(current["return"]), 1.8)
@@ -387,6 +405,16 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 ## Adónde sale la otra boca: la cueva pareja o la Liga (Calle Victoria).
 func _far_exit(kind: String, place: Dictionary) -> Vector3:
 	var target: Dictionary = {}
+	if kind == "distortion":
+		for other: Dictionary in structures.world.layout.places_of("portal"):
+			if other["id"] != place.get("id", -1):
+				target = other
+				break
+		if not target.is_empty():
+			var px := float(target["x"]) + 3.5
+			var pz := float(target["z"])
+			return Vector3(px, structures.world.height_at(px, pz) + 0.5, pz)
+		return Vector3.INF
 	if kind == "victory_road":
 		var leagues := structures.world.layout.places_of("league")
 		if not leagues.is_empty():
