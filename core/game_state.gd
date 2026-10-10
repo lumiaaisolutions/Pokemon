@@ -284,7 +284,8 @@ func mark_seen(identifier: String) -> void:
 
 ## Suma uno a un contador de la Pokédex ("caught", "behind", "stunned", "fights").
 func dex_count(identifier: String, key: String) -> void:
-	dex_entry(identifier)[key] += 1
+	var entry := dex_entry(identifier)
+	entry[key] = int(entry.get(key, 0)) + 1
 	if key == "behind":
 		Achievements.add("behind")
 	dex_changed.emit(identifier)

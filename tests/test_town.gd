@@ -15,6 +15,8 @@ var _services: TownServices
 
 
 func _ready() -> void:
+	# Combate en arena apagado: esta prueba revisa las peleas en el mundo (ver test_battle).
+	BattleManager.enabled = false
 	GameState.party.clear()
 	GameState.box.clear()
 	GameState.bag = Items.starting_bag()

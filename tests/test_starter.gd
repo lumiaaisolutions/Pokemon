@@ -11,6 +11,8 @@ var _player: Player
 
 
 func _ready() -> void:
+	# Combate en arena apagado: esta prueba revisa las peleas en el mundo (ver test_battle).
+	BattleManager.enabled = false
 	GameState.party.clear()
 	_main = MAIN_SCENE.instantiate() as Node3D
 	add_child(_main)

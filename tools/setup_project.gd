@@ -109,7 +109,9 @@ func _setup_input_map() -> void:
 	# Explorando: saltar (en combate, el mismo botón es la esquiva). Bucear: bajar al nadar.
 	_action("jump", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])
 	_action("dive", [_key(KEY_CTRL), _button(JOY_BUTTON_LEFT_SHOULDER)])
-	_action("menu", [_key(KEY_ESCAPE), _button(JOY_BUTTON_START)])
+	# Menú con I (Esc solo libera el mouse); B abre directo la Mochila.
+	_action("menu", [_key(KEY_I), _button(JOY_BUTTON_START)])
+	_action("bag", [_key(KEY_B)])
 	_action("map", [_key(KEY_M), _button(JOY_BUTTON_BACK)])
 	# Meter o sacar al compañero de su Pokéball (explorando).
 	_action("companion", [_key(KEY_Q), _button(JOY_BUTTON_Y)])

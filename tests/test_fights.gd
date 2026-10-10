@@ -14,6 +14,8 @@ var _spawner: WildSpawner
 
 
 func _ready() -> void:
+	# Combate en arena apagado: esta prueba revisa las peleas en el mundo (ver test_battle).
+	BattleManager.enabled = false
 	_main = MAIN_SCENE.instantiate() as Node3D
 	# Sin ceremonia del inicial: compañero al azar (la ceremonia se prueba en test_starter).
 	_main.set("starter_ceremony", false)

@@ -14,6 +14,8 @@ var _spawner: WildSpawner
 
 
 func _ready() -> void:
+	# Combate en arena apagado: esta prueba revisa las peleas en el mundo (ver test_battle).
+	BattleManager.enabled = false
 	_main = MAIN_SCENE.instantiate() as Node3D
 	# Sin ceremonia del inicial: compañero al azar (la ceremonia se prueba en test_starter).
 	_main.set("starter_ceremony", false)
@@ -207,7 +209,8 @@ func _run() -> void:
 		legend.contact_with_player.connect(func(_a: PokemonActor) -> void: contacted[0] = true)
 		await _frames(10)
 		# El jugador corre hacia él: lo oye o lo ve, muestra "?" y escapa sin atacar.
-		_player.global_position = legend.global_position + Vector3(0, 0.5, 3.0)
+		# Desde un costado: detrás del legendario está el santuario (modelo con colisión).
+		_player.global_position = legend.global_position + Vector3(3.0, 0.5, 0.0)
 		await _frames(20)
 		_check(legend.state == PokemonActor.State.NOTICE or legend.state == PokemonActor.State.ESCAPE, "el legendario debe notar al jugador (estado %d)" % legend.state)
 		_check((legend.get_node("QuestionMark") as Sprite3D).visible, "debe mostrar el signo de interrogación")

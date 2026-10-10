@@ -35,6 +35,7 @@ var _points: Array[Dictionary] = []
 var _nearest: Dictionary = {}
 var _materials := {}
 var _player: Node3D
+var _door_cooldown := 0.0
 
 
 func build(builder: WorldBuilder) -> void:
@@ -60,8 +61,8 @@ func build(builder: WorldBuilder) -> void:
 
 # --- Interacción --------------------------------------------------------------------
 
-func add_point(pos: Vector3, prompt: String, action: Callable, radius: float = INTERACT_RADIUS) -> Dictionary:
-	var point := {"pos": pos, "radius": radius, "prompt": prompt, "action": action}
+func add_point(pos: Vector3, prompt: String, action: Callable, radius: float = INTERACT_RADIUS, inward: Vector3 = Vector3.ZERO) -> Dictionary:
+	var point := {"pos": pos, "radius": radius, "prompt": prompt, "action": action, "inward": inward}
 	_points.append(point)
 	return point
 
@@ -99,12 +100,22 @@ func _process(_delta: float) -> void:
 	if best != _nearest:
 		_nearest = best
 		prompt_changed.emit("" if best.is_empty() else InputHints.label("interact", best["prompt"]))
+	# Puertas: también se entra caminando hacia ellas (como en los juegos).
+	_door_cooldown = maxf(_door_cooldown - _delta, 0.0)
+	if not best.is_empty() and walking and _door_cooldown <= 0.0 and (best["inward"] as Vector3) != Vector3.ZERO and _player is Player:
+		var velocity := (_player as Player).velocity
+		velocity.y = 0.0
+		if velocity.length() > 1.0 and velocity.normalized().dot(best["inward"]) > 0.7 and best_distance < 1.4:
+			_door_cooldown = 2.5
+			print("[Interacción] Puerta: ", best["prompt"])
+			(best["action"] as Callable).call()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _nearest.is_empty() and event.is_action_pressed("interact") and not get_tree().paused:
 		get_viewport().set_input_as_handled()
 		var action: Callable = _nearest["action"]
+		print("[Interacción] ", _nearest["prompt"])
 		action.call()
 
 
@@ -308,6 +319,24 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		_collider(root, Vector3(w * 0.8, 2.4, d), Vector3(0, 1.2, 0))
 		add_point(door_world + Vector3.UP * 0.5, "Descansar en la carpa (hasta la mañana)", services.rest.bind(door_world), 2.4)
 		return root
+	var inward := -Vector3(to_center.x, 0, to_center.y)
+	# Modelo de B2W2 si existe para este tipo de edificio.
+	var model := BuildingModels.instance(kind, int(building["color"]) + int(absf(x)))
+	if not model.is_empty():
+		var size: Vector3 = model["size"]
+		root.add_child(model["node"])
+		_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, 0), Color(0.62, 0.6, 0.57))
+		_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.82), Vector3(0, size.y * 0.5, -size.z * 0.06))
+		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
+		var model_title: String = BUILDING_NAMES[kind]
+		if kind == "gym":
+			model_title = "Gimnasio de %s (tipo %s)" % [settlement["name"], MenuStyle.TYPE_NAMES[_gym_type(settlement)]]
+		if kind in ["mart", "gym", "contest", "lab"]:
+			_sign(root, model_title, Vector3(0, size.y + 0.8, size.z * 0.5))
+		_decorate(root, kind, size, settlement, building)
+		if kind in ["center", "mart", "lab", "house", "cabin", "contest", "gym"]:
+			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
+		return root
 	# Cimiento (cubre desniveles) y cuerpo.
 	_box(root, Vector3(w + 0.6, 3.0, d + 0.6), Vector3(0, -1.3, 0), Color(0.6, 0.58, 0.55))
 	_box(root, Vector3(w, wall_h, d), Vector3(0, wall_h * 0.5, 0), walls)
@@ -339,10 +368,75 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 	var prompt := "Entrar: %s" % title
 	match kind:
 		"center", "mart", "lab", "house", "cabin", "contest", "gym":
-			add_point(door_world + Vector3.UP * 0.5, prompt, services.enter_interior.bind(kind, settlement, building))
+			add_point(door_world + Vector3.UP * 0.5, prompt, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		"tower_small":
 			add_point(door_world + Vector3.UP * 0.5, "Subir a la torre (vista del mapa)", services.reveal_area.bind(root.position, 600.0))
 	return root
+
+
+## Decoración alrededor de un edificio (estilo B2W2): flores a los lados de la puerta,
+## arbustos en las esquinas, farol junto a la entrada, cerca de jardín en las casas y
+## buzón. Todo fijo por la semilla.
+func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary, building: Dictionary) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([float(building["x"]), float(building["z"]), world.layout.seed])
+	var front := size.z * 0.5
+	var flowers: Array = [load("res://art/world/b2w2/flowers_yellow.png"), load("res://art/world/b2w2/flower_bush_pink.png"), load("res://art/world/b2w2/lavender.png")]
+	var bush: Texture2D = load("res://art/world/b2w2/bush.png")
+	# Flores a los lados de la puerta.
+	for side: float in [-1.0, 1.0]:
+		var texture: Texture2D = flowers[rng.randi() % flowers.size()]
+		for i in 3:
+			_decor_sprite(root, texture, Vector3(side * (1.4 + i * 0.7), 0.0, front + 0.6))
+	# Arbustos en las esquinas.
+	for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+		if rng.randf() < 0.7:
+			_decor_sprite(root, bush, Vector3(corner.x * (size.x * 0.5 + 0.8), 0.0, corner.y * (size.z * 0.5 + 0.5)))
+	# Farol junto a la entrada (modelo de B2W2 si está).
+	var lamp := BuildingModels.instance("lamp", rng.randi())
+	if not lamp.is_empty() and kind in ["center", "mart", "gym", "lab", "contest", "house"]:
+		var node: Node3D = lamp["node"]
+		node.position = Vector3(2.6 if rng.randf() < 0.5 else -2.6, 0.0, front + 1.6)
+		root.add_child(node)
+		_collider(root, Vector3(0.4, 3.0, 0.4), node.position + Vector3(0, 1.5, 0))
+		var light := OmniLight3D.new()
+		light.light_color = Color(1.0, 0.85, 0.55)
+		light.omni_range = 7.0
+		light.light_energy = 0.0
+		light.position = node.position + Vector3(0, (lamp["size"] as Vector3).y, 0)
+		light.add_to_group(&"night_lights")
+		root.add_child(light)
+	# Casas: cerca de jardín al frente y buzón.
+	if kind in ["house", "cabin"]:
+		var fence := BuildingModels.instance("fence", 0)
+		if not fence.is_empty():
+			var fence_size: Vector3 = fence["size"]
+			var steps := int((size.x + 3.0) / maxf(fence_size.x, 0.5))
+			for i in steps:
+				var fx := -size.x * 0.5 - 1.5 + (i + 0.5) * fence_size.x
+				if absf(fx) < 1.4:
+					continue # Hueco del camino a la puerta.
+				var piece := BuildingModels.instance("fence", 0)
+				var piece_node: Node3D = piece["node"]
+				piece_node.position = Vector3(fx, 0.0, front + 2.6)
+				root.add_child(piece_node)
+		_box(root, Vector3(0.12, 1.0, 0.12), Vector3(1.8, 0.5, front + 2.2), Color(0.45, 0.3, 0.2))
+		_box(root, Vector3(0.5, 0.35, 0.35), Vector3(1.8, 1.1, front + 2.2), [Color(0.85, 0.25, 0.25), Color(0.25, 0.45, 0.85)][rng.randi() % 2])
+
+
+func _decor_sprite(root: Node3D, texture: Texture2D, at: Vector3) -> void:
+	if texture == null:
+		return
+	var sprite := Sprite3D.new()
+	sprite.texture = texture
+	sprite.pixel_size = world.config.pixel_size
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.layers = WorldBuilder.VISUAL_LAYER_SPRITES
+	SpriteMaterials.apply(sprite)
+	sprite.material_override = SpriteMaterials.for_texture(texture)
+	sprite.position = at
+	sprite.visibility_range_end = 160.0
+	root.add_child(sprite)
 
 
 ## Tipo del gimnasio de una ciudad (fijo por semilla y nombre).
@@ -368,6 +462,40 @@ func _place(place: Dictionary) -> Node3D:
 	rng.seed = int(place["id"]) * 7919 + world.layout.seed
 	var stone := Color(0.62, 0.6, 0.56)
 	var title := place_title(place)
+	# Modelo de B2W2 del lugar (torre, mansión, faro, ruinas, santuario, invernadero).
+	if kind in ["tower", "mansion", "lighthouse", "ruins", "sanctuary", "berry_farm"]:
+		var model := BuildingModels.instance(kind, int(place["id"]))
+		if not model.is_empty():
+			var size: Vector3 = model["size"]
+			var node: Node3D = model["node"]
+			node.position.z = -10.0 if kind == "berry_farm" else 0.0
+			root.add_child(node)
+			_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, node.position.z), stone.darkened(0.2))
+			_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.85), Vector3(0, size.y * 0.5, node.position.z))
+			match kind:
+				"tower", "mansion":
+					for i in (18 if kind == "tower" else 6):
+						_box(root, Vector3(0.7, 1.0, 0.25), Vector3(rng.randf_range(-16.0, 16.0), 0.5, rng.randf_range(size.z * 0.5 + 3.0, size.z * 0.5 + 14.0)), Color(0.55, 0.55, 0.58))
+					add_point(root.position + Vector3(0, 0.5, size.z * 0.5 + 1.2), "Entrar: %s" % title, services.enter_interior.bind(kind, {}, place), INTERACT_RADIUS, Vector3(0, 0, -1))
+					return root
+				"lighthouse":
+					var beacon := OmniLight3D.new()
+					beacon.position = Vector3(0, size.y - 1.0, 0)
+					beacon.omni_range = 40.0
+					beacon.light_color = Color(1.0, 0.92, 0.6)
+					root.add_child(beacon)
+					return root
+				"ruins":
+					add_point(root.position + Vector3(0, 1, size.z * 0.5 + 1.2), "Leer las inscripciones", services.read_ruins.bind(place))
+					for i in 3:
+						var angle := TAU * i / 3.0 + 0.5
+						var at := Vector3(cos(angle) * (size.x * 0.5 + 3.0), 0.0, sin(angle) * (size.z * 0.5 + 3.0))
+						_box(root, Vector3(0.9, 1.0, 0.9), at + Vector3(0, 0.5, 0), [Color(1.0, 0.8, 0.3), Color(0.6, 0.7, 1.0), Color(1.0, 1.0, 0.85)][i], 0.35)
+						add_point(root.position + at + Vector3.UP * 0.5, "Tocar la piedra del %s" % TownServices.RUIN_SYMBOLS[i], services.ruin_stone.bind(place, i), 1.6)
+					return root
+				"sanctuary":
+					return root
+		# Si no hay modelo, se arma con piezas (abajo).
 	match kind:
 		"ruins":
 			_box(root, Vector3(14, 0.6, 14), Vector3(0, 0.0, 0), stone.darkened(0.15))

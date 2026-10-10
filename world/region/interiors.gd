@@ -101,6 +101,7 @@ func enter(kind: String, settlement: Dictionary, data: Dictionary, return_point:
 	if busy or not current.is_empty():
 		return
 	busy = true
+	AudioBus.play_sfx("door")
 	await _fade_to(1.0)
 	var root := Node3D.new()
 	root.name = "Interior_%s" % kind
@@ -128,6 +129,7 @@ func exit_to(point: Vector3) -> void:
 	if busy or current.is_empty():
 		return
 	busy = true
+	AudioBus.play_sfx("door")
 	await _fade_to(1.0)
 	_cleanup()
 	structures.world.ensure_area(point)

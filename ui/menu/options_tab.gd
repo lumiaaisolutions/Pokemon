@@ -26,6 +26,8 @@ static func build() -> Control:
 	box.add_child(_slider("Efectos", 0.0, 1.0, GameOptions.effects_volume, func(v: float) -> void: GameOptions.effects_volume = v))
 	box.add_child(_slider("Gritos de los Pokémon", 0.0, 1.0, GameOptions.cries_volume, func(v: float) -> void: GameOptions.cries_volume = v))
 	box.add_child(MenuStyle.label("Juego e interfaz", 26, MenuStyle.ACCENT))
+	var difficulties: Array = GameState.DIFFICULTIES.map(func(d: Dictionary) -> String: return d["name"])
+	box.add_child(_choice("Dificultad (de esta partida)", difficulties, GameState.difficulty, func(v: int) -> void: GameState.difficulty = v))
 	box.add_child(_choice("Pokémon en el mundo", GameOptions.DENSITY_NAMES, GameOptions.density, func(v: int) -> void: GameOptions.density = v))
 	box.add_child(_toggle("Mostrar la leyenda de botones", GameOptions.show_hints, func(v: bool) -> void: GameOptions.show_hints = v))
 	box.add_child(_choice("Velocidad del texto y avisos", GameOptions.TEXT_SPEED_NAMES, GameOptions.text_speed, func(v: int) -> void: GameOptions.text_speed = v))

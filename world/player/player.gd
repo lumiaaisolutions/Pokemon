@@ -109,6 +109,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_update_water_mode()
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	# En combate el teclado mueve a tu Pokémon; tú solo te mueves al apuntar la Pokéball.
+	var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
+	if battle != null and battle.active and not ($ThrowAim as ThrowAim).is_aiming():
+		input = Vector2.ZERO
 	var direction := _camera_relative(input)
 	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
 	var aiming := ($ThrowAim as ThrowAim).is_aiming() and not swimming
@@ -149,6 +153,7 @@ func _physics_process(delta: float) -> void:
 				take_off()
 			else:
 				velocity.y = config.jump_velocity
+				AudioBus.play_sfx("jump")
 	else:
 		velocity.y -= config.gravity * delta
 
@@ -559,6 +564,7 @@ func toggle_bicycle() -> String:
 	if mode != Mode.WALK or global_position.x > WorldBuilder.INTERIOR_X:
 		return "Aquí no puedes usar la bicicleta."
 	ride = Ride.BIKE
+	AudioBus.play_sfx("bicycle")
 	_update_ride_visuals()
 	return "¡Vas en bicicleta!"
 
@@ -616,6 +622,11 @@ func _process_flight(delta: float) -> void:
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 	var climb := 0.0
+	# Vuelo libre: al avanzar, la inclinación de la cámara hace subir o bajar.
+	var camera := get_viewport().get_camera_3d()
+	if camera != null and input.y < -0.1:
+		var look := -camera.global_basis.z
+		climb = clampf((look.y + 0.35) * 2.2, -1.0, 1.0) * FLY_CLIMB * -input.y
 	if Input.is_action_pressed("jump"):
 		climb = FLY_CLIMB
 	elif Input.is_action_pressed("dive"):

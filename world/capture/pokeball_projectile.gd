@@ -116,16 +116,20 @@ func start_capture(actor: PokemonActor) -> void:
 		GameState.species_caught.emit(actor.species.identifier, stealth)
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SAND, 0.8)
 		GameState.pokemon_caught.emit(actor.species.display_name, actor.shiny, location)
+		AudioBus.play_sfx("caught")
+		AudioBus.play_jingle("me_pokeget")
 		actor.captured()
 	else:
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SMOKE, 0.8)
 		GameState.capture_failed.emit(actor.species.display_name)
+		AudioBus.play_sfx("ball_open")
 		actor.set_inside_ball(false)
 		actor.escape_from_ball(thrower)
 	queue_free()
 
 
 func _shake() -> void:
+	AudioBus.play_sfx("ball_shake")
 	var tween := create_tween()
 	tween.tween_property(_sprite, "rotation:z", 0.4, SHAKE_TIME * 0.25)
 	tween.tween_property(_sprite, "rotation:z", -0.4, SHAKE_TIME * 0.5)

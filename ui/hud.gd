@@ -39,6 +39,8 @@ var _companion_state: Label
 var _companion_bar: ProgressBar
 var _companion_fill: StyleBoxFlat
 var _companion_hint: Label
+var _companion_portrait: TextureRect
+var _companion_species := ""
 var _downed_panel: PanelContainer
 var _downed_title: Label
 var _downed_bar: ProgressBar
@@ -75,6 +77,12 @@ func _ready() -> void:
 	_reticle.texture = _reticle_texture()
 	_reticle.visible = false
 	_toast.visible = false
+	# Estilo del kit (UiKit): fuente del sistema y avisos en píldoras azul marino.
+	for label: Label in [_toast, _balls, _blackout_label]:
+		label.add_theme_font_override("font", UiKit.font(true))
+		label.add_theme_color_override("font_outline_color", Color(0.04, 0.06, 0.14))
+		label.add_theme_constant_override("outline_size", 4)
+	_pill(_toast, UiKit.MINT)
 	GameState.pokemon_caught.connect(func(name: String, shiny: bool, location: String) -> void:
 		show_toast("¡Atrapaste a %s%s! (va a tu %s)" % [name, " ✦" if shiny else "", location]))
 	GameState.capture_failed.connect(func(name: String) -> void: show_toast("¡%s escapó de la Pokéball!" % name))
@@ -96,10 +104,12 @@ func _ready() -> void:
 	_prompt.offset_bottom = -168
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+	_pill(_prompt, UiKit.GOLD)
+	_prompt.visible = false
 	add_child(_prompt)
 	var gathering := get_node_or_null("../Gathering") as GatherManager
 	if gathering != null:
-		gathering.prompt_changed.connect(func(text: String) -> void: _prompt.text = text)
+		gathering.prompt_changed.connect(_set_prompt)
 	_player.notice.connect(show_toast)
 	GameState.notice.connect(show_toast)
 	_build_location_banner()
@@ -137,7 +147,7 @@ func _process(delta: float) -> void:
 	if _world == null:
 		_world = get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
 		if _world != null and _world.structures != null:
-			_world.structures.prompt_changed.connect(func(text: String) -> void: _prompt.text = text)
+			_world.structures.prompt_changed.connect(_set_prompt)
 	_update_location(delta)
 	var camera := get_viewport().get_camera_3d()
 	_underwater.visible = camera != null and _world != null \
@@ -162,7 +172,8 @@ func _build_location_banner() -> void:
 	_location.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_location.add_theme_color_override("font_color", Color(1.0, 1.0, 0.92))
 	_location.add_theme_color_override("font_outline_color", Color(0.1, 0.12, 0.2))
-	_location.add_theme_constant_override("outline_size", 8)
+	_location.add_theme_constant_override("outline_size", 6)
+	_pill(_location, UiKit.WHITE, 34)
 	_location.modulate.a = 0.0
 	add_child(_location)
 
@@ -316,18 +327,38 @@ func _build_companion_card() -> void:
 	_companion_card.offset_right = 344
 	_companion_card.offset_bottom = -24
 	add_child(_companion_card)
+	_companion_card.offset_right = 404
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_companion_card.add_child(row)
+	var frame := PanelContainer.new()
+	var frame_style := UiKit.card_style(10)
+	frame_style.set_content_margin_all(4)
+	frame_style.shadow_size = 0
+	frame.add_theme_stylebox_override("panel", frame_style)
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(frame)
+	_companion_portrait = TextureRect.new()
+	_companion_portrait.custom_minimum_size = Vector2(76, 76)
+	_companion_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_companion_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_companion_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	frame.add_child(_companion_portrait)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	_companion_card.add_child(box)
+	box.add_theme_constant_override("separation", 4)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(box)
 	_companion_name = _small_label("", 24)
 	box.add_child(_companion_name)
 	_companion_bar = ProgressBar.new()
 	_companion_bar.custom_minimum_size = Vector2(0, 16)
 	_companion_bar.show_percentage = false
 	var background := StyleBoxFlat.new()
-	background.bg_color = Color(0.15, 0.15, 0.18)
+	background.bg_color = Color(0.03, 0.05, 0.12, 0.8)
+	background.set_corner_radius_all(8)
 	_companion_fill = StyleBoxFlat.new()
 	_companion_fill.bg_color = Color(0.3, 0.85, 0.4)
+	_companion_fill.set_corner_radius_all(8)
 	_companion_bar.add_theme_stylebox_override("background", background)
 	_companion_bar.add_theme_stylebox_override("fill", _companion_fill)
 	box.add_child(_companion_bar)
@@ -346,8 +377,12 @@ func _update_companion_card() -> void:
 	var state: int = main.get("companion_state")
 	var ratio := companion.hp / companion.hp_max
 	_companion_name.text = companion.species.display_name + (" ✦" if companion.shiny else "")
+	var portrait_key := companion.species.identifier + str(companion.shiny)
+	if portrait_key != _companion_species:
+		_companion_species = portrait_key
+		_companion_portrait.texture = MenuStyle.front_sprite(companion.species, companion.shiny)
 	_companion_bar.value = ratio * 100.0
-	_companion_fill.bg_color = Color(0.3, 0.85, 0.4) if ratio > 0.5 else (Color(0.95, 0.8, 0.2) if ratio > 0.2 else Color(0.9, 0.25, 0.2))
+	_companion_fill.bg_color = UiKit.hp_color(ratio)
 	match state:
 		0:
 			_companion_state.text = "Bajo tu control" if companion.controlled else "Te acompaña"
@@ -472,7 +507,16 @@ func _update_hints() -> void:
 	var context := ""
 	match _player.mode:
 		Player.Mode.WALK:
-			if aim.is_aiming():
+			if _player.ride == Player.Ride.FLY:
+				context = "fly"
+				rows = [["move_forward", "Volar hacia donde miras (la cámara inclina subir o bajar)"], ["jump", "Subir"], ["dive", "Bajar / aterrizar"],
+						["run", "Volar rápido"], ["ride", "Bajarse (cerca del suelo)"]]
+			elif _player.ride == Player.Ride.MOUNT or _player.ride == Player.Ride.BIKE:
+				context = "ride%d" % _player.ride
+				rows = [["run", "Más rápido"], ["ride", "Bajarse"]]
+				if _player.ride == Player.Ride.MOUNT and _player.mount != null and Player.can_carry_flying(_player.mount):
+					rows.push_front(["jump", "Despegar y volar"])
+			elif aim.is_aiming():
 				context = "aim%s" % aim.locked
 				rows = [["throw", "Lanzar Pokéball"], ["aim", "Dejar de apuntar" if aim.locked else "Suelta para dejar de apuntar"], [null, "Mueve la cámara para subir o bajar la mira"]]
 			else:
@@ -576,6 +620,7 @@ func _build_clock() -> void:
 	_clock.offset_right = -40
 	_clock.offset_top = 230
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pill(_clock, Color(0.5, 0.75, 1.0))
 	add_child(_clock)
 
 
@@ -651,23 +696,57 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- Utilidades --------------------------------------------------------------------
 
+func _set_prompt(text: String) -> void:
+	_prompt.text = text
+	_prompt.visible = text != ""
+
+
 func _small_label(text: String, size: int) -> Label:
 	var label := Label.new()
 	label.text = text
+	label.add_theme_font_override("font", UiKit.font(true))
 	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 6)
+	label.add_theme_color_override("font_outline_color", Color(0.04, 0.06, 0.14))
+	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
 
+## Panel del kit: azul marino translúcido, esquinas redondeadas y franja de color a la izquierda.
 func _panel_style(border: Color = Color(0.95, 0.95, 0.9)) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.1, 0.12, 0.85)
-	style.set_border_width_all(3)
+	style.bg_color = Color(0.07, 0.11, 0.24, 0.86)
+	style.set_corner_radius_all(14)
 	style.border_color = border
+	style.border_width_left = 6
 	style.set_content_margin_all(12)
+	style.content_margin_left = 16
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = 6
 	return style
+
+
+## Convierte una etiqueta en píldora del kit que se ajusta al texto (centrada en su ancla).
+func _pill(label: Label, accent: Color, size: int = 0) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.07, 0.11, 0.24, 0.88)
+	style.set_corner_radius_all(22)
+	style.border_color = accent
+	style.border_width_bottom = 3
+	style.content_margin_left = 22
+	style.content_margin_right = 22
+	style.content_margin_top = 4
+	style.content_margin_bottom = 6
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = 5
+	label.add_theme_stylebox_override("normal", style)
+	if size > 0:
+		label.add_theme_font_size_override("font_size", size)
+	# Ajustarse al texto: sin ancho fijo, crece hacia ambos lados desde el ancla.
+	var center := (label.offset_left + label.offset_right) * 0.5
+	label.offset_left = center
+	label.offset_right = center
+	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
 func _pixel_texture(rows: Array, palette: Dictionary) -> Texture2D:

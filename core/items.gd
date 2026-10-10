@@ -82,6 +82,8 @@ static func icon(id: String) -> Texture2D:
 	var texture: Texture2D
 	if ResourceLoader.exists(path):
 		texture = load(path) as Texture2D
+	elif id == "mystic-fragment":
+		texture = _orb_icon(Color(0.72, 0.5, 1.0))
 	elif id.begins_with("stone-") or id == "key-stone":
 		texture = _orb_icon(Color(0.95, 0.55, 0.85) if id.begins_with("stone-") else Color(0.5, 0.75, 1.0))
 	else:

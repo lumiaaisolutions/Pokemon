@@ -1,0 +1,174 @@
+<?xml version='1.0' encoding='utf-8'?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <created>2026-07-27T16:58:15Z</created>
+    <modified>2026-07-27T16:58:15Z</modified>
+  </asset>
+  <library_images>
+    <image id="image-d1_tukue01">
+      <init_from>d1_tukue01.png</init_from>
+    </image>
+    <image id="image-h_kage">
+      <init_from>h_kage.png</init_from>
+    </image>
+  </library_images>
+  <library_materials>
+    <material id="material0" name="d1_tukue01_lm1">
+      <instance_effect url="#effect0" />
+    </material>
+    <material id="material1" name="h_kage_lm1">
+      <instance_effect url="#effect1" />
+    </material>
+  </library_materials>
+  <library_effects>
+    <effect id="effect0" name="d1_tukue01_lm1">
+      <profile_COMMON>
+        <newparam sid="Image-surface">
+          <surface type="2D">
+            <init_from>image-d1_tukue01</init_from>
+            <format>A8R8G8B8</format>
+          </surface>
+        </newparam>
+        <newparam sid="Image-sampler">
+          <sampler2D>
+            <source>Image-surface</source>
+            <wrap_s>CLAMP</wrap_s>
+            <wrap_t>CLAMP</wrap_t>
+            <minfilter>NEAREST</minfilter>
+            <magfilter>NEAREST</magfilter>
+            <mipfilter>NEAREST</mipfilter>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <phong>
+            <emission>
+              <color>0 0 0 1</color>
+            </emission>
+            <ambient>
+              <color>1 1 1 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Image-sampler" texcoord="tc" />
+            </diffuse>
+            <specular>
+              <color>0 0 0 1</color>
+            </specular>
+            <transparent>
+              <texture texture="Image-sampler" texcoord="tc" />
+            </transparent>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+    <effect id="effect1" name="h_kage_lm1">
+      <profile_COMMON>
+        <newparam sid="Image-surface">
+          <surface type="2D">
+            <init_from>image-h_kage</init_from>
+            <format>A8R8G8B8</format>
+          </surface>
+        </newparam>
+        <newparam sid="Image-sampler">
+          <sampler2D>
+            <source>Image-surface</source>
+            <wrap_s>WRAP</wrap_s>
+            <wrap_t>WRAP</wrap_t>
+            <minfilter>NEAREST</minfilter>
+            <magfilter>NEAREST</magfilter>
+            <mipfilter>NEAREST</mipfilter>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <phong>
+            <emission>
+              <color>0 0 0 1</color>
+            </emission>
+            <ambient>
+              <color>1 1 1 1</color>
+            </ambient>
+            <diffuse>
+              <texture texture="Image-sampler" texcoord="tc" />
+            </diffuse>
+            <specular>
+              <color>0 0 0 1</color>
+            </specular>
+            <transparent>
+              <texture texture="Image-sampler" texcoord="tc" />
+            </transparent>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_geometries>
+    <geometry id="geometry" name="d1disk01">
+      <mesh>
+        <source id="positions">
+          <float_array id="positions-array" count="240">23.329102 2 -4.5546875 -22.581055 2 -7.421875 15.96875 2 0.9970703 -15.96875 2 -0.9970703 22.581055 2 7.421875 -23.329102 2 4.5546875 -22.581055 2 -7.421875 -23.329102 2 4.5546875 -15.96875 2 -0.9970703 22.581055 2 7.421875 23.329102 2 -4.5546875 15.96875 2 0.9970703 21.496094 11.77832 -3.6669922 22.268555 10 -3.6191406 1.8056641 5 -4.8964844 1.8056641 3 -4.8964844 -20.983398 11.889648 -6.3203125 -21.645508 10 -6.3623047 21.645508 10 6.3623047 20.873047 11.77832 6.3134766 1.1816406 3 5.0839844 1.1816406 5 5.0839844 -22.268555 10 3.6191406 -21.606445 11.889648 3.6601563 20.384766 2.5966797 -3.118164 19.830078 2.5966797 5.7597656 18.395508 8.463867 5.669922 18.949219 8.463867 -3.2070313 21.379883 2.8183594 5.8564453 21.93457 2.8183594 -3.0205078 20.610352 9.016602 -3.1035156 20.055664 9.016602 5.7734375 18.949219 8.463867 -3.2070313 20.610352 9.016602 -3.1035156 21.93457 2.8183594 -3.0205078 20.384766 2.5966797 -3.118164 19.830078 2.5966797 5.7597656 21.379883 2.8183594 5.8564453 20.055664 9.016602 5.7734375 18.395508 8.463867 5.669922 -21.310547 2.5966797 -5.7226563 -21.865234 2.5966797 3.1552734 -20.20996 9.126953 3.258789 -19.655273 9.126953 -5.6191406 -20.31543 2.4863281 3.2519531 -19.760742 2.4863281 -5.6259766 -18.214844 8.574219 -5.529297 -18.769531 8.574219 3.3486328 -19.655273 9.126953 -5.6191406 -18.214844 8.574219 -5.529297 -19.760742 2.4863281 -5.6259766 -21.310547 2.5966797 -5.7226563 -21.865234 2.5966797 3.1552734 -20.31543 2.4863281 3.2519531 -18.769531 8.574219 3.3486328 -20.20996 9.126953 3.258789 1.1816406 3 5.0839844 1.8056641 3 -4.8964844 22.268555 10 -3.6191406 21.645508 10 6.3623047 1.8056641 5 -4.8964844 1.1816406 5 5.0839844 20.873047 11.77832 6.3134766 21.496094 11.77832 -3.6669922 -21.645508 10 -6.3623047 -22.268555 10 3.6191406 -21.606445 11.889648 3.6601563 -20.983398 11.889648 -6.3203125 21.645508 10 6.3623047 22.268555 10 -3.6191406 21.496094 11.77832 -3.6669922 20.873047 11.77832 6.3134766 -21.645508 10 -6.3623047 1.8056641 3 -4.8964844 1.1816406 3 5.0839844 -22.268555 10 3.6191406 -21.606445 11.889648 3.6601563 1.1816406 5 5.0839844 1.8056641 5 -4.8964844 -20.983398 11.889648 -6.3203125 </float_array>
+          <technique_common>
+            <accessor source="#positions-array" count="80" stride="3">
+              <param name="X" type="float" />
+              <param name="Y" type="float" />
+              <param name="Z" type="float" />
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="texcoords">
+          <float_array id="texcoords-array" count="160">0.5 0.875 0.5 0.875 0.5 0.125 0.5 0.125 0.5 0.875 0.5 0.875 0.5 0.875 0.5 0.875 0.5 0.125 0.5 0.875 0.5 0.875 0.5 0.125 0.77734375 0.8671875 0.77734375 0.8886719 0.765625 0.8671875 0.765625 0.8886719 0.75390625 0.8671875 0.75390625 0.8886719 0.77734375 0.8222656 0.77734375 0.84375 0.765625 0.8222656 0.765625 0.84375 0.75390625 0.8222656 0.75390625 0.84375 0.74609375 0.17578125 0.8105469 0.17578125 0.8105469 0.24023438 0.74609375 0.24023438 0.5625 0 1 0 1 0.46875 0.5625 0.46875 0.625 0.46875 0.59375 0.46875 0.59375 0 0.625 0 0.625 0 0.59375 0 0.59375 0.46875 0.625 0.46875 0.5625 0 1 0 1 0.46875 0.5625 0.46875 0.74609375 0.17578125 0.8105469 0.17578125 0.8105469 0.24023438 0.74609375 0.24023438 0.625 0.46875 0.59375 0.46875 0.59375 0 0.625 0 0.625 0 0.59375 0 0.59375 0.46875 0.625 0.46875 0.74609375 0.17578125 0.8105469 0.17578125 0.8105469 0.24023438 0.74609375 0.24023438 0.5 1 0 1 0 0 0.5 0 0.7324219 0.8222656 0.75390625 0.8222656 0.75390625 0.84375 0.7324219 0.84375 0.77734375 0.8222656 0.7988281 0.8222656 0.7988281 0.84375 0.77734375 0.84375 0.74609375 0.17578125 0.8105469 0.17578125 0.8105469 0.24023438 0.74609375 0.24023438 0.5 0 0.5 1 0 1 0 0 </float_array>
+          <technique_common>
+            <accessor source="#texcoords-array" count="80" stride="2">
+              <param name="S" type="float" />
+              <param name="T" type="float" />
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="colors">
+          <float_array id="colors-array" count="240">1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.6451613 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.7096774 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.48387095 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.7741935 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.516129 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.2580645 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 0.9032258 </float_array>
+          <technique_common>
+            <accessor source="#colors-array" count="80" stride="3">
+              <param name="R" type="float" />
+              <param name="G" type="float" />
+              <param name="B" type="float" />
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="vertices">
+          <input semantic="POSITION" source="#positions" />
+          <input semantic="TEXCOORD" source="#texcoords" />
+          <input semantic="COLOR" source="#colors" />
+        </vertices>
+        <polylist material="material1" count="4">
+          <input semantic="VERTEX" source="#vertices" offset="0" />
+          <vcount>4 4 3 3 </vcount>
+          <p>0 1 3 2 2 3 5 4 6 7 8 9 10 11 </p>
+        </polylist>
+        <polylist material="material0" count="18">
+          <input semantic="VERTEX" source="#vertices" offset="0" />
+          <vcount>4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 </vcount>
+          <p>12 13 15 14 14 15 17 16 18 19 21 20 20 21 23 22 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 </p>
+        </polylist>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="scene0" name="d1disk01">
+      <node id="node" name="d1disk01" type="NODE">
+        <instance_geometry url="#geometry">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="material0" target="#material0">
+                <bind_vertex_input semantic="tc" input_semantic="TEXCOORD" />
+              </instance_material>
+              <instance_material symbol="material1" target="#material1">
+                <bind_vertex_input semantic="tc" input_semantic="TEXCOORD" />
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#scene0" />
+  </scene>
+</COLLADA>

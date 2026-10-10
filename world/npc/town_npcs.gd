@@ -10,6 +10,9 @@ extends Node3D
 ## - Con "interact" cerca de uno, saluda según la hora, comenta el clima o da un consejo.
 ## La tienda abre de 8:00 a 21:00 y el gimnasio de 7:00 a 22:00 (el Centro, siempre).
 ## - Casi la mitad tiene su propio Pokémon, que los sigue.
+## - Combates de práctica: cada tanto, dos vecinos con Pokémon que están en la plaza se
+##   retan; sus Pokémon se enfrentan con embestidas y efectos y al final uno gana (si
+##   estás cerca, sale el aviso). Los viajeros también retan a los vecinos.
 ## - Viajeros: caminan por los caminos entre pueblos cerca del jugador y de noche acampan
 ##   (carpa y fogata) donde estén.
 
@@ -38,6 +41,9 @@ var _rng := RandomNumberGenerator.new()
 var _check_timer := 0.0
 ## Viajeros de los caminos: {"node", "road", "index", "dir", "camp", "point", "from", "to"}.
 var _travelers: Array = []
+## Combate de práctica en curso: {"a", "b", "time", "center"} o {}.
+var _practice := {}
+var _practice_timer := 25.0
 
 
 func _ready() -> void:
@@ -61,6 +67,7 @@ func _process(delta: float) -> void:
 			_update_npc(npc, hour, stormy, delta)
 	for traveler: Dictionary in _travelers:
 		_update_traveler(traveler, hour, delta)
+	_update_practice(delta)
 
 
 ## Crea o libera los habitantes según la distancia del jugador a cada pueblo.
@@ -156,6 +163,8 @@ static func goal_for(npc: Dictionary, hour: float, stormy: bool) -> String:
 
 
 func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> void:
+	if npc.get("battling", false):
+		return
 	var node: Node3D = npc["node"]
 	var sprite := node.get_node("Sprite") as DirectionalSprite
 	var goal := goal_for(npc, hour, stormy)
@@ -373,6 +382,97 @@ func _talk_traveler(traveler: Dictionary) -> void:
 
 func travelers() -> Array:
 	return _travelers
+
+
+# --- Combates de práctica entre habitantes ----------------------------------------------
+
+func _update_practice(delta: float) -> void:
+	if not _practice.is_empty():
+		_run_practice(delta)
+		return
+	_practice_timer -= delta
+	if _practice_timer > 0.0:
+		return
+	_practice_timer = _rng.randf_range(25.0, 50.0)
+	# Dos vecinos con Pokémon, visibles y quietos en la plaza, del mismo pueblo.
+	for index: int in _towns:
+		var ready: Array = (_towns[index] as Array).filter(func(n: Dictionary) -> bool:
+			return n.has("pet") and (n["node"] as Node3D).visible and n["goal"] == "plaza" and (n["route"] as Array).is_empty())
+		if ready.size() >= 2:
+			_start_practice(ready[0], ready[1])
+			return
+
+
+func _start_practice(a: Dictionary, b: Dictionary) -> void:
+	var node_a: Node3D = a["node"]
+	var node_b: Node3D = b["node"]
+	var center := (node_a.global_position + node_b.global_position) * 0.5
+	var axis := (node_b.global_position - node_a.global_position)
+	axis.y = 0.0
+	axis = axis.normalized() if axis.length() > 0.1 else Vector3.RIGHT
+	a["battling"] = true
+	b["battling"] = true
+	node_a.global_position = center - axis * 3.2
+	node_b.global_position = center + axis * 3.2
+	_practice = {"a": a, "b": b, "time": 0.0, "center": center, "axis": axis, "hits": [0, 0], "next_hit": 0.6}
+
+
+func _run_practice(delta: float) -> void:
+	var a: Dictionary = _practice["a"]
+	var b: Dictionary = _practice["b"]
+	if not is_instance_valid(a["node"]) or not is_instance_valid(b["node"]) or not is_instance_valid(a["pet"]) or not is_instance_valid(b["pet"]):
+		_practice = {}
+		return
+	_practice["time"] = float(_practice["time"]) + delta
+	var center: Vector3 = _practice["center"]
+	var axis: Vector3 = _practice["axis"]
+	var pet_a: Node3D = a["pet"]
+	var pet_b: Node3D = b["pet"]
+	var t := float(_practice["time"])
+	# Se acercan, se embisten por turnos y retroceden.
+	var lunge_a := maxf(sin(t * 3.0), 0.0) * 0.9
+	var lunge_b := maxf(-sin(t * 3.0), 0.0) * 0.9
+	pet_a.global_position = center - axis * (1.5 - lunge_a)
+	pet_b.global_position = center + axis * (1.5 - lunge_b)
+	for pet: Node3D in [pet_a, pet_b]:
+		pet.global_position.y = _world.surface_height_at(pet.global_position.x, pet.global_position.z)
+		var sprite := pet.get_node_or_null("Sprite") as DirectionalSprite
+		if sprite != null:
+			sprite.look_at_point(center)
+			sprite.animate(Vector3.ZERO, delta)
+	for owner_npc: Dictionary in [a, b]:
+		var sprite := (owner_npc["node"] as Node3D).get_node("Sprite") as DirectionalSprite
+		sprite.look_at_point(center)
+		sprite.animate(Vector3.ZERO, delta)
+	_practice["next_hit"] = float(_practice["next_hit"]) - delta
+	if float(_practice["next_hit"]) <= 0.0:
+		_practice["next_hit"] = _rng.randf_range(0.8, 1.3)
+		var hitter := _rng.randi() % 2
+		(_practice["hits"] as Array)[hitter] = int(_practice["hits"][hitter]) + 1
+		var target: Node3D = pet_b if hitter == 0 else pet_a
+		PixelBurst.spawn(self, target.global_position + Vector3.UP * 0.4, PixelBurst.Kind.DUST, 0.5)
+	if t >= 9.0:
+		var hits: Array = _practice["hits"]
+		var winner: Dictionary = a if int(hits[0]) >= int(hits[1]) else b
+		var loser: Dictionary = b if winner == a else a
+		if _player.global_position.distance_to(center) < 30.0:
+			GameState.notice.emit("Combate de práctica: el %s de %s venció al %s de %s." % [_pet_name(winner["pet"]), winner["name"], _pet_name(loser["pet"]), loser["name"]])
+		PixelBurst.spawn(self, (loser["pet"] as Node3D).global_position + Vector3.UP * 0.4, PixelBurst.Kind.SMOKE, 0.6)
+		a["battling"] = false
+		b["battling"] = false
+		a["goal"] = ""
+		b["goal"] = ""
+		_practice = {}
+
+
+func _pet_name(pet: Node3D) -> String:
+	var species := MenuStyle.species(String(pet.get_meta("species", "")))
+	return species.display_name if species != null else "Pokémon"
+
+
+## Hay un combate de práctica ahora (pruebas).
+func practice_active() -> bool:
+	return not _practice.is_empty()
 
 
 ## Lo que dice al hablarle: saludo por hora, comentario del clima y algo de su oficio.

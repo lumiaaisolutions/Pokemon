@@ -877,6 +877,14 @@
       "price": 1000,
       "fossil": true,
       "desc": "Un fósil antiguo de las minas. El profesor puede revivirlo en su laboratorio."
+    },
+    {
+      "id": "mystic-fragment",
+      "name": "Fragmento místico",
+      "pocket": "fabricacion",
+      "price": 0,
+      "icon": "",
+      "desc": "Brilla con energía de combate. Lo sueltan los Pokémon fuertes (Alfa, dominantes, rachas de victorias). Con 4 se fabrica una MT del tipo que quieras."
     }
   ],
   "recipes": [
@@ -932,6 +940,132 @@
       "amount": 1,
       "needs": {
         "pecha-berry": 2
+      }
+    },
+    {
+      "result": "tm-normal",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-fighting",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-flying",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-poison",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-ground",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-rock",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-bug",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-ghost",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-steel",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-fire",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-water",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-grass",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-electric",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-psychic",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-ice",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-dragon",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-dark",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
+      }
+    },
+    {
+      "result": "tm-fairy",
+      "amount": 1,
+      "needs": {
+        "mystic-fragment": 4
       }
     }
   ],

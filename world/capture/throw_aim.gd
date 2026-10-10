@@ -92,6 +92,7 @@ func throw_ball() -> PokeballProjectile:
 	_player.get_parent().add_child(ball)
 	ball.global_position = throw_origin()
 	ball.linear_velocity = throw_velocity()
+	AudioBus.play_sfx("ball_throw")
 	return ball
 
 

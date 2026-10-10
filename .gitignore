@@ -16,3 +16,10 @@ export_presets.cfg.bak
 
 # Python
 __pycache__/
+
+# Música de BW/BW2 (KHInsider), solo local.
+/art/music/
+/art/sfx/
+
+# Sondas temporales de depuración.
+/tests/_tmp/

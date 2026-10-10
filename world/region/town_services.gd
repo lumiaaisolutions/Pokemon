@@ -119,6 +119,7 @@ func enter_interior(kind: String, settlement: Dictionary, data: Dictionary) -> v
 ## Centro Pokémon: cura a todos, fija la reaparición en su puerta y autoguarda.
 func heal_at_center(door: Vector3) -> void:
 	heal_everyone()
+	AudioBus.play_jingle("bw1_heal")
 	GameState.respawn_point = door
 	var saved := SaveSystem.save_slot(0, main())
 	GameState.notice.emit("¡Tu equipo está como nuevo! Volverás aquí si te desmayas.%s" % (" (Autoguardado)" if saved else ""))
@@ -179,6 +180,7 @@ func talk_resident(settlement: Dictionary, building: Dictionary) -> void:
 		var gifts := ["oran-berry", "potion", "poke-ball", "great-ball", "sitrus-berry", "repel", "honey"]
 		var gift: String = gifts[_rng.randi() % gifts.size()]
 		GameState.add_item(gift, 1 + _rng.randi() % 2)
+		AudioBus.play_jingle("me_item")
 		text += " Toma, llévate esto: %s." % Items.display_name(gift)
 	GameState.notice.emit(text)
 
@@ -253,6 +255,7 @@ func gym_challenge(settlement: Dictionary, arena: Vector3) -> void:
 	var team := _team_of_type(type, 3, 0.25 + badges().size() * 0.09)
 	_start_trial("Gimnasio de %s" % city, team, arena, func() -> void:
 		badges().append(city)
+		AudioBus.play_jingle("me_badge")
 		GameState.path_progress["gimnasios"] = mini(badges().size(), 8)
 		GameState.add_money(BADGE_MONEY * badges().size(), "Medalla de %s" % city)
 		Achievements.add("badges")
@@ -644,6 +647,7 @@ func place_treasure(owner_interiors: Interiors, root: Node3D, at: Vector3, key: 
 	point = structures.add_point(Interiors.ORIGIN + at + Vector3.UP * 0.5, "Recoger el objeto", func() -> void:
 		_flags()["treasure:" + key] = GameState.game_day()
 		GameState.add_item(item, 1)
+		AudioBus.play_jingle("me_item")
 		GameState.notice.emit("¡Encontraste %s!" % Items.display_name(item))
 		sprite.queue_free()
 		structures.remove_point(point), 1.8)

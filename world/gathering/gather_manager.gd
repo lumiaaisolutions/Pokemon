@@ -8,6 +8,17 @@ extends Node3D
 
 signal prompt_changed(text: String)
 
+## Cada punto tiene contexto: las bayas crecen en arbustos, los bonguris en árboles, las
+## setas al pie de un árbol de la zona, los minerales en rocas y las conchas en la orilla.
+## Lo que se recoge desaparece de su arbusto/árbol/roca y vuelve a crecer al otro día.
+const BASES := {"Arbusto de bayas": "res://art/world/b2w2/bush.png", "Árbol de bonguri": "res://art/world/b2w2/tree_round.png",
+		"Roca con minerales": "res://art/world/b2w2/rock_brown.png"}
+## Dónde van los frutos sobre la base (en metros, relativos a su pie).
+const FRUIT_SPOTS := {"Arbusto de bayas": [Vector3(-0.35, 0.75, 0.15), Vector3(0.3, 0.95, 0.12), Vector3(0.05, 0.55, 0.2)],
+		"Árbol de bonguri": [Vector3(-0.8, 2.6, 0.2), Vector3(0.7, 2.9, 0.2), Vector3(0.1, 3.3, 0.2)],
+		"Roca con minerales": [Vector3(0.3, 0.55, 0.3)], "Setas": [Vector3(0.0, 0.15, 0.0), Vector3(0.35, 0.12, 0.2)],
+		"Concha brillante": [Vector3(0.0, 0.08, 0.0)]}
+
 ## Intentos de punto por zona de 128 m.
 const PER_CHUNK := 4
 const PICK_RADIUS := 2.2
@@ -60,8 +71,41 @@ func _populate(key: Vector2i, root: Node3D) -> void:
 		if not _world.settlement_at(x, z, 4.0).is_empty() or _world.distance_to_paths(x, z) < 3.0:
 			continue
 		var kinds: Array = KINDS[habitat]
+		var kind: Array = kinds[pick % kinds.size()]
+		var at := Vector3(x, _world.surface_height_at(x, z), z)
+		if kind[0] == "Setas":
+			# Al pie de un árbol cercano de la zona.
+			var tree := _tree_near(root, Vector2(x, z), rng)
+			if tree == null:
+				continue
+			var angle := rng.randf() * TAU
+			var spot := tree.global_position + Vector3(cos(angle), 0, sin(angle)) * 0.9
+			at = Vector3(spot.x, _world.surface_height_at(spot.x, spot.z), spot.z)
+		elif kind[0] == "Concha brillante":
+			# En la arena, junto al agua.
+			if not _near_water(x, z):
+				continue
 		var id := "%d_%d_%d" % [key.x, key.y, i]
-		_nodes.append(_make_node(kinds[pick % kinds.size()], Vector3(x, _world.surface_height_at(x, z), z), root, id))
+		_nodes.append(_make_node(kind, at, root, id))
+
+
+func _tree_near(root: Node3D, point: Vector2, rng: RandomNumberGenerator) -> Node3D:
+	var trees: Array[Node3D] = []
+	for child in root.get_children():
+		if child is StaticBody3D and String(child.name).begins_with("Tree"):
+			trees.append(child)
+	if trees.is_empty():
+		return null
+	trees.sort_custom(func(a: Node3D, b: Node3D) -> bool: return Vector2(a.global_position.x, a.global_position.z).distance_to(point) < Vector2(b.global_position.x, b.global_position.z).distance_to(point))
+	return trees[mini(rng.randi() % 3, trees.size() - 1)]
+
+
+func _near_water(x: float, z: float) -> bool:
+	for i in 8:
+		var angle := TAU * i / 8.0
+		if _world.water_depth_at(x + cos(angle) * 2.5, z + sin(angle) * 2.5) > 0.15:
+			return true
+	return false
 
 
 func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
@@ -72,15 +116,31 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	node.set_meta("regrow_day", int((GameState.world_flags.get("gather", {}) as Dictionary).get(id, -1)))
 	parent.add_child(node)
 	node.global_position = at
-	var sprite := Sprite3D.new()
-	sprite.name = "Sprite"
-	sprite.texture = Items.icon(kind[1])
-	sprite.pixel_size = 0.045
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sprite.layers = 2
-	sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	SpriteMaterials.apply(sprite)
-	node.add_child(sprite)
+	# Base: arbusto, árbol o roca (estilo B2W2).
+	if BASES.has(kind[0]):
+		var base := Sprite3D.new()
+		base.name = "Base"
+		base.texture = load(BASES[kind[0]])
+		base.pixel_size = _world.config.pixel_size * (1.4 if kind[0] == "Árbol de bonguri" else 1.0)
+		base.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		base.layers = 2
+		SpriteMaterials.apply(base)
+		base.material_override = SpriteMaterials.for_texture(base.texture, Color.WHITE, 0.0, kind[0] != "Roca con minerales")
+		node.add_child(base)
+	# Frutos (íconos pequeños sobre la base).
+	var fruit := Node3D.new()
+	fruit.name = "Fruit"
+	node.add_child(fruit)
+	for spot: Vector3 in FRUIT_SPOTS.get(kind[0], [Vector3(0, 0.1, 0)]):
+		var sprite := Sprite3D.new()
+		sprite.texture = Items.icon(kind[1])
+		sprite.pixel_size = 0.022 if kind[0] in ["Arbusto de bayas", "Árbol de bonguri"] else 0.03
+		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sprite.layers = 2
+		sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		sprite.position = spot
+		fruit.add_child(sprite)
 	var sparkle := CPUParticles3D.new()
 	sparkle.name = "Sparkle"
 	var quad := QuadMesh.new()
@@ -105,7 +165,7 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	fade.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
 	sparkle.color_ramp = fade
 	sparkle.layers = 2
-	node.add_child(sparkle)
+	fruit.add_child(sparkle)
 	return node
 
 
@@ -120,8 +180,9 @@ func _process(_delta: float) -> void:
 	var best_distance := PICK_RADIUS
 	for node in _nodes:
 		var available := int(node.get_meta("regrow_day")) <= day
-		if node.visible != available:
-			node.visible = available
+		var fruit := node.get_node("Fruit") as Node3D
+		if fruit.visible != available:
+			fruit.visible = available
 		if not available or _player.mode != Player.Mode.WALK:
 			continue
 		var distance := node.global_position.distance_to(_player.global_position)
@@ -158,10 +219,10 @@ func collect(node: Node3D) -> Dictionary:
 	GameState.gathered.emit(picked, amount)
 	PixelBurst.spawn(get_parent(), node.global_position + Vector3.UP * 0.4, PixelBurst.Kind.LEAVES if kind[1] != "hard-stone" else PixelBurst.Kind.ROCK, 0.6)
 	node.set_meta("regrow_day", GameState.game_day() + 1)
+	(node.get_node("Fruit") as Node3D).visible = false
 	if not GameState.world_flags.has("gather"):
 		GameState.world_flags["gather"] = {}
 	GameState.world_flags["gather"][node.get_meta("id")] = GameState.game_day() + 1
-	node.visible = false
 	_nearest = null
 	prompt_changed.emit("")
 	GameState.notice.emit("+%d %s" % [amount, Items.display_name(picked)])

@@ -3,7 +3,7 @@ extends RefCounted
 ## Estilo compartido del menú: ventanas con borde pixel al estilo B2W2, etiquetas con
 ## contorno, botones que se iluminan con el foco y colores por tipo.
 
-const ACCENT := Color(1.0, 0.85, 0.3)
+const ACCENT := Color(0.72, 0.95, 0.45)
 const TEXT := Color(0.96, 0.96, 0.98)
 const MUTED := Color(0.75, 0.8, 0.9)
 const TYPE_NAMES := ["Normal", "Lucha", "Volador", "Veneno", "Tierra", "Roca", "Bicho", "Fantasma", "Acero",
@@ -11,30 +11,20 @@ const TYPE_NAMES := ["Normal", "Lucha", "Volador", "Veneno", "Tierra", "Roca", "
 const TEMPERAMENT_NAMES := ["Tranquilo", "Curioso", "Tímido", "Agresivo", "Territorial"]
 
 
-static func panel(border: Color = Color(0.85, 0.88, 0.95), background: Color = Color(0.08, 0.1, 0.14, 0.94)) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
+static func panel(border: Color = Color(1, 1, 1, 0.14), background: Color = UiKit.NAVY_SOFT) -> StyleBoxFlat:
+	var style := UiKit.panel_style(false, 14, Color(border.r, border.g, border.b, 0.35) if border != Color(1, 1, 1, 0.14) else border)
 	style.bg_color = background
-	style.set_border_width_all(4)
-	style.border_color = border
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(14)
 	return style
 
 
-static func panel_container(border: Color = Color(0.85, 0.88, 0.95)) -> PanelContainer:
+static func panel_container(border: Color = Color(1, 1, 1, 0.14)) -> PanelContainer:
 	var container := PanelContainer.new()
 	container.add_theme_stylebox_override("panel", panel(border))
 	return container
 
 
 static func label(text: String, size: int = 20, color: Color = TEXT) -> Label:
-	var result := Label.new()
-	result.text = text
-	result.add_theme_font_size_override("font_size", size)
-	result.add_theme_color_override("font_color", color)
-	result.add_theme_color_override("font_outline_color", Color.BLACK)
-	result.add_theme_constant_override("outline_size", 5)
-	return result
+	return UiKit.label(text, size, color, size >= 24 or color == ACCENT)
 
 
 static func wrapped(text: String, size: int = 18, color: Color = TEXT) -> Label:
@@ -46,54 +36,50 @@ static func wrapped(text: String, size: int = 18, color: Color = TEXT) -> Label:
 static func button(text: String, size: int = 20) -> Button:
 	var result := Button.new()
 	result.text = text
+	result.add_theme_font_override("font", UiKit.font(true))
 	result.add_theme_font_size_override("font_size", size)
 	style_button(result)
+	result.pressed.connect(func() -> void: AudioBus.play_sfx("ui_decide"))
 	return result
 
 
+## Botón redondeado: translúcido; elegido, con foco o encima del mouse se vuelve blanco
+## con borde verde (como en Z-A).
 static func style_button(target: Button, selected: bool = false) -> void:
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0.2, 0.32, 0.5, 0.95) if selected else Color(0.12, 0.15, 0.2, 0.95)
-	normal.set_border_width_all(3)
-	normal.border_color = ACCENT if selected else Color(0.55, 0.6, 0.7)
-	normal.set_corner_radius_all(5)
-	normal.set_content_margin_all(8)
+	normal.bg_color = Color(1, 1, 1, 0.1) if not selected else Color(0.86, 0.92, 1.0)
+	normal.set_corner_radius_all(8)
+	normal.border_color = UiKit.MINT if selected else Color(1, 1, 1, 0.18)
+	normal.set_border_width_all(2)
+	normal.border_width_left = 6 if selected else 2
+	normal.set_content_margin_all(10)
 	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color(0.22, 0.36, 0.56, 0.98)
-	hover.border_color = ACCENT
+	hover.bg_color = UiKit.WHITE
+	hover.border_color = UiKit.MINT
+	hover.border_width_left = 6
 	target.add_theme_stylebox_override("normal", normal)
 	target.add_theme_stylebox_override("hover", hover)
 	target.add_theme_stylebox_override("focus", hover)
 	target.add_theme_stylebox_override("pressed", hover)
+	var text := UiKit.INK if selected else Color(0.92, 0.95, 1.0)
+	target.add_theme_color_override("font_color", text)
+	target.add_theme_color_override("font_hover_color", UiKit.INK)
+	target.add_theme_color_override("font_focus_color", UiKit.INK)
+	target.add_theme_color_override("font_pressed_color", UiKit.INK)
+	target.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.3))
 
 
 ## Píldora con el nombre del tipo en su color.
 static func type_pill(type: int) -> PanelContainer:
-	var pill := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = AttackProjectile.TYPE_COLORS.get(type, Color.GRAY).darkened(0.1)
-	style.set_corner_radius_all(10)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 2
-	style.content_margin_bottom = 2
-	pill.add_theme_stylebox_override("panel", style)
-	pill.add_child(label(TYPE_NAMES[type] if type >= 0 and type < TYPE_NAMES.size() else "?", 16))
-	return pill
+	return UiKit.type_chip(type)
 
 
 ## Barra de color (estadísticas, vida) con su ancho máximo.
 static func bar(ratio: float, width: float, color: Color, height: float = 12.0) -> Control:
-	var back := ColorRect.new()
-	back.color = Color(0.2, 0.2, 0.25)
-	back.custom_minimum_size = Vector2(width, height)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var fill := ColorRect.new()
-	fill.color = color
-	fill.size = Vector2(width * clampf(ratio, 0.0, 1.0), height)
-	back.add_child(fill)
-	return back
+	var progress := UiKit.bar(ratio, width, color, height)
+	progress.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return progress
 
 
 static func texture_rect(texture: Texture2D, size: Vector2) -> TextureRect:

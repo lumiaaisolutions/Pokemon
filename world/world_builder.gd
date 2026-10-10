@@ -553,6 +553,19 @@ func _vertex_attributes(x: float, z: float) -> Array:
 			paving = 1.0
 		elif s["kind"] in ["town", "village"] and d < radius * 0.22:
 			path = 1.0
+		# Caminito de cada puerta a la plaza.
+		if path < 1.0 and d < radius and s.has("buildings"):
+			var plaza := Vector2(float(s["x"]), float(s["z"]))
+			for b: Dictionary in s["buildings"]:
+				if b["kind"] == "manhole":
+					continue
+				var pos := Vector2(float(b["x"]), float(b["z"]))
+				var door := pos + (plaza - pos).normalized() * float(b["d"]) * 0.45
+				var ab := plaza - door
+				var t := clampf((Vector2(x, z) - door).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+				if Vector2(x, z).distance_to(door + ab * t) < 1.1:
+					path = 1.0
+					break
 	# Arena en las orillas de ríos y lagos.
 	if family != 4:
 		var river := layout.river_info(x, z)

@@ -33,6 +33,8 @@ static func _slot_row(menu: GameMenu, slot: int) -> Control:
 	var save := MenuStyle.button("Guardar aquí", 20)
 	save.pressed.connect(func() -> void:
 		var ok := SaveSystem.save_slot(slot, menu.main)
+		if ok:
+			AudioBus.play_sfx("save")
 		menu.show_tab(menu.tab)
 		if menu.main != null:
 			(menu.main.get_node("Hud") as Hud).show_toast("Partida guardada en la ranura %d." % slot if ok else "No se pudo guardar."))

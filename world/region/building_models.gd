@@ -1,0 +1,130 @@
+class_name BuildingModels
+extends RefCounted
+## Modelos 3D de edificios de Pokémon Negro 2 / Blanco 2 (The Models Resource,
+## `art/models/b2w2/`). Se escalan a metros del juego (16 unidades = una casilla de
+## B2W2 ≈ 1.28 m), con texturas en píxel nítido y transparencias recortadas. La puerta
+## mira a +Z (hacia la cámara en B2W2), igual que los edificios del juego.
+
+const ROOT := "res://art/models/b2w2/"
+## Metros por unidad del modelo.
+const SCALE := 0.08
+const MODELS := {
+	"center": ["pokecenter"],
+	"mart": ["shop1", "shop2", "shop3"],
+	"house": ["house1", "house2", "house3", "house4", "floccesy_house", "house5", "accumula_house", "aspertia_house", "undella_house1",
+			"lacunosa_house", "icirrus_house", "humilau_house", "mistralton_house"],
+	"cabin": ["house6", "house5", "icirrus_house"],
+	"lab": ["lab", "lab2", "shop"],
+	"contest": ["aspertia_building2", "shop"],
+	"gym": ["gym_aspertia", "gym_mistralton", "gym_humilau", "gym_opelucid"],
+	"tower_small": ["aspertia_building1", "driftveil_building1"],
+	# Decoración.
+	"lamp": ["lamp1", "lamp3"],
+	# Lugares especiales.
+	"tower": ["celestial_tower"],
+	"mansion": ["haunted_house"],
+	"lighthouse": ["lighthouse"],
+	"ruins": ["ruins1", "ruins3"],
+	"sanctuary": ["shrine"],
+	"berry_farm": ["greenhouse"],
+	"fence": ["fence"],
+	"sign": ["sign1", "sign2", "sign3", "sign4"],
+	"bench": ["bench"],
+	"stump": ["stump"],
+}
+
+static var _scenes := {}
+static var _materials := {}
+
+
+## ¿Hay modelo para este tipo de edificio?
+static func has_kind(kind: String) -> bool:
+	return MODELS.has(kind) and not _available(kind).is_empty()
+
+
+static func _available(kind: String) -> Array:
+	return (MODELS.get(kind, []) as Array).filter(func(name: String) -> bool: return DirAccess.dir_exists_absolute(ROOT + name))
+
+
+## Instancia un modelo del tipo (variante fija por índice). Devuelve {"node", "size": Vector3 (m), "front": float (z de la fachada)}.
+static func instance(kind: String, variant: int) -> Dictionary:
+	var names := _available(kind)
+	if names.is_empty():
+		return {}
+	var name: String = names[absi(variant) % names.size()]
+	var scene := _scene(name)
+	if scene == null:
+		return {}
+	var node := scene.instantiate() as Node3D
+	node.scale = Vector3.ONE * SCALE
+	var box := AABB()
+	var first := true
+	for mesh_node in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_node as MeshInstance3D
+		_fix_materials(mesh)
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mesh.visibility_range_end = 520.0
+		var local := _local_transform(mesh, node) * mesh.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	# Centra la planta en el origen y apoya la base en y = 0.
+	var center := box.get_center()
+	var holder := Node3D.new()
+	holder.name = "Model_" + name
+	holder.add_child(node)
+	node.position = Vector3(-center.x, -box.position.y, -center.z) * SCALE
+	var size := box.size * SCALE
+	return {"node": holder, "size": size, "front": size.z * 0.5}
+
+
+static func _scene(name: String) -> PackedScene:
+	if _scenes.has(name):
+		return _scenes[name]
+	var scene: PackedScene = null
+	for file in DirAccess.get_files_at(ROOT + name):
+		if file.ends_with(".dae"):
+			scene = load(ROOT + name + "/" + file) as PackedScene
+			break
+	_scenes[name] = scene
+	return scene
+
+
+static func _local_transform(node: Node3D, root: Node3D) -> Transform3D:
+	var transform := Transform3D.IDENTITY
+	var current: Node = node
+	while current != null and current != root:
+		if current is Node3D:
+			transform = (current as Node3D).transform * transform
+		current = current.get_parent()
+	return transform
+
+
+## Píxel nítido y recorte de transparencias (ventanas y sombras del modelo).
+static func _fix_materials(mesh: MeshInstance3D) -> void:
+	if mesh.mesh == null:
+		return
+	for surface in mesh.mesh.get_surface_count():
+		var material := mesh.get_active_material(surface)
+		if material == null:
+			continue
+		var key := material.get_instance_id()
+		if not _materials.has(key):
+			var fixed := material.duplicate() as Material
+			if fixed is BaseMaterial3D:
+				var base := fixed as BaseMaterial3D
+				base.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				base.roughness = 1.0
+				base.metallic = 0.0
+				base.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+				var texture := base.albedo_texture
+				var path := texture.resource_path if texture != null else ""
+				if path.contains("kage"):
+					# Sombra pintada del modelo: semitransparente.
+					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+					base.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				elif texture != null and texture.get_image() != null and texture.get_image().detect_alpha() != Image.ALPHA_NONE:
+					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+					base.alpha_scissor_threshold = 0.5
+				base.cull_mode = BaseMaterial3D.CULL_DISABLED
+			_materials[key] = fixed
+		mesh.set_surface_override_material(surface, _materials[key])

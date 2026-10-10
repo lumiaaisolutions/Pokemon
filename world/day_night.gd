@@ -27,6 +27,7 @@ var _sun: DirectionalLight3D
 var _environment: Environment
 var _sky: ProceduralSkyMaterial
 var _base_fog := 0.0
+var _lamps_on := false
 
 
 func _ready() -> void:
@@ -69,6 +70,12 @@ func _apply(hour: float) -> void:
 		_environment.ambient_light_energy = lerpf(float(a[6]), float(b[6]), t) * (1.0 if interior_light >= 1.0 else 0.8)
 		_environment.fog_light_color = (a[4] as Color).lerp(b[4], t)
 		_environment.fog_density = _base_fog + Weather.fog_extra
+	# Faroles de los pueblos: se encienden de noche.
+	var lamps_on := hour < 6.5 or hour >= 18.5
+	if lamps_on != _lamps_on:
+		_lamps_on = lamps_on
+		for light in get_tree().get_nodes_in_group(&"night_lights"):
+			(light as Light3D).light_energy = 1.6 if lamps_on else 0.0
 	if _sky != null:
 		_sky.sky_top_color = (a[3] as Color).lerp(b[3], t)
 		_sky.sky_horizon_color = (a[4] as Color).lerp(b[4], t)

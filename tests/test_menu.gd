@@ -13,6 +13,8 @@ var _player: Player
 
 
 func _ready() -> void:
+	# Combate en arena apagado: esta prueba revisa las peleas en el mundo (ver test_battle).
+	BattleManager.enabled = false
 	GameState.party.clear()
 	GameState.dex.clear()
 	GameState.bag = Items.starting_bag()
@@ -135,7 +137,7 @@ func _run() -> void:
 	_check(gathering.nodes().size() > 30, "debe haber puntos de recolección en el mundo (%d)" % gathering.nodes().size())
 	var node := gathering.nodes()[0]
 	var result := gathering.collect(node)
-	_check(not result.is_empty() and not node.visible, "recoger da objetos y el punto desaparece")
+	_check(not result.is_empty() and not (node.get_node("Fruit") as Node3D).visible, "recoger da objetos y sus frutos desaparecen")
 
 	# Día y noche: a las 22:00 es de noche y está oscuro.
 	GameState.play_time = (22.0 - GameState.START_HOUR) * 60.0

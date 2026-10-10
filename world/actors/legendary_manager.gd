@@ -62,12 +62,15 @@ func _place_sanctuaries() -> void:
 		if place.get("summit", false):
 			var sx := float(place["x"])
 			var sz := float(place["z"])
+			# Frente al santuario (el altar está en el centro).
+			sz += 7.0
 			sanctuaries.append({"position": Vector3(sx, _world.height_at(sx, sz), sz), "habitat": SpeciesData.Habitat.MOUNTAIN})
 	for place: Dictionary in layout.places_of("sanctuary"):
 		if place.get("summit", false):
 			continue
 		var x := float(place["x"])
 		var z := float(place["z"])
+		z += 7.0
 		sanctuaries.append({"position": Vector3(x, _world.height_at(x, z), z), "habitat": _world.habitat_at(x, z)})
 	if not layout.lakes.is_empty():
 		var lake: Vector4 = layout.lakes[rng.randi() % layout.lakes.size()]

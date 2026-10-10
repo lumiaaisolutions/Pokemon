@@ -1,21 +1,24 @@
 class_name GameMenu
 extends Control
-## Menú del juego (Esc / Options), estilo Leyendas Arceus con ventanas B2W2: pausa el
-## juego, muestra arriba las pestañas y siempre la tira del equipo (acceso rápido a la
-## ficha de cada Pokémon). Pestañas: Equipo, Mochila, Pokédex, Ficha, Mapa, Controles,
-## Opciones y Guardar. Se cambia de pestaña con Q / E o L1 / R1.
+## Menú del juego (I / Options), estilo Leyendas Z-A: a la izquierda "MENÚ" con las
+## secciones con ícono; a la derecha el encabezado blanco de la sección, su contenido y las
+## ayudas de botones abajo. Pausa el juego. Se cambia de sección con Q / E o L1 / R1, con
+## el mouse o con la cruceta. Se adapta a cualquier tamaño de ventana (escala 1920×1080).
 
 const TABS := ["Equipo", "Mochila", "Pokédex", "Caja", "Rotom", "Logros", "Dinero", "Ficha", "Mapa", "Controles", "Opciones", "Guardar"]
+## Nombre visible de cada sección.
+const TITLES := {"Equipo": "Pokémon", "Caja": "Cajas"}
 
 ## Escena principal (compañero, cambio de acompañante, mapa).
 var main: Node
 var tab := 0
 ## Miembro del equipo que se muestra en la pestaña Equipo.
 var selected_member := 0
-var _tab_bar: HBoxContainer
-var _strip: HBoxContainer
+var _sidebar: VBoxContainer
+var _header: HBoxContainer
 var _content: Control
-var _footer: Label
+var _footer: HBoxContainer
+var _money: Label
 var _team_tab: TeamTab
 var _bag_tab: BagTab
 var _dex_tab: DexTab
@@ -24,39 +27,43 @@ var _dex_tab: DexTab
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = UiKit.theme()
 	visible = false
-	var shade := ColorRect.new()
-	shade.color = Color(0.04, 0.06, 0.1, 0.9)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-	var layout := VBoxContainer.new()
-	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layout.offset_left = 40
-	layout.offset_right = -40
-	layout.offset_top = 24
-	layout.offset_bottom = -20
-	layout.add_theme_constant_override("separation", 12)
-	add_child(layout)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
-	layout.add_child(top)
-	top.add_child(InputGlyph.make("menu_prev"))
-	_tab_bar = HBoxContainer.new()
-	_tab_bar.add_theme_constant_override("separation", 6)
-	top.add_child(_tab_bar)
-	top.add_child(InputGlyph.make("menu_next"))
-	for i in TABS.size():
-		var button := MenuStyle.button(TABS[i], 19)
-		button.pressed.connect(show_tab.bind(i))
-		_tab_bar.add_child(button)
-	_strip = HBoxContainer.new()
-	_strip.add_theme_constant_override("separation", 10)
-	layout.add_child(_strip)
+	add_child(UiKit.backdrop(0.985))
+	var outer := HBoxContainer.new()
+	outer.add_theme_constant_override("separation", 34)
+	add_child(UiKit.centered_margin(outer, 0.03, 0.035))
+	# Barra lateral.
+	var side := VBoxContainer.new()
+	side.custom_minimum_size.x = 360
+	side.add_theme_constant_override("separation", 14)
+	outer.add_child(side)
+	side.add_child(UiKit.title("Menú", UiIcons.section("Opciones"), 44))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	side.add_child(scroll)
+	_sidebar = VBoxContainer.new()
+	_sidebar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sidebar.add_theme_constant_override("separation", 8)
+	scroll.add_child(_sidebar)
+	_money = UiKit.label("", 20, UiKit.GOLD, true)
+	side.add_child(_money)
+	# Contenido.
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 16)
+	outer.add_child(column)
+	_header = HBoxContainer.new()
+	_header.add_theme_constant_override("separation", 16)
+	column.add_child(_header)
 	_content = MarginContainer.new()
 	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	layout.add_child(_content)
-	_footer = MenuStyle.label("", 17, MenuStyle.MUTED)
-	layout.add_child(_footer)
+	column.add_child(_content)
+	_footer = HBoxContainer.new()
+	_footer.alignment = BoxContainer.ALIGNMENT_END
+	_footer.add_theme_constant_override("separation", 26)
+	column.add_child(_footer)
 	_team_tab = TeamTab.new(self)
 	_bag_tab = BagTab.new(self)
 	_dex_tab = DexTab.new(self)
@@ -66,6 +73,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu") and not _other_overlay_open():
 		get_viewport().set_input_as_handled()
 		close() if visible else open()
+		return
+	if event.is_action_pressed("bag") and not _other_overlay_open():
+		get_viewport().set_input_as_handled()
+		if visible and TABS[tab] == "Mochila":
+			close()
+		else:
+			tab = TABS.find("Mochila")
+			open() if not visible else show_tab(tab)
 		return
 	if not visible:
 		return
@@ -89,25 +104,66 @@ func open() -> void:
 	if main != null and main.has_method("sync_companion_to_party"):
 		main.sync_companion_to_party()
 	visible = true
+	# En combate el menú abre la Mochila (pociones y bayas).
+	var battle := main.get_node_or_null("Battle") as BattleManager if main != null else null
+	if battle != null and battle.active:
+		tab = TABS.find("Mochila")
+	_set_hud(false)
+	AudioBus.play_sfx("ui_open")
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	refresh_strip()
 	show_tab(tab)
 
 
 func close() -> void:
+	if visible:
+		AudioBus.play_sfx("ui_close")
 	visible = false
+	_set_hud(true)
 	get_tree().paused = false
 
 
+## El HUD y el minimapa se ocultan mientras el menú está abierto.
+func _set_hud(on: bool) -> void:
+	if main == null:
+		return
+	for path in ["Hud", "MapUi"]:
+		var node := main.get_node_or_null(path) as CanvasLayer
+		if node != null:
+			node.visible = on
+
+
 func show_tab(index: int) -> void:
+	if visible and index != tab:
+		AudioBus.play_sfx("ui_select")
 	tab = index
-	for i in _tab_bar.get_child_count():
-		MenuStyle.style_button(_tab_bar.get_child(i) as Button, i == tab)
+	var name: String = TABS[tab]
+	# Barra lateral.
+	for child in _sidebar.get_children():
+		child.queue_free()
+	for i in TABS.size():
+		var button := UiKit.side_button(TITLES.get(TABS[i], TABS[i]), UiIcons.section(TABS[i]), i == tab)
+		button.pressed.connect(show_tab.bind(i))
+		_sidebar.add_child(button)
+		if i == tab:
+			button.grab_focus.call_deferred()
+	var minutes := int(GameState.play_time / 60.0)
+	_money.text = "$%s      ⏱ %d h %02d" % [_thousands(GameState.money), minutes / 60, minutes % 60]
+	# Encabezado.
+	for child in _header.get_children():
+		child.queue_free()
+	_header.add_child(UiKit.header_chip(TITLES.get(name, name), UiIcons.section(name)))
+	var guide := _guide(name)
+	if guide != "":
+		var tip := UiKit.wrapped("💡 " + guide, 17, UiKit.MUTED)
+		tip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_header.add_child(tip)
+	# Contenido.
 	for child in _content.get_children():
 		child.queue_free()
 	var page: Control
-	match TABS[tab]:
+	match name:
 		"Equipo":
 			page = _team_tab.build()
 		"Mochila":
@@ -117,7 +173,7 @@ func show_tab(index: int) -> void:
 		"Rotom":
 			page = RotomTab.build()
 		"Caja":
-			page = ExtraTabs.box(self)
+			page = BoxTab.build(self)
 		"Logros":
 			page = ExtraTabs.achievements()
 		"Dinero":
@@ -133,101 +189,94 @@ func show_tab(index: int) -> void:
 		"Guardar":
 			page = SaveTab.build(self)
 	_content.add_child(page)
-	_show_guide(TABS[tab])
-	_footer.text = "%s / %s Cambiar de pestaña   ·   %s Cerrar" % [InputHints.hint("menu_prev"), InputHints.hint("menu_next"), InputHints.hint("menu")]
-	if _footer_guide != "":
-		_footer.text = "💡 " + _footer_guide + "      " + _footer.text
-		_footer_guide = ""
+	# Ayudas de botones.
+	for child in _footer.get_children():
+		child.queue_free()
+	_footer.add_child(UiKit.hint("menu_prev", "Sección anterior"))
+	_footer.add_child(UiKit.hint("menu_next", "Sección siguiente"))
+	_footer.add_child(UiKit.hint("menu", "Cerrar"))
 
 
-## Guía de la primera vez en cada pestaña.
+static func _thousands(value: int) -> String:
+	var text := str(absi(value))
+	var result := ""
+	while text.length() > 3:
+		result = "," + text.substr(text.length() - 3) + result
+		text = text.substr(0, text.length() - 3)
+	return ("-" if value < 0 else "") + text + result
+
+
+## Guía de la primera vez en cada sección.
 const GUIDES := {
-	"Equipo": "Aquí ves la ficha de cada Pokémon de tu equipo. Reparte sus Puntos de Entrenamiento y elige quién te acompaña.",
-	"Mochila": "Tus objetos por bolsillo. Elige la Pokéball que lanzas, cura a tu compañero, come bayas o fabrica objetos.",
-	"Pokédex": "Las 1,025 especies. Investiga cada una (verla, capturarla, de espaldas…) para ver dónde vive en el mapa.",
-	"Caja": "Lo que capturas con el equipo lleno llega aquí. Pásalos al equipo o libéralos.",
-	"Rotom": "Tus actividades con plazo. Cúmplelas antes de que se acabe el tiempo o habrá consecuencias.",
+	"Equipo": "Elige un Pokémon arriba para ver su ficha. Reparte sus Puntos de Entrenamiento y cambia sus movimientos.",
+	"Mochila": "Tus objetos por bolsillo (íconos de arriba). Úsalos en el Pokémon que elijas a la derecha.",
+	"Pokédex": "Las 1,025 especies. Investiga cada una para ver dónde vive en el mapa.",
+	"Caja": "Elige un Pokémon del equipo o de la caja para ver su ficha y moverlo.",
+	"Rotom": "Tus actividades con plazo. Cúmplelas antes de que se acabe el tiempo.",
 	"Logros": "Medallas por hitos y las estadísticas de tu partida.",
-	"Dinero": "Tu dinero, lo que ganas y pierdes, y los precios de referencia.",
+	"Dinero": "Tu dinero, lo que ganas y pierdes.",
 	"Ficha": "Tu ficha de entrenador.",
 	"Mapa": "Abre el mapa completo de la región.",
-	"Controles": "Todos los botones del teclado de Mac y del control de PlayStation.",
-	"Opciones": "Ajusta la cámara, el audio, la densidad de Pokémon y más. Se guarda solo.",
-	"Guardar": "Guarda en 3 ranuras. También hay autoguardado cada 5 minutos.",
+	"Controles": "Todos los botones del teclado de Mac y del control.",
+	"Opciones": "Ajusta cámara, video, audio, dificultad, accesibilidad y botones.",
+	"Guardar": "Guarda en 3 ranuras. También hay autoguardado.",
 }
 
 
-func _show_guide(tab_name: String) -> void:
-	var key := "menu_" + tab_name
-	if GameState.tips_seen.get(key, false) or not GUIDES.has(tab_name):
-		return
+func _guide(name: String) -> String:
+	var key := "menu_" + name
+	if GameState.tips_seen.get(key, false) or not GUIDES.has(name):
+		return ""
 	GameState.tips_seen[key] = true
-	_footer_guide = GUIDES[tab_name]
+	return GUIDES[name]
 
 
-var _footer_guide := ""
-
-
-## Tira del equipo: siempre visible arriba; tocar un Pokémon abre su ficha.
+## Compatibilidad: antes había una tira fija del equipo; ahora cada sección dibuja la suya.
 func refresh_strip() -> void:
-	for child in _strip.get_children():
-		child.queue_free()
+	pass
+
+
+## Fila del equipo (6 retratos) que usan las secciones Equipo, Mochila y Cajas.
+func party_row(on_pick: Callable, highlight: int) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
 	for i in GameState.PARTY_MAX:
-		var card := Button.new()
-		card.custom_minimum_size = Vector2(250, 92)
-		MenuStyle.style_button(card, i == GameState.companion_index and i < GameState.party.size())
-		_strip.add_child(card)
 		if i >= GameState.party.size():
-			card.disabled = true
-			card.text = "—"
+			row.add_child(UiKit.empty_slot(Vector2(118, 150)))
 			continue
-		var entry: Dictionary = GameState.party[i]
-		var species := MenuStyle.species(entry["species"])
-		var row := HBoxContainer.new()
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 8
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(row)
-		var icon := MenuStyle.texture_rect(MenuStyle.front_sprite(species, entry.get("shiny", false)), Vector2(72, 72))
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(icon)
-		var info := VBoxContainer.new()
-		info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(info)
-		var star := "★ " if i == GameState.companion_index else ""
-		var title := MenuStyle.label(star + species.display_name + (" ✦" if entry.get("shiny", false) else ""), 18)
-		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		info.add_child(title)
-		var ratio := float(entry.get("hp_ratio", 1.0))
-		info.add_child(MenuStyle.bar(ratio, 110, Color(0.3, 0.85, 0.4) if ratio > 0.5 else (Color(0.95, 0.8, 0.2) if ratio > 0.2 else Color(0.9, 0.25, 0.2)), 8))
-		var types := HBoxContainer.new()
-		types.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for t in species.types:
-			types.add_child(MenuStyle.type_pill(t))
-		info.add_child(types)
-		card.pressed.connect(func() -> void:
-			selected_member = i
-			show_tab(0))
+		var card := UiKit.portrait_card(GameState.party[i], i == highlight)
+		if i == GameState.companion_index:
+			var star := UiKit.label("★", 20, UiKit.GOLD, true)
+			star.position = Vector2(6, 2)
+			card.add_child(star)
+		card.pressed.connect(on_pick.bind(i))
+		row.add_child(card)
+	return row
 
 
 func _trainer_card() -> Control:
-	var box := MenuStyle.panel_container(MenuStyle.ACCENT)
+	var center := CenterContainer.new()
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiKit.card_style(18))
+	card.custom_minimum_size = Vector2(1100, 520)
+	center.add_child(card)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 40)
-	box.add_child(row)
+	card.add_child(row)
 	var atlas := AtlasTexture.new()
 	atlas.atlas = PlayerCharacters.sheet(GameState.character_id)
 	atlas.region = Rect2(0, 0, 32, 32)
-	row.add_child(MenuStyle.texture_rect(atlas, Vector2(224, 224)))
+	var portrait := PanelContainer.new()
+	var portrait_style := UiKit.panel_style(true, 16)
+	portrait_style.bg_color = Color(0.85, 0.9, 1.0)
+	portrait.add_theme_stylebox_override("panel", portrait_style)
+	portrait.add_child(UiKit.icon_rect(atlas, Vector2(260, 260)))
+	row.add_child(portrait)
 	var info := VBoxContainer.new()
-	info.add_theme_constant_override("separation", 10)
+	info.add_theme_constant_override("separation", 12)
 	row.add_child(info)
 	var entry := PlayerCharacters.find(GameState.character_id)
-	info.add_child(MenuStyle.label("Ficha de entrenador", 30, MenuStyle.ACCENT))
-	info.add_child(MenuStyle.label("Nombre: %s   ·   Región de origen: %s" % [GameState.player_name, entry["region"]], 22))
-	var minutes := int(GameState.play_time / 60.0)
-	info.add_child(MenuStyle.label("Tiempo jugado: %d h %02d min" % [minutes / 60, minutes % 60], 22))
-	info.add_child(MenuStyle.label("Dinero: $%d" % GameState.money, 22))
+	info.add_child(UiKit.label("FICHA DE ENTRENADOR", 30, UiKit.INK, true))
 	var seen := 0
 	var caught := 0
 	var shinies := 0
@@ -235,22 +284,38 @@ func _trainer_card() -> Control:
 		seen += 1 if GameState.dex[id]["seen"] > 0 else 0
 		caught += 1 if GameState.dex[id]["caught"] > 0 else 0
 		shinies += 1 if GameState.dex[id]["shiny"] else 0
-	info.add_child(MenuStyle.label("Pokédex: %d vistos · %d capturados (de 1,025)" % [seen, caught], 22))
-	info.add_child(MenuStyle.label("Shinies capturados: %d   ·   Legendarios: %d" % [shinies, GameState.legendary_caught.size()], 22))
-	info.add_child(MenuStyle.label("Dificultad: %s" % GameState.DIFFICULTIES[GameState.difficulty]["name"], 22))
-	info.add_child(MenuStyle.label("Medallas, cintas e insignias: llegarán con los caminos.", 18, MenuStyle.MUTED))
-	return box
+	var minutes := int(GameState.play_time / 60.0)
+	var lines := [
+		["Nombre", GameState.player_name], ["Origen", entry["region"]], ["Tiempo jugado", "%d h %02d min" % [minutes / 60, minutes % 60]],
+		["Dinero", "$" + _thousands(GameState.money)], ["Pokédex", "%d vistos · %d capturados" % [seen, caught]],
+		["Shinies · Legendarios", "%d · %d" % [shinies, GameState.legendary_caught.size()]],
+		["Dificultad", GameState.DIFFICULTIES[GameState.difficulty]["name"]],
+		["Medallas", "%d / 8" % (GameState.world_flags.get("badges", []) as Array).size()],
+		["Cintas", "%d / 5" % (GameState.world_flags.get("ribbons", []) as Array).size()],
+	]
+	for line: Array in lines:
+		var item := HBoxContainer.new()
+		var key := UiKit.label(line[0], 20, Color(0.35, 0.4, 0.55), true)
+		key.custom_minimum_size.x = 280
+		item.add_child(key)
+		item.add_child(UiKit.label(str(line[1]), 22, UiKit.INK, true))
+		info.add_child(item)
+	return center
 
 
 func _map_page() -> Control:
+	var center := CenterContainer.new()
 	var box := VBoxContainer.new()
-	box.add_child(MenuStyle.label("Mapa de la región", 28, MenuStyle.ACCENT))
-	box.add_child(MenuStyle.wrapped("Abre el mapa completo con la niebla de lo que has explorado. También con %s." % InputHints.hint("map"), 20))
-	var open_map := MenuStyle.button("Abrir el mapa", 24)
+	box.add_theme_constant_override("separation", 18)
+	center.add_child(box)
+	box.add_child(UiKit.icon_rect(Items.icon("town-map"), Vector2(140, 140)))
+	box.add_child(UiKit.label("Mapa de la región", 32, UiKit.WHITE, true))
+	box.add_child(UiKit.wrapped("Abre el mapa completo con la niebla de lo que has explorado. También con %s." % InputHints.hint("map"), 20, UiKit.MUTED))
+	var open_map := UiKit.big_button("Abrir el mapa", Items.icon("town-map"))
 	open_map.pressed.connect(func() -> void:
 		close()
 		var map_ui := main.get_node_or_null("MapUi") if main != null else null
 		if map_ui != null:
 			map_ui.call("toggle_full_map"))
 	box.add_child(open_map)
-	return box
+	return center

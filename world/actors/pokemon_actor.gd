@@ -88,6 +88,12 @@ const ESCAPE_COMPANION_RADIUS := 15.0
 @export var swimming := false
 ## Lo controla el jugador (mientras Nate está desmayado y lo protege).
 var controlled := false
+## Arena de combate (BattleManager): centro y radio; INF = sin combate.
+var battle_center := Vector3.INF
+var battle_radius := 15.0
+## Megaevolución activa (null = forma normal) y la especie original.
+var mega: MegaData
+var _base_species: SpeciesData
 ## El jugador surfea sobre él (compañero de tipo Agua).
 var ridden_by: Node3D
 ## Recién nacido en la ceremonia del inicial: se queda quieto mirando al jugador,
@@ -266,6 +272,7 @@ func _physics_process(delta: float) -> void:
 			move_and_slide()
 		_sprite.animate(Vector3.ZERO, delta)
 		return
+	_clamp_to_arena()
 	if ceremony:
 		_health_bar.visible = false
 		if player != null:
@@ -646,10 +653,14 @@ func _process_ridden(delta: float) -> void:
 	var moving := Vector3((ridden_by as CharacterBody3D).velocity.x, 0.0, (ridden_by as CharacterBody3D).velocity.z)
 	var rider := ridden_by as Player
 	if rider != null and rider.ride != Player.Ride.NONE:
-		# Montado en tierra o volando: bajo el jugador.
+		# Montado en tierra o volando: bajo el jugador y mirando hacia donde él mira.
 		global_position = ridden_by.global_position + Vector3(0, 0.02, 0)
 		velocity = Vector3.ZERO
 		_sprite.animate(moving, delta, moving.length() > walk_speed() or rider.ride == Player.Ride.FLY)
+		var rider_sprite := rider.get_node_or_null("Sprite") as DirectionalSprite
+		if rider_sprite != null:
+			_sprite.facing_world = rider_sprite.facing_world
+			_sprite.animate(Vector3.ZERO if moving.length() < 0.1 else moving, 0.0, moving.length() > walk_speed())
 		_rival_scan = RIVAL_SCAN_INTERVAL
 		return
 	var level := world.water_level_at(ridden_by.global_position.x, ridden_by.global_position.z) if world != null else ridden_by.global_position.y
@@ -721,6 +732,10 @@ func _process_controlled(delta: float) -> void:
 			var id := moves[slot]
 			if move_ready(id) and _attack_cooldown <= 0.0:
 				var target := _nearest_wild(CONTROL_TARGET_RADIUS)
+				var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
+				if battle != null and battle.active and is_instance_valid(battle.opponent):
+					target = battle.opponent
+					battle.note_move(id)
 				if Moves.get_move(id)["class"] == "physical" and target != null:
 					_lunge_time = LUNGE_TIME
 					var to_target := target.global_position - global_position
@@ -730,8 +745,8 @@ func _process_controlled(delta: float) -> void:
 	if _lunge_time > 0.0:
 		_lunge_time -= delta
 		horizontal = _lunge_dir * DASH_SPEED * 0.9
-	# Correa: no se aleja de Nate.
-	if player != null:
+	# Correa: no se aleja de Nate (en combate el límite es la arena; salir = huir).
+	if player != null and battle_center == Vector3.INF:
 		var next := global_position + horizontal * delta
 		if next.distance_to(player.global_position) > GUARD_LEASH:
 			horizontal = (player.global_position - global_position).normalized() * run_speed()
@@ -740,6 +755,109 @@ func _process_controlled(delta: float) -> void:
 	velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
 	move_and_slide()
 	_sprite.animate(horizontal, delta, horizontal.length() > walk_speed())
+
+
+## Aviso en el suelo: un círculo rojo donde va a caer el ataque (dura lo que la preparación).
+func _telegraph(at: Vector3) -> void:
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.9
+	torus.outer_radius = 1.25
+	torus.rings = 24
+	ring.mesh = torus
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.2, 0.15, 0.85)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = material
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	get_parent().add_child(ring)
+	ring.global_position = at + Vector3.UP * 0.15
+	var tween := ring.create_tween()
+	tween.tween_property(ring, "scale", Vector3(0.4, 1, 0.4), ATTACK_WINDUP).from(Vector3.ONE)
+	tween.tween_callback(ring.queue_free)
+
+
+## En combate, el salvaje no sale de la arena.
+func _clamp_to_arena() -> void:
+	if battle_center == Vector3.INF or role != Role.WILD:
+		return
+	var offset := Vector2(global_position.x - battle_center.x, global_position.z - battle_center.z)
+	if offset.length() > battle_radius:
+		var inside := offset.normalized() * battle_radius
+		global_position.x = battle_center.x + inside.x
+		global_position.z = battle_center.z + inside.y
+
+
+## Megaevoluciona: tipos, estadísticas y sprite de la mega (hecho con sus sprites de
+## combate de frente y espalda). La vida conserva su proporción.
+func apply_mega(data: MegaData) -> void:
+	if mega != null or data == null:
+		return
+	_base_species = species
+	var form := species.duplicate() as SpeciesData
+	form.display_name = data.display_name
+	form.types.assign(data.types)
+	form.hp = data.hp
+	form.attack = data.attack
+	form.defense = data.defense
+	form.sp_attack = data.sp_attack
+	form.sp_defense = data.sp_defense
+	form.speed = data.speed
+	form.base_total = data.base_total()
+	form.size_scale = species.size_scale * 1.3
+	var sheet := mega_sheet(data, shiny)
+	if sheet != null:
+		form.overworld_sheet = sheet
+		form.overworld_sheet_shiny = sheet
+		form.overworld_cell = sheet.get_width() / 2
+		form.foot_offset_px = 0
+	mega = data
+	_swap_form(form)
+
+
+func remove_mega() -> void:
+	if mega == null or _base_species == null:
+		return
+	mega = null
+	_swap_form(_base_species)
+	_base_species = null
+
+
+func _swap_form(form: SpeciesData) -> void:
+	var ratio := hp / hp_max
+	species = form
+	hp_max = 20.0 + species.hp * 0.6
+	hp = hp_max * ratio
+	var sheet := species.overworld_sheet_shiny if shiny and species.overworld_sheet_shiny != null else species.overworld_sheet
+	_sprite.setup(sheet, 2, 4, world_pixel_size(), species.foot_offset_px)
+	_health_bar.set_ratio(hp / hp_max)
+
+
+## Hoja de 2 × 4 a partir de los sprites de combate de la mega: abajo = frente, arriba =
+## espalda, a los lados el frente (volteado a la derecha).
+static func mega_sheet(data: MegaData, is_shiny: bool) -> Texture2D:
+	var front: Texture2D = data.front_shiny if is_shiny and data.front_shiny != null else data.front
+	var back: Texture2D = data.back_shiny if is_shiny and data.back_shiny != null else data.back
+	if front == null:
+		return null
+	var front_image := front.get_image()
+	if front_image.is_compressed():
+		front_image.decompress()
+	front_image.convert(Image.FORMAT_RGBA8)
+	var back_image := back.get_image() if back != null else front_image
+	if back_image.is_compressed():
+		back_image.decompress()
+	back_image.convert(Image.FORMAT_RGBA8)
+	var cell := front_image.get_width()
+	var sheet := Image.create_empty(cell * 2, cell * 4, false, Image.FORMAT_RGBA8)
+	var flipped := front_image.duplicate() as Image
+	flipped.flip_x()
+	var rows := [front_image, front_image, flipped, back_image]
+	for row in 4:
+		for column in 2:
+			sheet.blit_rect(rows[row], Rect2i(0, 0, cell, cell), Vector2i(column * cell, row * cell))
+	return ImageTexture.create_from_image(sheet)
 
 
 ## Bola Humo o Poké Muñeco: deja de perseguir o pelear con el jugador y lo ignora.
@@ -952,6 +1070,14 @@ func start_fight(target: Node3D) -> void:
 		chase_origin = home if species.temperament == SpeciesData.Temperament.TERRITORIAL else global_position
 	fight_target = target
 	_enter(State.FIGHT)
+	# Combate en arena (Fase 3): tu compañero contra un salvaje, o un salvaje contra ti o él.
+	if BattleManager.enabled and not ceremony:
+		var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
+		if battle != null and not battle.active:
+			if role == Role.COMPANION and target is PokemonActor and (target as PokemonActor).role == Role.WILD:
+				battle.start.call_deferred(target)
+			elif role == Role.WILD and (target == player or (target is PokemonActor and (target as PokemonActor).role == Role.COMPANION)):
+				battle.start.call_deferred(self)
 
 
 ## Recibe un golpe: baja la vida, parpadea y responde (o huye si es tímido).
@@ -1040,6 +1166,8 @@ func _think_fight() -> Array:
 		if _pending_move != "":
 			_windup = ATTACK_WINDUP
 			_flash(Color(1.6, 1.6, 1.6))
+			if role == Role.WILD:
+				_telegraph(fight_target.global_position)
 	return [global_position, 0.0]
 
 
@@ -1194,6 +1322,10 @@ func _apply_move_hit(node: Node3D, id: String, style: int) -> bool:
 		if int(party_entry.get("bond", 1)) >= 8 and _rng.randf() < 0.1:
 			amount *= 1.5
 		target.receive_hit(amount, self)
+		# Sonido del golpe según la efectividad (solo si pasa cerca del jugador).
+		if player != null and global_position.distance_to(player.global_position) < 30.0:
+			var effectiveness := TypeChart.effectiveness(int(Moves.get_move(id)["type"]), target.species.types)
+			AudioBus.play_sfx("hit_super" if effectiveness > 1.0 else ("hit_weak" if effectiveness < 1.0 else "hit_normal"))
 		var drain := int(Moves.get_move(id).get("drain", 0))
 		if drain > 0:
 			_heal_to(minf((hp + amount * drain / 100.0) / hp_max, 1.0))
@@ -1311,6 +1443,8 @@ func _find_rival() -> PokemonActor:
 ## Debilitado: aturdido STUN_TIME s con estrellitas (se puede capturar). Después, si
 ## es salvaje, desaparece en humo; si es el compañero, lo decide la escena principal.
 func _stun() -> void:
+	if player != null and global_position.distance_to(player.global_position) < 30.0:
+		AudioBus.play_sfx("faint")
 	if role == Role.WILD and _last_attacker is PokemonActor and (_last_attacker as PokemonActor).role == Role.COMPANION:
 		GameState.wild_defeated.emit(species.identifier)
 	if role == Role.WILD and player != null and global_position.distance_to(player.global_position) <= SEEN_RADIUS:

@@ -35,6 +35,14 @@ func _ready() -> void:
 	events.player_path = NodePath("../Player")
 	events.spawner_path = NodePath("../Spawner")
 	add_child(events)
+	# Combate en arena (Fase 3) y música según el lugar.
+	var battle := BattleManager.new()
+	battle.name = "Battle"
+	add_child(battle)
+	battle.ended.connect(_on_battle_ended)
+	var music := MusicDirector.new()
+	music.name = "Music"
+	add_child(music)
 	# Habitantes de los pueblos con rutina (Fase 2.7).
 	var npcs := TownNPCs.new()
 	npcs.name = "TownNPCs"
@@ -271,9 +279,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _wheel != null and _wheel.visible:
 			var index := _wheel.close()
 			if index >= 0 and index != GameState.companion_index:
-				swap_companion(index)
+				var battle := get_node_or_null("Battle") as BattleManager
+				if battle != null and battle.active:
+					battle.switch_to(index)
+				else:
+					swap_companion(index)
 			return
 		if companion == null or _busy:
+			return
+		# En combate, tocar Q no guarda al Pokémon (mantener abre la rueda).
+		var in_battle := get_node_or_null("Battle") as BattleManager
+		if in_battle != null and in_battle.active:
 			return
 		if companion_state == CompanionState.OUT:
 			_recall_companion()
@@ -440,6 +456,10 @@ func _on_player_revived() -> void:
 func _on_companion_stunned(_actor: PokemonActor) -> void:
 	if companion_state == CompanionState.FAINTED:
 		return
+	# En combate sale el siguiente Pokémon sano (si queda alguno).
+	var battle := get_node_or_null("Battle") as BattleManager
+	if battle != null and battle.active and battle.on_companion_fainted():
+		return
 	companion_state = CompanionState.FAINTED
 	companion.set_controlled(false)
 	($CameraRig as CameraRig).set_target(_player)
@@ -461,6 +481,10 @@ func _return_companion(ratio: float) -> void:
 ## Desmayo definitivo: pantalla negra, pierde dinero y reaparece en el Centro
 ## Pokémon con todo curado.
 func _on_blacked_out() -> void:
+	var battle := get_node_or_null("Battle") as BattleManager
+	if battle != null:
+		battle.finish("lose")
+	BattleManager.reset_streak()
 	var lost := GameState.apply_blackout_penalty()
 	# En el Centro Pokémon se cura todo el equipo.
 	for member: Dictionary in GameState.party:
@@ -508,6 +532,16 @@ func _warm_up_shaders() -> void:
 			node.queue_free()
 
 
+## Un salvaje te alcanzó: empieza el combate en arena (si se puede).
 func _on_wild_contact(actor: PokemonActor) -> void:
-	# El combate en tiempo real llega en la Fase 3.
-	print("Encuentro con %s salvaje" % actor.species.display_name)
+	var battle := get_node_or_null("Battle") as BattleManager
+	if battle != null and BattleManager.enabled:
+		battle.start(actor)
+
+
+func _on_battle_ended(result: String) -> void:
+	match result:
+		"win":
+			AudioBus.play_jingle("bw1_victory_wild")
+		"capture":
+			AudioBus.play_jingle("bw1_item")

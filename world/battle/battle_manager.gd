@@ -1,0 +1,400 @@
+class_name BattleManager
+extends Node3D
+## Combate en tiempo real en una arena (Fase 3, decidido con Fernando el 2026-10-10):
+## - Empieza cuando un salvaje te alcanza, cuando tu compañero lo ataca o él ataca a tu
+##   compañero. Se forma una arena de ARENA_RADIUS m en ese lugar; el resto del mundo se
+##   pausa (salvajes, aparición, eventos, habitantes) y la cámara pasa detrás de tu Pokémon.
+## - Controlas a tu Pokémon: moverte, esquivar (Espacio / ○), fijar objetivo (Tab / R3) y
+##   sus 4 movimientos (1–4 / R1 + botones). Mantener apuntar pasa el control a ti para
+##   lanzar una Pokéball (Fase 4) mientras tu Pokémon pelea solo.
+## - Mantener Q / △ abre la rueda para cambiar de Pokémon (2 s de espera); el menú abre la
+##   Mochila para usar pociones o bayas. Si tu Pokémon cae y tienes otro, sale el siguiente;
+##   si no queda ninguno, vas al Centro Pokémon.
+## - Huir: sacar a tu Pokémon del círculo (ese salvaje te ignora un rato).
+## - Megaevolución (G / cruceta ↑): una vez por combate con la Piedra Llave y la megapiedra.
+## - Al ganar: Puntos de Entrenamiento, objetos que suelta según su tipo, vínculo y dominio,
+##   investigación, racha de victorias (más shiny y objetos raros; se pierde al desmayarte)
+##   y, de los fuertes, Fragmentos Místicos (MT y misiones de megapiedras).
+
+signal started(opponent: PokemonActor)
+signal ended(result: String)
+
+const ARENA_RADIUS := 15.0
+const SWITCH_COOLDOWN := 2.0
+const FLEE_IGNORE := 10.0
+## Objetos que suelta un salvaje por tipo (y su probabilidad base).
+const DROPS := {
+	PokemonTypes.Type.GRASS: ["oran-berry", "pecha-berry", "tinymushroom"], PokemonTypes.Type.BUG: ["honey", "tinymushroom"],
+	PokemonTypes.Type.FIRE: ["red-shard", "lava-cookie"], PokemonTypes.Type.WATER: ["pearl", "blue-shard"],
+	PokemonTypes.Type.ROCK: ["hard-stone", "red-shard"], PokemonTypes.Type.GROUND: ["hard-stone", "blue-shard"],
+	PokemonTypes.Type.ELECTRIC: ["thunderstone", "blue-shard"], PokemonTypes.Type.FLYING: ["sitrus-berry", "honey"],
+	PokemonTypes.Type.FAIRY: ["stardust", "moon-stone"], PokemonTypes.Type.ICE: ["blue-shard", "pearl"],
+	PokemonTypes.Type.GHOST: ["stardust", "dusk-stone"], PokemonTypes.Type.DARK: ["dusk-stone", "nugget"],
+	PokemonTypes.Type.PSYCHIC: ["stardust", "star-piece"], PokemonTypes.Type.STEEL: ["hard-stone", "nugget"],
+	PokemonTypes.Type.DRAGON: ["star-piece", "comet-shard"], PokemonTypes.Type.POISON: ["pecha-berry", "tinymushroom"],
+	PokemonTypes.Type.FIGHTING: ["cheri-berry", "hard-stone"], PokemonTypes.Type.NORMAL: ["oran-berry", "cheri-berry"],
+}
+const RARE_DROPS := ["rare-candy", "nugget", "star-piece", "lucky-egg"]
+const FRAGMENT := "mystic-fragment"
+
+## Se apaga en las pruebas que no son del combate (los salvajes pelean en el mundo).
+static var enabled := true
+
+var active := false
+var opponent: PokemonActor
+var center := Vector3.ZERO
+var locked := false
+var mega_used := false
+var _main: Node
+var _ring: MeshInstance3D
+var _frozen: Array[Node] = []
+var _switch_cooldown := 0.0
+var _ui: BattleUI
+var _rng := RandomNumberGenerator.new()
+var _moves_used: Array[String] = []
+var _ending := false
+
+
+func _ready() -> void:
+	add_to_group(&"battle")
+	_rng.randomize()
+	_main = get_parent()
+	_ui = BattleUI.new()
+	_ui.name = "BattleUI"
+	add_child(_ui)
+	_ui.visible = false
+
+
+func player() -> Player:
+	return _main.get_node_or_null("Player") as Player
+
+
+func companion() -> PokemonActor:
+	var node: Variant = _main.get("companion")
+	return node as PokemonActor if node != null and is_instance_valid(node) else null
+
+
+## ¿Puede empezar un combate con este salvaje ahora?
+func can_start(wild: PokemonActor) -> bool:
+	if not enabled or active or wild == null or not is_instance_valid(wild) or wild.role != PokemonActor.Role.WILD:
+		return false
+	if wild.ceremony or wild.legendary or wild.has_meta("trainer") or wild.state == PokemonActor.State.STUNNED or wild.has_meta("fled_until") and float(wild.get_meta("fled_until")) > GameState.play_time:
+		return false
+	var c := companion()
+	var p := player()
+	if c == null or p == null or int(_main.get("companion_state")) != 0 or p.mode != Player.Mode.WALK or p.ride != Player.Ride.NONE:
+		return false
+	return wild.global_position.distance_to(p.global_position) < 30.0
+
+
+## Empieza el combate contra wild (devuelve false si no se puede).
+func start(wild: PokemonActor) -> bool:
+	if not can_start(wild):
+		return false
+	active = true
+	_ending = false
+	opponent = wild
+	mega_used = false
+	locked = true
+	_moves_used.clear()
+	var c := companion()
+	var p := player()
+	center = (wild.global_position + c.global_position) * 0.5
+	var world := _main.get_node("World") as WorldBuilder
+	center.y = world.surface_height_at(center.x, center.z)
+	# El jugador queda atrás, en el borde, mirando la pelea.
+	var away := p.global_position - center
+	away.y = 0.0
+	if away.length() < 0.1:
+		away = Vector3.BACK
+	var player_spot := center + away.normalized() * (ARENA_RADIUS - 3.0)
+	if p.global_position.distance_to(center) > ARENA_RADIUS - 2.0:
+		p.global_position = Vector3(player_spot.x, world.surface_height_at(player_spot.x, player_spot.z) + 0.3, player_spot.z)
+	_freeze_world(true)
+	_make_ring()
+	c.set_controlled(true)
+	c.battle_center = center
+	c.battle_radius = ARENA_RADIUS + 1.5
+	wild.battle_center = center
+	wild.battle_radius = ARENA_RADIUS - 0.5
+	wild.start_fight(c)
+	var rig := _main.get_node("CameraRig") as CameraRig
+	rig.set_target(c)
+	_ui.visible = true
+	_ui.setup(self)
+	GameState.notice.emit("¡Combate contra %s! Sal del círculo para huir." % wild.species.display_name)
+	started.emit(wild)
+	return true
+
+
+func _process(delta: float) -> void:
+	if not active or _ending:
+		return
+	_switch_cooldown = maxf(_switch_cooldown - delta, 0.0)
+	var c := companion()
+	if opponent == null or not is_instance_valid(opponent) or opponent.is_queued_for_deletion():
+		_end("capture")
+		return
+	if opponent.state == PokemonActor.State.STUNNED:
+		_win()
+		return
+	if c == null:
+		return
+	# Al apuntar (Fase 4) el control pasa al jugador y el compañero pelea solo.
+	var aiming := (player().get_node("ThrowAim") as ThrowAim).is_aiming()
+	if aiming and c.controlled:
+		c.set_controlled(false)
+		c.battle_center = center
+		c.start_fight(opponent)
+		(_main.get_node("CameraRig") as CameraRig).set_target(player())
+	elif not aiming and not c.controlled and c.state != PokemonActor.State.STUNNED and int(_main.get("companion_state")) == 0:
+		c.set_controlled(true)
+		(_main.get_node("CameraRig") as CameraRig).set_target(c)
+	# Huir: tu Pokémon salió del círculo.
+	if c.controlled and Vector2(c.global_position.x - center.x, c.global_position.z - center.z).length() > ARENA_RADIUS + 1.0:
+		opponent.set_meta("fled_until", GameState.play_time + FLEE_IGNORE)
+		opponent.lose_track(FLEE_IGNORE)
+		GameState.notice.emit("¡Escapaste del combate!")
+		AudioBus.play_sfx("flee")
+		_end("flee")
+		return
+	if Input.is_action_just_pressed("lock_on"):
+		locked = not locked
+	if locked and c.controlled:
+		var rig := _main.get_node("CameraRig") as CameraRig
+		var to := opponent.global_position - c.global_position
+		to.y = 0.0
+		if to.length() > 0.5:
+			var yaw := rad_to_deg(atan2(-to.x, -to.z))
+			rig.set("_yaw_deg", lerp_angle_deg(float(rig.get("_yaw_deg")), yaw, 1.0 - exp(-6.0 * delta)))
+	if Input.is_action_just_pressed("mega_evolve"):
+		try_mega()
+	_ui.refresh()
+
+
+static func lerp_angle_deg(from: float, to: float, weight: float) -> float:
+	return rad_to_deg(lerp_angle(deg_to_rad(from), deg_to_rad(to), weight))
+
+
+## Registra un movimiento usado por tu Pokémon (para el dominio extra al ganar).
+func note_move(id: String) -> void:
+	if active and not _moves_used.has(id):
+		_moves_used.append(id)
+
+
+## Tu Pokémon cayó: sale el siguiente sano o se pierde.
+func on_companion_fainted() -> bool:
+	if not active:
+		return false
+	var next := next_healthy()
+	if next < 0:
+		_end("lose")
+		return false
+	GameState.party[GameState.companion_index]["hp_ratio"] = 0.0
+	_switch_cooldown = 0.0
+	switch_to(next)
+	return true
+
+
+func next_healthy() -> int:
+	for i in GameState.party.size():
+		if i != GameState.companion_index and float(GameState.party[i].get("hp_ratio", 1.0)) > 0.0:
+			return i
+	return -1
+
+
+## Cambia de Pokémon dentro del combate (con espera).
+func switch_to(index: int) -> bool:
+	if not active or _switch_cooldown > 0.0 or index == GameState.companion_index:
+		return false
+	if float(GameState.party[index].get("hp_ratio", 1.0)) <= 0.0:
+		GameState.notice.emit("Ese Pokémon está debilitado.")
+		return false
+	_switch_cooldown = SWITCH_COOLDOWN
+	_restore_mega()
+	_main.call("swap_companion", index)
+	var c := companion()
+	if c == null:
+		return false
+	c.global_position = center + (player().global_position - center).normalized() * 4.0 + Vector3.UP * 0.3
+	c.set_controlled(true)
+	c.battle_center = center
+	c.battle_radius = ARENA_RADIUS + 1.5
+	opponent.start_fight(c)
+	(_main.get_node("CameraRig") as CameraRig).set_target(c)
+	GameState.notice.emit("¡Adelante, %s!" % c.species.display_name)
+	_ui.setup(self)
+	return true
+
+
+func switch_ready() -> bool:
+	return _switch_cooldown <= 0.0
+
+
+# --- Megaevolución ------------------------------------------------------------------
+
+## Megas que puede usar tu compañero ahora (Piedra Llave y su megapiedra en la mochila).
+func available_mega() -> MegaData:
+	var c := companion()
+	if c == null or mega_used or GameState.item_count("key-stone") <= 0:
+		return null
+	for mega in MegaCatalog.load_catalog().for_species(c.species.identifier):
+		if Items.exists("stone-" + mega.identifier) and GameState.item_count("stone-" + mega.identifier) > 0:
+			return mega
+		if mega.identifier == "rayquaza-mega":
+			return mega
+	return null
+
+
+func try_mega() -> bool:
+	var mega := available_mega()
+	if mega == null:
+		if not mega_used:
+			GameState.notice.emit("Necesitas la Piedra Llave y la megapiedra de tu Pokémon para megaevolucionar.")
+		return false
+	mega_used = true
+	var c := companion()
+	opponent.set_physics_process(false)
+	c.set_physics_process(false)
+	await MegaEffect.play(_main, c, player())
+	if is_instance_valid(c):
+		c.apply_mega(mega)
+		c.set_physics_process(true)
+	if is_instance_valid(opponent):
+		opponent.set_physics_process(true)
+	GameState.notice.emit("¡%s megaevolucionó en %s!" % [c.species.display_name if c.mega == null else c.mega.base_species.capitalize(), mega.display_name])
+	Achievements.add("megas")
+	_ui.setup(self)
+	return true
+
+
+func _restore_mega() -> void:
+	var c := companion()
+	if c != null and c.mega != null:
+		c.remove_mega()
+
+
+# --- Final ---------------------------------------------------------------------------
+
+func _win() -> void:
+	var defeated := opponent
+	var c := companion()
+	var species := defeated.species
+	var lines: Array[String] = ["¡%s ganó!" % (c.species.display_name if c != null else "Tu equipo")]
+	# Racha de victorias.
+	var streak := int(GameState.world_flags.get("win_streak", 0)) + 1
+	GameState.world_flags["win_streak"] = streak
+	# Vínculo y dominio extra.
+	if c != null and not GameState.party.is_empty():
+		var entry: Dictionary = GameState.party[GameState.companion_index]
+		entry["bond_xp"] = float(entry.get("bond_xp", 0.0)) + 3.0
+		for id in _moves_used:
+			var mastery: Dictionary = entry.get("mastery", {})
+			mastery[id] = int(mastery.get(id, 0)) + 2
+			entry["mastery"] = mastery
+	# Investigación: vencido en combate.
+	GameState.dex_count(species.identifier, "battles")
+	# Objetos que suelta.
+	var drop_chance := 0.45 + minf(streak, 10) * 0.03
+	if _rng.randf() < drop_chance:
+		var pool: Array = DROPS.get(species.types[0], ["oran-berry"])
+		var item: String = pool[_rng.randi() % pool.size()]
+		if _rng.randf() < minf(streak, 10) * 0.015:
+			item = RARE_DROPS[_rng.randi() % RARE_DROPS.size()]
+		if Items.exists(item):
+			GameState.add_item(item, 1)
+			lines.append("Soltó %s." % Items.display_name(item))
+	# Fragmentos de los fuertes (Alfas, dominantes y evolucionados).
+	var strong := defeated.has_meta("Alfa") or defeated.has_meta("dominante") or species.evolution_stage >= 2
+	if strong and _rng.randf() < (0.8 if defeated.has_meta("Alfa") else 0.3):
+		var amount := 3 if defeated.has_meta("Alfa") else 1
+		GameState.add_item(FRAGMENT, amount)
+		lines.append("+%d Fragmento Místico." % amount)
+	if streak >= 3:
+		lines.append("Racha: %d victorias." % streak)
+	GameState.notice.emit(" ".join(lines))
+	_end("win")
+
+
+func _end(result: String) -> void:
+	if _ending:
+		return
+	_ending = true
+	_restore_mega()
+	var c := companion()
+	if c != null:
+		c.battle_center = Vector3.INF
+		if result != "lose":
+			c.set_controlled(false)
+	if opponent != null and is_instance_valid(opponent):
+		opponent.battle_center = Vector3.INF
+	_freeze_world(false)
+	if _ring != null and is_instance_valid(_ring):
+		_ring.queue_free()
+	_ring = null
+	if result != "lose":
+		(_main.get_node("CameraRig") as CameraRig).set_target(player())
+	_ui.visible = false
+	active = false
+	opponent = null
+	ended.emit(result)
+
+
+## Termina el combate desde afuera (captura, desmayo del jugador, interior…).
+func finish(result: String) -> void:
+	if active:
+		_end(result)
+
+
+## Racha: se pierde al desmayarte.
+static func reset_streak() -> void:
+	GameState.world_flags["win_streak"] = 0
+
+
+static func streak() -> int:
+	return int(GameState.world_flags.get("win_streak", 0))
+
+
+# --- Mundo en pausa y arena ------------------------------------------------------------
+
+func _freeze_world(freeze: bool) -> void:
+	if freeze:
+		_frozen.clear()
+		for path in ["Spawner", "Legendaries", "Ambushes", "Events", "TownNPCs", "Gathering"]:
+			var node := _main.get_node_or_null(path)
+			if node != null and node.process_mode != Node.PROCESS_MODE_DISABLED and node.is_processing():
+				node.set_process(false)
+				_frozen.append(node)
+		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP) + get_tree().get_nodes_in_group(LegendaryManager.LEGENDARY_GROUP):
+			if node != opponent and is_instance_valid(node) and (node as Node).process_mode != Node.PROCESS_MODE_DISABLED:
+				(node as Node).process_mode = Node.PROCESS_MODE_DISABLED
+				_frozen.append(node)
+	else:
+		for node in _frozen:
+			if not is_instance_valid(node):
+				continue
+			if node is PokemonActor:
+				node.process_mode = Node.PROCESS_MODE_INHERIT
+			else:
+				node.set_process(true)
+		_frozen.clear()
+
+
+func _make_ring() -> void:
+	_ring = MeshInstance3D.new()
+	_ring.name = "ArenaRing"
+	var torus := TorusMesh.new()
+	torus.inner_radius = ARENA_RADIUS - 0.15
+	torus.outer_radius = ARENA_RADIUS + 0.15
+	torus.rings = 64
+	_ring.mesh = torus
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.85, 0.3, 0.8)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.8, 0.2)
+	_ring.material_override = material
+	_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_ring)
+	_ring.global_position = center + Vector3.UP * 0.25
