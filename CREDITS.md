@@ -30,3 +30,4 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | Prof. Oak y Prof. Rowan (Platino, "NPCs") | https://www.spriters-resource.com/ds_dsi/pokemonplatinum/asset/25791/ | Ripeado por spaceemotion |
 | Prof. Elm (HGSS, "Trainers (Overworld)") | https://www.spriters-resource.com/ds_dsi/pokemonheartgoldsoulsilver/asset/26955/ | Ripeado por Dragoon |
 | Retratos de profesores y de Hugh | Paquete de sprites de Pokémon Showdown (`sprites/trainers/`) | Comunidad de Pokémon Showdown |
+| Prof. Kukui, Prof. Sada y Prof. Turo (estilo DS) | DeviantArt: Zender1752 (assets 637796437, 918752899, 918752905) | Zender1752 |

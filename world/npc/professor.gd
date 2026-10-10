@@ -29,9 +29,10 @@ func _ready() -> void:
 	_player = get_node(player_path) as Player
 
 
-## Profesores con sprite original de su juego (pedido de Fernando, 2026-10-10): Oak y
-## Rowan de Platino, Elm de HGSS. Los demás, el científico o la científica de BW2.
-const OWN_SPRITES := {"Oak": "prof_oak", "Elm": "prof_elm", "Rowan": "prof_rowan"}
+## Profesores con sprite propio (pedido de Fernando, 2026-10-10): Oak y Rowan de Platino,
+## Elm de HGSS, Kukui, Sada y Turo de Zender1752 (fans, estilo DS). Birch, Encina,
+## Sycamore y Magnolia: el científico o la científica de BW2.
+const OWN_SPRITES := {"Oak": "prof_oak", "Elm": "prof_elm", "Rowan": "prof_rowan", "Kukui": "prof_kukui", "Sada": "prof_sada", "Turo": "prof_turo"}
 ## Retrato oficial (diálogo) por nombre.
 const PORTRAITS := {"Oak": "oak", "Elm": "elm", "Birch": "birch", "Rowan": "rowan", "Encina": "juniper", "Sycamore": "sycamore",
 		"Kukui": "kukui", "Magnolia": "magnolia", "Sada": "sada", "Turo": "turo"}
