@@ -70,8 +70,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var motion := event as InputEventMouseMotion
-		_yaw_deg -= motion.relative.x * mouse_sensitivity
-		_tilt(motion.relative.y * mouse_sensitivity)
+		var sensitivity := GameOptions.mouse_sensitivity
+		_yaw_deg -= motion.relative.x * sensitivity
+		_tilt(motion.relative.y * sensitivity * (-1.0 if GameOptions.invert_y else 1.0))
 	elif event.is_action_pressed("zoom_in"):
 		_zoom = clampf(_zoom - zoom_step, zoom_min, zoom_max)
 	elif event.is_action_pressed("zoom_out"):
@@ -80,8 +81,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	var look := Input.get_vector("camera_left", "camera_right", "camera_up", "camera_down")
-	_yaw_deg -= look.x * stick_speed_deg * delta
-	_tilt(look.y * stick_speed_deg * 0.6 * delta)
+	var stick := GameOptions.stick_speed
+	_yaw_deg -= look.x * stick * delta
+	_tilt(look.y * stick * 0.6 * delta * (-1.0 if GameOptions.invert_y else 1.0))
 	_apply_rotation()
 
 	if aiming and _aim_blend <= 0.0:

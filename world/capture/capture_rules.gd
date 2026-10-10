@@ -31,6 +31,33 @@ static func probability(species: SpeciesData, hp_ratio: float, ball: float, stun
 	return clampf(a / 255.0, 0.0, 1.0)
 
 
+## Multiplicador de la ball ball_id contra actor (catálogo en items.json): base y
+## condiciones (no te notó, de noche, tipo, en el agua, poco desarrollado, pesado,
+## ya capturado). La Master Ball siempre captura.
+static func ball_multiplier(ball_id: String, actor: PokemonActor, thrower: Node3D) -> float:
+	var data: Dictionary = Items.get_item(ball_id).get("ball", {"rate": 1.0})
+	var rate := float(data.get("rate", 1.0))
+	var species := actor.species
+	if data.has("unnoticed") and (thrower == null or is_stealthy(actor, thrower)):
+		rate = maxf(rate, float(data["unnoticed"]))
+	if data.has("night") and GameState.is_dark():
+		rate = maxf(rate, float(data["night"]))
+	if data.has("types"):
+		for type_name: String in data["types"]:
+			if species.types.has(PokemonTypes.Type.get(type_name)):
+				rate = maxf(rate, float(data["type_rate"]))
+	if data.has("water") and actor.swimming:
+		rate = maxf(rate, float(data["water"]))
+	if data.has("weak"):
+		var weak := float(data["weak"]) if species.base_total < 330 else (2.0 if species.base_total < 420 else 1.0)
+		rate = maxf(rate, weak)
+	if data.has("heavy") and species.size_scale >= 2.0:
+		rate = maxf(rate, float(data["heavy"]))
+	if data.has("caught_before") and GameState.is_caught(species.identifier):
+		rate = maxf(rate, float(data["caught_before"]))
+	return rate
+
+
 ## Probabilidad de que la ball aguante cada sacudida (la captura necesita las 3).
 static func shake_probability(capture_probability: float) -> float:
 	return pow(capture_probability, 1.0 / SHAKES)

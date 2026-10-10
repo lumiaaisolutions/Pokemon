@@ -102,6 +102,12 @@ func _setup_input_map() -> void:
 	_action("map", [_key(KEY_M), _button(JOY_BUTTON_BACK)])
 	# Meter o sacar al compañero de su Pokéball (explorando).
 	_action("companion", [_key(KEY_Q), _button(JOY_BUTTON_Y)])
+	# Cambiar de Pokéball (siguiente / anterior).
+	_action("ball_next", [_key(KEY_R), _button(JOY_BUTTON_DPAD_UP)])
+	_action("ball_prev", [_key(KEY_F), _button(JOY_BUTTON_DPAD_DOWN)])
+	# Pestañas del menú.
+	_action("menu_prev", [_key(KEY_Q), _button(JOY_BUTTON_LEFT_SHOULDER)])
+	_action("menu_next", [_key(KEY_E), _button(JOY_BUTTON_RIGHT_SHOULDER)])
 	# Ayuda: todos los controles en pantalla (teclado de Mac y control de PlayStation).
 	_action("help", [_key(KEY_H), _button(JOY_BUTTON_TOUCHPAD)])
 

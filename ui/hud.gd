@@ -46,6 +46,8 @@ var _downed_info: Label
 var _downed_controls: Label
 var _downed_tint: ColorRect
 var _legend: VBoxContainer
+var _ball_panel: PanelContainer
+var _ball_key := ""
 var _legend_context := ""
 var _tip: PanelContainer
 var _tip_queue: Array = []
@@ -79,7 +81,9 @@ func _ready() -> void:
 	_build_companion_card()
 	_build_downed_panel()
 	_build_hints()
+	_build_ball_panel()
 	_player.notice.connect(show_toast)
+	GameState.notice.connect(show_toast)
 
 
 func _process(delta: float) -> void:
@@ -104,7 +108,7 @@ func _process(delta: float) -> void:
 	for i in BUBBLES:
 		(_bubbles_box.get_child(i) as TextureRect).visible = air_ratio > float(i) / BUBBLES
 	_reticle.visible = (_player.get_node("ThrowAim") as ThrowAim).is_aiming()
-	_balls.text = "Pokéballs × %d" % GameState.pokeballs
+	_update_ball_panel()
 	_update_companion_card()
 	_update_downed_panel()
 	_update_hints()
@@ -370,6 +374,7 @@ func _build_hints() -> void:
 
 
 func _update_hints() -> void:
+	_legend.visible = GameOptions.show_hints
 	var rows: Array = []
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	var context := ""
@@ -466,6 +471,76 @@ func _update_tips() -> void:
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	if aim.is_aiming():
 		show_tip("lanzar", "Lanzar una Pokéball", [["throw", "Lanzar"], ["aim", "Toca para fijar o soltar la mira"], [null, "Mueve la cámara para lanzar lejos o hacia arriba."]])
+
+
+# --- Pokéball elegida -------------------------------------------------------------
+
+## Abajo a la derecha: ícono de la ball elegida, nombre, cuántas quedan y su efecto,
+## con los botones para cambiar de ball. Se redibuja al cambiar la mochila.
+func _build_ball_panel() -> void:
+	_balls.visible = false
+	_ball_panel = PanelContainer.new()
+	_ball_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.9, 0.3, 0.3)))
+	_ball_panel.anchor_left = 1.0
+	_ball_panel.anchor_right = 1.0
+	_ball_panel.anchor_top = 1.0
+	_ball_panel.anchor_bottom = 1.0
+	_ball_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_ball_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ball_panel.offset_right = -24
+	_ball_panel.offset_bottom = -20
+	add_child(_ball_panel)
+	_legend.offset_bottom = -130
+	GameState.bag_changed.connect(func() -> void: _ball_key = "")
+	InputHints.device_changed.connect(func(_pad: bool) -> void: _ball_key = "")
+
+
+func _update_ball_panel() -> void:
+	var id := GameState.selected_ball
+	var key := "%s:%d:%s" % [id, GameState.item_count(id), InputHints.gamepad]
+	if key == _ball_key:
+		return
+	_ball_key = key
+	for child in _ball_panel.get_children():
+		child.queue_free()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	_ball_panel.add_child(row)
+	var arrows := VBoxContainer.new()
+	arrows.alignment = BoxContainer.ALIGNMENT_CENTER
+	arrows.add_child(InputGlyph.make("ball_next"))
+	arrows.add_child(InputGlyph.make("ball_prev"))
+	row.add_child(arrows)
+	var icon := TextureRect.new()
+	icon.texture = Items.icon(id)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.custom_minimum_size = Vector2(48, 48)
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
+	icon.modulate = Color(1, 1, 1, 1.0 if GameState.item_count(id) > 0 else 0.35)
+	row.add_child(icon)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	row.add_child(text)
+	var count := GameState.item_count(id)
+	var title := _small_label("%s × %d" % [Items.display_name(id), count], 22)
+	title.add_theme_color_override("font_color", Color.WHITE if count > 0 else Color(1.0, 0.5, 0.5))
+	text.add_child(title)
+	var data: Dictionary = Items.get_item(id).get("ball", {})
+	var effect := "Captura ×%s" % str(data.get("rate", 1.0)) if float(data.get("rate", 1.0)) < 100.0 else "Captura segura"
+	if data.size() > 1:
+		effect = Items.get_item(id).get("desc", effect)
+	var detail := _small_label(effect, 15)
+	detail.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	text.add_child(detail)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if get_tree().paused or _player.mode != Player.Mode.WALK:
+		return
+	if event.is_action_pressed("ball_next"):
+		GameState.cycle_ball(1)
+	elif event.is_action_pressed("ball_prev"):
+		GameState.cycle_ball(-1)
 
 
 # --- Utilidades --------------------------------------------------------------------

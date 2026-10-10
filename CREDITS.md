@@ -17,3 +17,6 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | May, Serena (pelo corto) y Leaf (estilo Gen 5) | DeviantArt: Zender1752 (assets 912505434, 613519106, 915017104) | Zender1752 |
 | Calem (estilo BW) | https://www.deviantart.com/tobalcr/art/CALEM-KALM-FROM-POKEMON-XY-OVERWORLD-BW-1280702366 | TOBALCR |
 | Megaevoluciones (97, estadísticas y tipos) | PokeAPI (`pokemon.csv`, `pokemon_stats.csv`, `pokemon_types.csv`) | PokeAPI |
+| Gritos de los Pokémon (ogg) | https://github.com/PokeAPI/cries | PokeAPI |
+| Descripciones, categorías, altura, peso y sexo | PokeAPI (`pokemon_species_flavor_text.csv`, `pokemon_species_names.csv`, `pokemon.csv`) | PokeAPI |
+| Íconos de objetos (24 px) | Paquete de sprites de Pokémon Showdown (`sprites/itemicons/`) | Comunidad de Pokémon Showdown |

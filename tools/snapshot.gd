@@ -79,6 +79,20 @@ func _ready() -> void:
 		(wild.get_node("HealthBar") as HealthBar3D).set_ratio(0.4)
 		for i in 30:
 			await get_tree().process_frame
+	# "menu:N": abre el menú en la pestaña N (0 Equipo, 1 Mochila, 2 Pokédex…), con datos
+	# de ejemplo en la Pokédex y el equipo.
+	if args.size() > 5 and args[5].begins_with("menu:"):
+		for id in ["bulbasaur", "pikachu", "greninja", "charmander", "eevee"]:
+			GameState.mark_seen(id)
+		GameState.add_caught(load("res://creatures/data/species/greninja.tres"), false, 0.7, 0, 1.1)
+		GameState.add_caught(load("res://creatures/data/species/pikachu.tres"), true, 1.0, 1, 0.9)
+		GameState.dex_count("greninja", "fights")
+		var menu := scene.get_node("MenuLayer/GameMenu") as GameMenu
+		menu.selected_member = 1
+		menu.open()
+		menu.show_tab(int(args[5].substr(5)))
+		for i in 20:
+			await get_tree().process_frame
 	# "ayuda": abre la pantalla de Ayuda.
 	if args.size() > 5 and args[5] == "ayuda":
 		var help := scene.get_node("Hud").get("_help") as HelpOverlay

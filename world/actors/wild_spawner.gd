@@ -6,7 +6,11 @@ extends Node3D
 ## - El mundo se divide en zonas de ZONE_SIZE m con un cupo de grupos según su
 ##   hábitat, para no saturar un solo lugar; cada zona tiene 2 especies
 ##   características que aparecen más ahí.
-## - La especie se sortea por su peso de rareza (etapa × poder); 2 % de shiny.
+## - La especie se sortea por su peso de rareza (etapa × poder); 1 % de shiny.
+## - Zonas propias (estilo Escarlata y Púrpura): con la semilla, cada especie tiene de 1
+##   a 3 áreas del mapa donde vive (según su hábitat y clima). Ahí es común; fuera es
+##   rara. Algunas son nómadas y cambian de área cada día del juego. La Pokédex
+##   muestra estas áreas según su nivel de investigación.
 ## - 30 % de las apariciones son manadas de 3 a 6 de la misma línea evolutiva
 ##   (casi todos básicos y rara vez un líder evolucionado). Nunca dos manadas a
 ##   menos de PACK_SPACING m, salvo con 5 % de probabilidad (y entonces pueden pelear).
@@ -17,18 +21,26 @@ const WILD_GROUP := &"wild_pokemon"
 const ACTOR_SCENE := preload("res://world/actors/pokemon_actor.tscn")
 const ALL_SPECIES := preload("res://creatures/data/all_species.tres")
 const SHINY_CHANCE := 0.01
+## Áreas propias de cada especie: cuántas, de qué radio, y su peso dentro y fuera.
+const HOME_AREAS_MAX := 3
+const HOME_RADIUS_MIN := 28.0
+const HOME_RADIUS_MAX := 50.0
+const HOME_BOOST := 12.0
+const OUTSIDE_FACTOR := 0.12
+const NOMAD_SHARE := 0.08
 const ZONE_SIZE := 40.0
 ## Grupos (un solitario o una manada) que caben en cada zona según su hábitat.
+## (La mitad que antes: ~8 a 12 Pokémon alrededor, como en Escarlata y Púrpura.)
 const ZONE_QUOTA := {
-	SpeciesData.Habitat.MEADOW: 3, SpeciesData.Habitat.FOREST: 4, SpeciesData.Habitat.MOUNTAIN: 2,
-	SpeciesData.Habitat.FRESHWATER: 2, SpeciesData.Habitat.SEA: 2, SpeciesData.Habitat.SWAMP: 3,
+	SpeciesData.Habitat.MEADOW: 2, SpeciesData.Habitat.FOREST: 2, SpeciesData.Habitat.MOUNTAIN: 1,
+	SpeciesData.Habitat.FRESHWATER: 1, SpeciesData.Habitat.SEA: 1, SpeciesData.Habitat.SWAMP: 2,
 }
 const FEATURED_PER_ZONE := 2
 ## Proporción de apariciones de una zona que son de sus especies características.
 const FEATURED_SHARE := 0.35
-const PACK_CHANCE := 0.3
-const PACK_SIZE_MIN := 3
-const PACK_SIZE_MAX := 6
+const PACK_CHANCE := 0.2
+const PACK_SIZE_MIN := 2
+const PACK_SIZE_MAX := 4
 ## Probabilidad de que una manada tenga líder evolucionado.
 const PACK_LEADER_CHANCE := 0.25
 const PACK_SPACING := 60.0
@@ -42,7 +54,7 @@ const DEEP_WATER_LIMIT := -0.2
 @export var player_path: NodePath
 @export var navigation_path: NodePath
 ## Máximo de Pokémon salvajes vivos alrededor del jugador (miembros de manadas incluidos).
-@export var max_alive: int = 24
+@export var max_alive: int = 12
 @export var spawn_interval: float = 1.0
 ## Aparecen entre estas distancias del jugador (para no surgir en su cara ni muy lejos).
 @export var min_spawn_distance: float = 15.0
@@ -59,6 +71,10 @@ var _by_habitat := {}
 var _by_chain := {}
 ## Especies características de cada zona (Vector2i -> Array[SpeciesData]).
 var _featured := {}
+## Áreas propias: identifier -> Array de Vector3(x, z, radio). Nómadas aparte.
+var _home_areas := {}
+var _nomads: Array[String] = []
+var _nomad_day := -1
 
 @onready var _world: WorldBuilder = get_node(world_path)
 @onready var _player: Node3D = get_node(player_path)
@@ -68,6 +84,7 @@ var _featured := {}
 func _ready() -> void:
 	_rng.randomize()
 	_index_species()
+	_build_home_areas()
 	if _navigation.is_baked:
 		_active = true
 	else:
@@ -137,15 +154,116 @@ func featured_species(zone: Vector2i, habitat: SpeciesData.Habitat) -> Array[Spe
 	return picked
 
 
+# --- Áreas propias de cada especie ---------------------------------------------------
+
+## Con la semilla del mundo, de 1 a 3 áreas por especie en lugares de su hábitat y clima.
+func _build_home_areas() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _world.config.seed * 7919 + 17
+	var half := _world.config.size * 0.5 - 20.0
+	for species: SpeciesData in ALL_SPECIES.species:
+		if species.spawn_weight <= 0.0 or species.is_legendary or species.is_mythical:
+			continue
+		if rng.randf() < NOMAD_SHARE:
+			_nomads.append(species.identifier)
+		_home_areas[species.identifier] = _areas_for(species, rng, half)
+	_refresh_nomads()
+
+
+func _areas_for(species: SpeciesData, rng: RandomNumberGenerator, half: float) -> Array[Vector3]:
+	var areas: Array[Vector3] = []
+	var wanted := rng.randi_range(1, HOME_AREAS_MAX)
+	for attempt in 60:
+		if areas.size() >= wanted:
+			break
+		var x := rng.randf_range(-half, half)
+		var z := rng.randf_range(-half, half)
+		if not species.habitats.has(_world.habitat_at(x, z)):
+			continue
+		var y := _world.surface_height_at(x, z)
+		if attempt < 45 and not climate_ok(species, Vector3(x, y, z)):
+			continue
+		areas.append(Vector3(x, z, rng.randf_range(HOME_RADIUS_MIN, HOME_RADIUS_MAX)))
+	return areas
+
+
+## Los nómadas cambian de área cada día del juego.
+func _refresh_nomads() -> void:
+	var day := GameState.game_day()
+	if day == _nomad_day:
+		return
+	_nomad_day = day
+	var half := _world.config.size * 0.5 - 20.0
+	for identifier in _nomads:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(identifier) ^ (_world.config.seed + day * 104729)
+		var species := MenuStyle.species(identifier)
+		if species != null:
+			_home_areas[identifier] = _areas_for(species, rng, half)
+
+
+## Áreas donde vive la especie (Vector3(x, z, radio)); vacío si no tiene.
+func home_areas(identifier: String) -> Array[Vector3]:
+	var areas: Array[Vector3] = []
+	areas.assign(_home_areas.get(identifier, []))
+	return areas
+
+
+func is_nomad(identifier: String) -> bool:
+	return _nomads.has(identifier)
+
+
+## Peso extra de la especie en point: común en su área, rara fuera.
+func home_factor(identifier: String, point: Vector3) -> float:
+	for area: Vector3 in _home_areas.get(identifier, []):
+		if Vector2(point.x - area.x, point.z - area.y).length() <= area.z:
+			return HOME_BOOST
+	return OUTSIDE_FACTOR
+
+
+const REPEL_DISTANCE := 45.0
+
+
+## Probabilidad de shiny con los potenciadores: Huevo Suerte ×2, Amuleto Iris ×3.
+func shiny_chance() -> float:
+	var chance := SHINY_CHANCE
+	if GameState.boost_active("shiny"):
+		chance *= 2.0
+	if GameState.item_count("shiny-charm") > 0:
+		chance *= 3.0
+	return chance
+
+
+## Miel: aparecen hasta 2 Pokémon del lugar cerca de center. Devuelve cuántos.
+func spawn_lure(center: Vector3) -> int:
+	var count := 0
+	for i in 6:
+		if count >= 2:
+			break
+		var angle := _rng.randf() * TAU
+		var point := center + Vector3(cos(angle), 0.0, sin(angle)) * _rng.randf_range(6.0, 10.0)
+		point = _snap_to_walkable(point)
+		if point == Vector3.INF:
+			continue
+		var species := pick_species(_world.habitat_at(point.x, point.z), 0, Vector2i(9999, 9999), point)
+		if species == null or not climate_ok(species, point):
+			continue
+		spawn_species(species, point, _rng.randf() < shiny_chance(), false)
+		count += 1
+	return count
+
+
 ## Sortea una especie del hábitat. water_mode: 0 tierra, 1 orilla, 2 agua (nadadores).
-## Una parte (FEATURED_SHARE) de las apariciones son las características de la zona.
-func pick_species(habitat: SpeciesData.Habitat, water_mode: int, zone: Vector2i = Vector2i(9999, 9999)) -> SpeciesData:
+## Con point, pesan las áreas propias de cada especie (común en su área, rara fuera).
+func pick_species(habitat: SpeciesData.Habitat, water_mode: int, zone: Vector2i = Vector2i(9999, 9999), point: Vector3 = Vector3.INF) -> SpeciesData:
 	var featured: Array[SpeciesData] = []
-	if zone != Vector2i(9999, 9999):
+	if zone != Vector2i(9999, 9999) and point == Vector3.INF:
 		featured = featured_species(zone, habitat)
 	for attempt in 16:
 		var species: SpeciesData
-		if not featured.is_empty() and _rng.randf() < FEATURED_SHARE:
+		if point != Vector3.INF:
+			species = _weighted_pick_at(habitat, point)
+		elif not featured.is_empty() and _rng.randf() < FEATURED_SHARE:
 			species = featured[_rng.randi() % featured.size()]
 		else:
 			species = _weighted_pick(habitat, _rng)
@@ -162,6 +280,19 @@ func pick_species(habitat: SpeciesData.Habitat, water_mode: int, zone: Vector2i 
 	return null
 
 
+func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesData:
+	var candidates: Array[SpeciesData] = _by_habitat[habitat].species
+	if candidates.is_empty():
+		return null
+	var weights := PackedFloat32Array()
+	var total := 0.0
+	for species in candidates:
+		total += species.spawn_weight * home_factor(species.identifier, point)
+		weights.append(total)
+	var index := weights.bsearch(_rng.randf() * total)
+	return candidates[mini(index, candidates.size() - 1)]
+
+
 func _weighted_pick(habitat: SpeciesData.Habitat, rng: RandomNumberGenerator) -> SpeciesData:
 	var entry: Dictionary = _by_habitat[habitat]
 	var cumulative: PackedFloat32Array = entry.cumulative
@@ -176,6 +307,7 @@ func _weighted_pick(habitat: SpeciesData.Habitat, rng: RandomNumberGenerator) ->
 func _process(delta: float) -> void:
 	if not _active:
 		return
+	_refresh_nomads()
 	for node in get_tree().get_nodes_in_group(WILD_GROUP):
 		var actor := node as PokemonActor
 		if actor.global_position.distance_to(_player.global_position) > despawn_distance:
@@ -184,6 +316,8 @@ func _process(delta: float) -> void:
 	if _timer > 0.0:
 		return
 	_timer = spawn_interval
+	# Densidad elegida en Opciones (baja, media o alta).
+	max_alive = GameOptions.DENSITY_MAX_ALIVE[clampi(GameOptions.density, 0, 2)]
 	if get_tree().get_nodes_in_group(WILD_GROUP).size() < max_alive:
 		spawn_one()
 
@@ -195,6 +329,9 @@ func spawn_one() -> PokemonActor:
 	for attempt in 8:
 		var angle := _rng.randf() * TAU
 		var distance := _rng.randf_range(min_spawn_distance, max_spawn_distance)
+		# Con repelente no aparece nada cerca del jugador.
+		if GameState.boost_active("repel"):
+			distance = maxf(distance, REPEL_DISTANCE)
 		var point := _player.global_position + Vector3(cos(angle), 0.0, sin(angle)) * distance
 		var half := _world.config.size * 0.5 - 8.0
 		if absf(point.x) > half or absf(point.z) > half:
@@ -217,17 +354,17 @@ func spawn_one() -> PokemonActor:
 			if _world.random_water_point(_rng, point, 6.0, true) != Vector3.INF and _rng.randf() < 0.5:
 				water_mode = 1
 		var habitat := _world.habitat_at(point.x, point.z)
-		var species := pick_species(habitat, water_mode, zone)
+		var species := pick_species(habitat, water_mode, zone, point)
 		# Clima: en la nieve no hay Fuego, Planta ni Bicho; el Hielo vive en la nieve o el mar.
 		for retry in CLIMATE_RETRIES:
 			if species == null or climate_ok(species, point):
 				break
-			species = pick_species(habitat, water_mode)
+			species = pick_species(habitat, water_mode, Vector2i(9999, 9999), point)
 		if species == null or not climate_ok(species, point):
 			continue
 		if water_mode != 2 and _rng.randf() < PACK_CHANCE and _pack_allowed(point):
 			return _spawn_pack(species, point, habitat)
-		return spawn_species(species, point, _rng.randf() < SHINY_CHANCE, water_mode == 2)
+		return spawn_species(species, point, _rng.randf() < shiny_chance(), water_mode == 2)
 	return null
 
 
@@ -294,7 +431,7 @@ func _spawn_pack(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habi
 			leader_species = evolved[_rng.randi() % evolved.size()]
 	var group := _next_group_id
 	_next_group_id += 1
-	var leader := spawn_species(leader_species, point, _rng.randf() < SHINY_CHANCE, false)
+	var leader := spawn_species(leader_species, point, _rng.randf() < shiny_chance(), false)
 	leader.group_id = group
 	var count := _rng.randi_range(PACK_SIZE_MIN, PACK_SIZE_MAX) - 1
 	for i in count:
@@ -303,7 +440,7 @@ func _spawn_pack(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habi
 		var member_point := _snap_to_walkable(point + offset)
 		if member_point == Vector3.INF:
 			continue
-		var member := spawn_species(basic, member_point, _rng.randf() < SHINY_CHANCE, false)
+		var member := spawn_species(basic, member_point, _rng.randf() < shiny_chance(), false)
 		member.group_id = group
 		member.leader = leader
 		member.pack_offset = offset

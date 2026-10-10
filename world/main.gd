@@ -21,14 +21,76 @@ func _ready() -> void:
 	_player.downed.connect(_on_player_downed)
 	_player.revived.connect(_on_player_revived)
 	($Hud as Hud).main = self
-	GameState.respawn_point = _player.global_position
+	# Menú (Esc / Options) en su propia capa, sobre el HUD.
+	var menu_layer := CanvasLayer.new()
+	menu_layer.name = "MenuLayer"
+	menu_layer.layer = 20
+	add_child(menu_layer)
+	var menu := GameMenu.new()
+	menu.name = "GameMenu"
+	menu.main = self
+	menu_layer.add_child(menu)
+	GameOptions.load_options()
+	if SaveSystem.pending_position != Vector3.INF:
+		# Partida cargada: el jugador vuelve a donde guardó.
+		_player.global_position = SaveSystem.pending_position + Vector3.UP * 0.5
+		SaveSystem.pending_position = Vector3.INF
+	else:
+		GameState.respawn_point = _player.global_position
 	_warm_up_shaders()
 	if starter_ceremony and GameState.party.is_empty():
 		_start_ceremony.call_deferred()
 	else:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
-		_create_companion(STARTER_POOL.pick_distinct(rng, 1)[0], false, _player.position + Vector3(1.5, 0.3, 1.5))
+		if GameState.party.is_empty():
+			var starter: SpeciesData = STARTER_POOL.pick_distinct(rng, 1)[0]
+			GameState.party.append({"species": starter.identifier, "shiny": false, "hp_ratio": 1.0})
+			GameState.companion_index = 0
+		var entry: Dictionary = GameState.party[GameState.companion_index]
+		_create_companion(MenuStyle.species(entry["species"]), entry.get("shiny", false), _player.position + Vector3(1.5, 0.3, 1.5))
+
+
+var _autosave_timer := SaveSystem.AUTOSAVE_SECONDS
+
+
+func _process(delta: float) -> void:
+	GameState.play_time += delta
+	_autosave_timer -= delta
+	if _autosave_timer <= 0.0 and not GameState.party.is_empty() and _player.mode == Player.Mode.WALK:
+		_autosave_timer = SaveSystem.AUTOSAVE_SECONDS
+		if SaveSystem.save_slot(0, self):
+			($Hud as Hud).show_toast("Autoguardado")
+
+
+## Guarda la vida del compañero en su ficha del equipo (al abrir el menú o guardar).
+func sync_companion_to_party() -> void:
+	if companion == null or GameState.party.is_empty():
+		return
+	var index := clampi(GameState.companion_index, 0, GameState.party.size() - 1)
+	GameState.party[index]["hp_ratio"] = companion.hp / companion.hp_max
+
+
+## Cambia de acompañante por otro del equipo (desde el menú).
+func swap_companion(index: int) -> void:
+	if index == GameState.companion_index or index < 0 or index >= GameState.party.size():
+		return
+	sync_companion_to_party()
+	var at := _player.global_position + _side_offset()
+	var was_out := companion_state == CompanionState.OUT
+	if companion != null:
+		if _player.riding == companion:
+			_player.riding = null
+		companion.queue_free()
+		companion = null
+	GameState.companion_index = index
+	var entry: Dictionary = GameState.party[index]
+	_create_companion(MenuStyle.species(entry["species"]), entry.get("shiny", false), at)
+	if not was_out:
+		companion.visible = false
+		companion.process_mode = Node.PROCESS_MODE_DISABLED
+		companion_state = CompanionState.IN_BALL
+	($Hud as Hud).show_toast("¡%s te acompaña ahora!" % companion.species.display_name)
 
 
 func _create_companion(species: SpeciesData, shiny: bool, at: Vector3) -> void:
@@ -36,12 +98,21 @@ func _create_companion(species: SpeciesData, shiny: bool, at: Vector3) -> void:
 	companion.species = species
 	companion.shiny = shiny
 	companion.role = PokemonActor.Role.COMPANION
+	if not GameState.party.is_empty():
+		var member: Dictionary = GameState.party[clampi(GameState.companion_index, 0, GameState.party.size() - 1)]
+		companion.gender = int(member.get("gender", -1))
+		companion.size_factor = float(member.get("size", 1.0))
 	companion.player = _player
 	companion.world = $World
 	companion.position = at
 	add_child(companion)
 	companion.stunned.connect(_on_companion_stunned)
 	companion_state = CompanionState.OUT
+	# Vida guardada en su ficha del equipo.
+	if not GameState.party.is_empty():
+		var ratio := float(GameState.party[clampi(GameState.companion_index, 0, GameState.party.size() - 1)].get("hp_ratio", 1.0))
+		if ratio < 0.999 and ratio > 0.0:
+			companion.recover.call_deferred(ratio)
 
 
 ## Los 5 huevos eclosionan; sin salvajes cerca mientras eliges.
@@ -240,6 +311,9 @@ func _return_companion(ratio: float) -> void:
 ## Pokémon con todo curado.
 func _on_blacked_out() -> void:
 	var lost := GameState.apply_blackout_penalty()
+	# En el Centro Pokémon se cura todo el equipo.
+	for member: Dictionary in GameState.party:
+		member["hp_ratio"] = 1.0
 	var name := companion.species.display_name if companion != null else "Tu equipo"
 	var player_name := GameState.player_name
 	var message := ("¡%s se desmayó!" % player_name) if companion_state != CompanionState.FAINTED else "¡%s no puede continuar!" % name

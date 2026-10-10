@@ -19,6 +19,10 @@
 
 - **Clima** (`WildSpawner.climate_ok`): cerca o arriba de la línea de nieve no aparecen Pokémon de tipo Fuego, Planta ni Bicho (salvo que también sean de Hielo), y los de Hielo solo aparecen en la nieve o el mar. Se reintenta la especie hasta 8 veces. Corrige, por ejemplo, un Torchic junto a la nieve.
 
+- **Áreas propias** (estilo Escarlata y Púrpura, 2026-10-10): con la semilla, cada especie tiene de 1 a 3 áreas (28 a 50 m de radio) en lugares de su hábitat y clima; dentro pesa ×12 y fuera ×0.12, así casi siempre sale en sus zonas pero a veces se ve suelta. El 8 % son **nómadas**: cambian de área cada día del juego. La Pokédex muestra las áreas según la investigación.
+- **Densidad:** la mitad que antes (máx. 12 vivos; 7 / 12 / 18 según Opciones), manadas del 20 % de 2 a 4. Los caminos también tienen Pokémon (estilo Leyendas Z-A); los pueblos llegarán con la capa 2.6.
+- **Sexo** según la especie (♂ / ♀ en su recuadro) y **talla** individual de 0.75 a 1.3 (se ve en su sprite y en los récords de la Pokédex).
+
 ## IA (`PokemonActor`, rol salvaje)
 | Temperamento | Comportamiento |
 |---|---|

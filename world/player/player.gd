@@ -94,6 +94,8 @@ func _physics_process(delta: float) -> void:
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
 	if swimming and riding != null:
 		target_speed = config.swim_speed * config.surf_speed_factor
+	if GameState.boost_active("speed"):
+		target_speed *= 1.3
 	if swimming and stamina <= 0.0:
 		target_speed *= config.swim_exhausted_speed_factor
 	if aiming:

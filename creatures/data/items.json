@@ -1,0 +1,718 @@
+{
+  "pockets": [
+    {
+      "id": "pokeballs",
+      "name": "Pokéballs"
+    },
+    {
+      "id": "curacion",
+      "name": "Curación"
+    },
+    {
+      "id": "bayas",
+      "name": "Comida y bayas"
+    },
+    {
+      "id": "senuelos",
+      "name": "Señuelos y repelentes"
+    },
+    {
+      "id": "exploracion",
+      "name": "Exploración"
+    },
+    {
+      "id": "recoleccion",
+      "name": "Recolección"
+    },
+    {
+      "id": "fabricacion",
+      "name": "Fabricación"
+    },
+    {
+      "id": "evolucion",
+      "name": "Evolución"
+    },
+    {
+      "id": "megapiedras",
+      "name": "Megapiedras"
+    },
+    {
+      "id": "equipables",
+      "name": "Equipables"
+    },
+    {
+      "id": "potenciadores",
+      "name": "Potenciadores"
+    },
+    {
+      "id": "tesoros",
+      "name": "Tesoros"
+    },
+    {
+      "id": "clave",
+      "name": "Objetos clave"
+    },
+    {
+      "id": "coleccionables",
+      "name": "Coleccionables"
+    }
+  ],
+  "items": [
+    {
+      "id": "poke-ball",
+      "name": "Poké Ball",
+      "pocket": "pokeballs",
+      "price": 200,
+      "ball": {
+        "rate": 1.0
+      },
+      "desc": "La ball de siempre para capturar Pokémon salvajes."
+    },
+    {
+      "id": "great-ball",
+      "name": "Super Ball",
+      "pocket": "pokeballs",
+      "price": 600,
+      "ball": {
+        "rate": 1.5
+      },
+      "desc": "Captura mejor que la Poké Ball (×1.5)."
+    },
+    {
+      "id": "ultra-ball",
+      "name": "Ultra Ball",
+      "pocket": "pokeballs",
+      "price": 800,
+      "ball": {
+        "rate": 2.0
+      },
+      "desc": "Muy buena para capturar (×2)."
+    },
+    {
+      "id": "master-ball",
+      "name": "Master Ball",
+      "pocket": "pokeballs",
+      "price": 0,
+      "ball": {
+        "rate": 255.0
+      },
+      "desc": "Captura cualquier Pokémon sin fallar."
+    },
+    {
+      "id": "quick-ball",
+      "name": "Veloz Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "unnoticed": 5.0
+      },
+      "desc": "×5 si el Pokémon todavía no te ha notado."
+    },
+    {
+      "id": "dusk-ball",
+      "name": "Ocaso Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "night": 3.0
+      },
+      "desc": "×3 de noche o en cuevas."
+    },
+    {
+      "id": "net-ball",
+      "name": "Malla Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "types": [
+          "WATER",
+          "BUG"
+        ],
+        "type_rate": 3.5
+      },
+      "desc": "×3.5 con Pokémon de tipo Agua o Bicho."
+    },
+    {
+      "id": "dive-ball",
+      "name": "Buceo Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "water": 3.5
+      },
+      "desc": "×3.5 con Pokémon que están en el agua."
+    },
+    {
+      "id": "nest-ball",
+      "name": "Nido Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "weak": 3.0
+      },
+      "desc": "Hasta ×3 con Pokémon pequeños o poco desarrollados."
+    },
+    {
+      "id": "heavy-ball",
+      "name": "Peso Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "heavy": 2.5
+      },
+      "desc": "×2.5 con Pokémon muy grandes y pesados."
+    },
+    {
+      "id": "repeat-ball",
+      "name": "Acopio Ball",
+      "pocket": "pokeballs",
+      "price": 1000,
+      "ball": {
+        "rate": 1.0,
+        "caught_before": 3.5
+      },
+      "desc": "×3.5 si ya capturaste a esa especie."
+    },
+    {
+      "id": "luxury-ball",
+      "name": "Lujo Ball",
+      "pocket": "pokeballs",
+      "price": 3000,
+      "ball": {
+        "rate": 1.0,
+        "bond": 2
+      },
+      "desc": "Captura como la Poké Ball, pero el Pokémon gana vínculo más rápido."
+    },
+    {
+      "id": "heal-ball",
+      "name": "Sana Ball",
+      "pocket": "pokeballs",
+      "price": 300,
+      "ball": {
+        "rate": 1.0,
+        "heals": true
+      },
+      "desc": "El Pokémon capturado queda con la vida completa."
+    },
+    {
+      "id": "potion",
+      "name": "Poción",
+      "pocket": "curacion",
+      "price": 200,
+      "heal_companion": 0.35,
+      "desc": "Cura un 35 % de la vida de tu compañero."
+    },
+    {
+      "id": "super-potion",
+      "name": "Superpoción",
+      "pocket": "curacion",
+      "price": 700,
+      "heal_companion": 0.6,
+      "desc": "Cura un 60 % de la vida de tu compañero."
+    },
+    {
+      "id": "hyper-potion",
+      "name": "Hiperpoción",
+      "pocket": "curacion",
+      "price": 1500,
+      "heal_companion": 1.0,
+      "desc": "Cura toda la vida de tu compañero."
+    },
+    {
+      "id": "full-heal",
+      "name": "Cura Total",
+      "pocket": "curacion",
+      "price": 400,
+      "cure_status": true,
+      "desc": "Quita el aturdimiento de tu compañero."
+    },
+    {
+      "id": "oran-berry",
+      "name": "Baya Aranja",
+      "pocket": "bayas",
+      "price": 80,
+      "heal_hearts": 4,
+      "desc": "Recupera 2 corazones. Crece en arbustos de bayas."
+    },
+    {
+      "id": "sitrus-berry",
+      "name": "Baya Zidra",
+      "pocket": "bayas",
+      "price": 200,
+      "heal_hearts": 10,
+      "desc": "Recupera 5 corazones."
+    },
+    {
+      "id": "pecha-berry",
+      "name": "Baya Meloc",
+      "pocket": "bayas",
+      "price": 80,
+      "heal_hearts": 2,
+      "desc": "Dulce; recupera 1 corazón y se usa para cocinar."
+    },
+    {
+      "id": "cheri-berry",
+      "name": "Baya Zreza",
+      "pocket": "bayas",
+      "price": 80,
+      "heal_hearts": 2,
+      "desc": "Picante; recupera 1 corazón y se usa para cocinar."
+    },
+    {
+      "id": "old-gateau",
+      "name": "Barrita Antigua",
+      "pocket": "bayas",
+      "price": 350,
+      "heal_hearts": 20,
+      "desc": "Postre de Corazón Viejo: recupera todos los corazones."
+    },
+    {
+      "id": "lava-cookie",
+      "name": "Galleta Lava",
+      "pocket": "bayas",
+      "price": 350,
+      "heal_hearts": 14,
+      "desc": "Galleta de Pueblo Lavacalda: recupera 7 corazones."
+    },
+    {
+      "id": "casteliacone",
+      "name": "Porción Romantis",
+      "pocket": "bayas",
+      "price": 300,
+      "heal_hearts": 12,
+      "desc": "Helado de Ciudad Porcelana: recupera 6 corazones."
+    },
+    {
+      "id": "honey",
+      "name": "Miel",
+      "pocket": "senuelos",
+      "price": 300,
+      "lure": 45,
+      "desc": "Atrae Pokémon cercanos hacia donde la lanzas durante 45 s."
+    },
+    {
+      "id": "poke-doll",
+      "name": "Poké Muñeco",
+      "pocket": "senuelos",
+      "price": 1000,
+      "decoy": 20,
+      "desc": "Distrae a los salvajes que te persiguen durante 20 s."
+    },
+    {
+      "id": "smoke-ball",
+      "name": "Bola Humo",
+      "pocket": "senuelos",
+      "price": 300,
+      "smoke": 6,
+      "desc": "Nube de humo: los salvajes te pierden de vista 6 s."
+    },
+    {
+      "id": "repel",
+      "name": "Repelente",
+      "pocket": "senuelos",
+      "price": 400,
+      "repel": 120,
+      "desc": "Los salvajes no se te acercan durante 2 minutos."
+    },
+    {
+      "id": "super-repel",
+      "name": "Superrepelente",
+      "pocket": "senuelos",
+      "price": 700,
+      "repel": 240,
+      "desc": "Los salvajes no se te acercan durante 4 minutos."
+    },
+    {
+      "id": "max-repel",
+      "name": "Máximo Repelente",
+      "pocket": "senuelos",
+      "price": 900,
+      "repel": 360,
+      "desc": "Los salvajes no se te acercan durante 6 minutos."
+    },
+    {
+      "id": "escape-rope",
+      "name": "Cuerda Huida",
+      "pocket": "exploracion",
+      "price": 1000,
+      "escape": true,
+      "desc": "Te regresa al último Centro Pokémon o campamento."
+    },
+    {
+      "id": "old-rod",
+      "name": "Caña Vieja",
+      "pocket": "exploracion",
+      "price": 0,
+      "key": true,
+      "desc": "Para pescar Pokémon en el agua (llegará con la pesca)."
+    },
+    {
+      "id": "good-rod",
+      "name": "Caña Buena",
+      "pocket": "exploracion",
+      "price": 0,
+      "key": true,
+      "desc": "Pesca Pokémon más raros (llegará con la pesca)."
+    },
+    {
+      "id": "explorer-kit",
+      "name": "Kit Explorador",
+      "pocket": "exploracion",
+      "price": 0,
+      "key": true,
+      "desc": "Tienda de campaña: duerme para curarte y pasar la noche (llegará con el día y la noche)."
+    },
+    {
+      "id": "red-apricorn",
+      "name": "Bonguri Rojo",
+      "pocket": "recoleccion",
+      "price": 40,
+      "desc": "Bonguri de los árboles. Sirve para fabricar Pokéballs."
+    },
+    {
+      "id": "blu-apricorn",
+      "name": "Bonguri Azul",
+      "pocket": "recoleccion",
+      "price": 40,
+      "desc": "Bonguri de los árboles. Sirve para fabricar Super Balls."
+    },
+    {
+      "id": "ylw-apricorn",
+      "name": "Bonguri Amarillo",
+      "pocket": "recoleccion",
+      "price": 40,
+      "desc": "Bonguri de los árboles. Sirve para fabricar Ultra Balls."
+    },
+    {
+      "id": "tinymushroom",
+      "name": "Mini Seta",
+      "pocket": "recoleccion",
+      "price": 100,
+      "desc": "Seta del bosque. Sirve para fabricar pociones."
+    },
+    {
+      "id": "big-mushroom",
+      "name": "Seta Grande",
+      "pocket": "recoleccion",
+      "price": 500,
+      "desc": "Seta grande del bosque. Sirve para fabricar Superpociones."
+    },
+    {
+      "id": "hard-stone",
+      "name": "Piedra Dura",
+      "pocket": "recoleccion",
+      "price": 100,
+      "desc": "Mineral de las rocas. Sirve para fabricar Pokéballs."
+    },
+    {
+      "id": "red-shard",
+      "name": "Parte Roja",
+      "pocket": "recoleccion",
+      "price": 200,
+      "desc": "Fragmento de cristal de las cuevas."
+    },
+    {
+      "id": "blue-shard",
+      "name": "Parte Azul",
+      "pocket": "recoleccion",
+      "price": 200,
+      "desc": "Fragmento de cristal de las cuevas."
+    },
+    {
+      "id": "fire-stone",
+      "name": "Piedra Fuego",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon de tipo Fuego."
+    },
+    {
+      "id": "water-stone",
+      "name": "Piedra Agua",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon de tipo Agua."
+    },
+    {
+      "id": "thunderstone",
+      "name": "Piedra Trueno",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon de tipo Eléctrico."
+    },
+    {
+      "id": "leaf-stone",
+      "name": "Piedra Hoja",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon de tipo Planta."
+    },
+    {
+      "id": "moon-stone",
+      "name": "Piedra Lunar",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon."
+    },
+    {
+      "id": "sun-stone",
+      "name": "Piedra Solar",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon."
+    },
+    {
+      "id": "shiny-stone",
+      "name": "Piedra Día",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon."
+    },
+    {
+      "id": "dusk-stone",
+      "name": "Piedra Noche",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon."
+    },
+    {
+      "id": "dawn-stone",
+      "name": "Piedra Alba",
+      "pocket": "evolucion",
+      "price": 3000,
+      "desc": "Desbloquea la evolución de algunos Pokémon."
+    },
+    {
+      "id": "leftovers",
+      "name": "Restos",
+      "pocket": "equipables",
+      "price": 4000,
+      "desc": "Si lo lleva tu Pokémon, recupera vida poco a poco en combate (Fase 3)."
+    },
+    {
+      "id": "choice-band",
+      "name": "Cinta Elección",
+      "pocket": "equipables",
+      "price": 4000,
+      "desc": "Sube el ataque físico, pero solo deja usar un movimiento (Fase 3)."
+    },
+    {
+      "id": "choice-scarf",
+      "name": "Pañuelo Elección",
+      "pocket": "equipables",
+      "price": 4000,
+      "desc": "Sube la velocidad, pero solo deja usar un movimiento (Fase 3)."
+    },
+    {
+      "id": "lum-berry",
+      "name": "Baya Ziuela",
+      "pocket": "equipables",
+      "price": 2000,
+      "desc": "Si la lleva tu Pokémon, se cura del aturdimiento una vez (Fase 3)."
+    },
+    {
+      "id": "x-speed",
+      "name": "Velocidad X",
+      "pocket": "potenciadores",
+      "price": 600,
+      "boost": {
+        "kind": "speed",
+        "seconds": 120
+      },
+      "desc": "Corres más rápido durante 2 minutos."
+    },
+    {
+      "id": "dire-hit",
+      "name": "Directo",
+      "pocket": "potenciadores",
+      "price": 600,
+      "boost": {
+        "kind": "stealth",
+        "seconds": 120
+      },
+      "desc": "Sigilo: los salvajes tardan más en notarte durante 2 minutos."
+    },
+    {
+      "id": "rare-candy",
+      "name": "Caramelo Raro",
+      "pocket": "potenciadores",
+      "price": 0,
+      "training": 8,
+      "desc": "Da 8 Puntos de Entrenamiento a tu compañero."
+    },
+    {
+      "id": "lucky-egg",
+      "name": "Huevo Suerte",
+      "pocket": "potenciadores",
+      "price": 0,
+      "boost": {
+        "kind": "shiny",
+        "seconds": 300
+      },
+      "desc": "Durante 5 minutos es un poco más fácil encontrar shinies."
+    },
+    {
+      "id": "nugget",
+      "name": "Pepita",
+      "pocket": "tesoros",
+      "price": 10000,
+      "sell": 5000,
+      "desc": "Pepita de oro puro. Se vende cara."
+    },
+    {
+      "id": "pearl",
+      "name": "Perla",
+      "pocket": "tesoros",
+      "price": 2000,
+      "sell": 1000,
+      "desc": "Perla de las playas. Se vende bien."
+    },
+    {
+      "id": "big-pearl",
+      "name": "Perla Grande",
+      "pocket": "tesoros",
+      "price": 8000,
+      "sell": 4000,
+      "desc": "Perla enorme y brillante."
+    },
+    {
+      "id": "stardust",
+      "name": "Polvo Estelar",
+      "pocket": "tesoros",
+      "price": 3000,
+      "sell": 1500,
+      "desc": "Arena roja muy fina. Se vende bien."
+    },
+    {
+      "id": "star-piece",
+      "name": "Trozo Estrella",
+      "pocket": "tesoros",
+      "price": 12000,
+      "sell": 6000,
+      "desc": "Fragmento rojo de una estrella."
+    },
+    {
+      "id": "comet-shard",
+      "name": "Fragmento Cometa",
+      "pocket": "tesoros",
+      "price": 50000,
+      "sell": 25000,
+      "desc": "Fragmento de un cometa. Cae en las lluvias de meteoros."
+    },
+    {
+      "id": "town-map",
+      "name": "Mapa Pueblo",
+      "pocket": "clave",
+      "price": 0,
+      "key": true,
+      "desc": "Mapa de la región (también con M o Share)."
+    },
+    {
+      "id": "key-stone",
+      "name": "Piedra Llave",
+      "pocket": "clave",
+      "price": 0,
+      "key": true,
+      "icon": "",
+      "desc": "Permite la megaevolución con la megapiedra del Pokémon (Fase 3)."
+    },
+    {
+      "id": "bicycle",
+      "name": "Bicicleta",
+      "pocket": "clave",
+      "price": 0,
+      "key": true,
+      "desc": "Bicicleta plegable (llegará con las monturas)."
+    },
+    {
+      "id": "old-charm",
+      "name": "Amuleto Antiguo",
+      "pocket": "coleccionables",
+      "price": 0,
+      "key": true,
+      "desc": "Amuleto de una leyenda olvidada."
+    },
+    {
+      "id": "shiny-charm",
+      "name": "Amuleto Iris",
+      "pocket": "clave",
+      "price": 0,
+      "key": true,
+      "icon": "",
+      "desc": "Premio del profesor: los Pokémon shiny aparecen 3 veces más."
+    }
+  ],
+  "recipes": [
+    {
+      "result": "poke-ball",
+      "amount": 2,
+      "needs": {
+        "red-apricorn": 1,
+        "hard-stone": 1
+      }
+    },
+    {
+      "result": "great-ball",
+      "amount": 2,
+      "needs": {
+        "blu-apricorn": 1,
+        "hard-stone": 2
+      }
+    },
+    {
+      "result": "ultra-ball",
+      "amount": 1,
+      "needs": {
+        "ylw-apricorn": 1,
+        "hard-stone": 3
+      }
+    },
+    {
+      "result": "potion",
+      "amount": 1,
+      "needs": {
+        "tinymushroom": 1,
+        "oran-berry": 1
+      }
+    },
+    {
+      "result": "super-potion",
+      "amount": 1,
+      "needs": {
+        "big-mushroom": 1,
+        "sitrus-berry": 1
+      }
+    },
+    {
+      "result": "smoke-ball",
+      "amount": 1,
+      "needs": {
+        "tinymushroom": 2
+      }
+    },
+    {
+      "result": "honey",
+      "amount": 1,
+      "needs": {
+        "pecha-berry": 2
+      }
+    }
+  ],
+  "start": {
+    "poke-ball": 20,
+    "great-ball": 5,
+    "ultra-ball": 2,
+    "potion": 3,
+    "oran-berry": 5,
+    "repel": 1,
+    "smoke-ball": 2,
+    "town-map": 1,
+    "escape-rope": 1
+  }
+}

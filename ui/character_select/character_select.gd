@@ -106,6 +106,7 @@ func _show_step(step: Step) -> void:
 		Step.GENDER:
 			_title.text = "¡Bienvenido al mundo Pokémon!"
 			_subtitle.text = "¿Eres chico o chica?"
+			_add_continue_buttons()
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 24)
 			_content.add_child(row)
@@ -173,6 +174,28 @@ func _show_step(step: Step) -> void:
 			start.grab_focus.call_deferred()
 
 
+## Partidas guardadas: continuar desde una ranura (o el autoguardado).
+func _add_continue_buttons() -> void:
+	var slots: Array[int] = []
+	for slot in range(0, SaveSystem.SLOTS + 1):
+		if SaveSystem.has_slot(slot):
+			slots.append(slot)
+	if slots.is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	_content.add_child(row)
+	row.add_child(_label("Continuar:", 24, Color(1, 0.95, 0.7)))
+	for slot in slots:
+		var info := SaveSystem.slot_info(slot)
+		var minutes := int(float(info.get("play_time", 0.0)) / 60.0)
+		var button := _button("%s · %s · %d h %02d" % ["Autoguardado" if slot == 0 else "Ranura %d" % slot, info.get("name", "?"), minutes / 60, minutes % 60])
+		button.pressed.connect(func() -> void:
+			if SaveSystem.load_slot(slot):
+				get_tree().change_scene_to_file(WORLD_SCENE))
+		row.add_child(button)
+
+
 func _confirm_name() -> void:
 	if _name_edit.text.strip_edges() == "":
 		_name_edit.text = _character["name"]
@@ -184,8 +207,13 @@ func _player_name() -> String:
 	return typed if typed != "" else String(_character["name"])
 
 
-## Guarda la elección y carga el mundo.
+## Guarda la elección y carga el mundo (partida nueva: mochila y Pokédex desde cero).
 func _start() -> void:
+	GameState.party.clear()
+	GameState.box.clear()
+	GameState.dex.clear()
+	GameState.bag = Items.starting_bag()
+	GameState.play_time = 0.0
 	GameState.character_id = _character["id"]
 	GameState.gender = _gender
 	GameState.player_name = _player_name()

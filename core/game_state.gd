@@ -17,6 +17,8 @@ const DIFFICULTIES: Array[Dictionary] = [
 
 ## Tarjetas de tutorial ya vistas en esta partida: id -> true.
 var tips_seen := {}
+## Premios del profesor ya entregados (ver Research.REWARDS).
+var rewards_claimed := {}
 
 ## Avisos de captura (el HUD los muestra).
 signal pokemon_caught(display_name: String, shiny: bool, location: String)
@@ -30,8 +32,26 @@ const LEGENDARY_RESPAWN_CHANCE := 0.02
 const PARTY_MAX := 6
 var party: Array[Dictionary] = []
 var box: Array[Dictionary] = []
-## Pokéballs (el inventario completo llega en la Fase 5).
-var pokeballs: int = 20
+## Mochila: id del objeto -> cantidad (catálogo en Items). Empieza con Items.starting_bag().
+var bag: Dictionary = Items.starting_bag()
+## Ball elegida para lanzar (se cambia con la cruceta ↑↓ o R / F).
+var selected_ball: String = "poke-ball"
+## Cantidad de la ball elegida (compatibilidad: antes era un solo contador).
+var pokeballs: int:
+	get:
+		return item_count(selected_ball)
+	set(value):
+		bag[selected_ball] = maxi(value, 0)
+
+## Pokédex: identifier -> {"seen": veces vista, "caught": capturas, "shiny": capturó un
+## shiny, "behind": capturas por la espalda, "stunned": vistos debilitados en peleas,
+## "fights": peleas vistas, "biggest"/"smallest": tamaño récord (m)}.
+var dex := {}
+
+signal bag_changed
+## Aviso para el HUD (premios del profesor, etc.).
+signal notice(text: String)
+signal dex_changed(identifier: String)
 
 ## Dinero del jugador. Al desmayarse pierde BLACKOUT_MONEY_LOSS (como en los juegos).
 var money: int = 3000
@@ -58,8 +78,23 @@ func is_legendary_available(identifier: String) -> bool:
 
 ## Agrega un Pokémon capturado al equipo, o a la caja si el equipo está lleno.
 ## Devuelve "equipo" o "caja".
-func add_caught(species: SpeciesData, shiny: bool, hp_ratio: float) -> String:
-	var entry := {"species": species.identifier, "shiny": shiny, "hp_ratio": hp_ratio}
+func add_caught(species: SpeciesData, shiny: bool, hp_ratio: float, gender: int = -1, size: float = 1.0) -> String:
+	var entry := {"species": species.identifier, "shiny": shiny, "hp_ratio": hp_ratio, "gender": gender, "size": size}
+	# Récords de tamaño y sexos registrados.
+	var record := dex_entry(species.identifier)
+	var height := DexData.height(species.identifier) * size
+	record["biggest"] = maxf(float(record["biggest"]), height)
+	record["smallest"] = height if float(record["smallest"]) <= 0.0 else minf(float(record["smallest"]), height)
+	if gender == 0:
+		record["male"] = int(record["male"]) + 1
+	elif gender == 1:
+		record["female"] = int(record["female"]) + 1
+	dex_entry(species.identifier)["seen"] = maxi(dex_entry(species.identifier)["seen"], 1)
+	dex_count(species.identifier, "caught")
+	if shiny:
+		dex_entry(species.identifier)["shiny"] = true
+	for message in Research.claim_rewards():
+		notice.emit(message)
 	if species.is_legendary or species.is_mythical:
 		mark_legendary_caught(species.identifier)
 	if party.size() < PARTY_MAX:
@@ -79,6 +114,108 @@ func apply_blackout_penalty() -> int:
 ## Valor de la dificultad actual ("damage", "money_loss" o "recovery").
 func difficulty_value(key: String) -> float:
 	return float(DIFFICULTIES[clampi(difficulty, 0, DIFFICULTIES.size() - 1)][key])
+
+
+## Segundos jugados (sin contar pausas); lo suma la escena principal.
+var play_time: float = 0.0
+## Un día del juego dura 24 minutos reales (1 min = 1 h).
+const DAY_SECONDS := 1440.0
+## Miembro del equipo que acompaña al jugador en el mundo.
+var companion_index: int = 0
+## Repelente y potenciadores activos: tipo -> momento (play_time) en que terminan.
+var repel_until: float = 0.0
+var boosts := {}
+
+
+func game_day() -> int:
+	return int(play_time / DAY_SECONDS)
+
+
+## ¿Está activo el potenciador kind ("speed", "stealth", "shiny") o el repelente ("repel")?
+func boost_active(kind: String) -> bool:
+	if kind == "repel":
+		return play_time < repel_until
+	return play_time < float(boosts.get(kind, 0.0))
+
+
+## ¿Está oscuro (de noche o en una cueva)? Lo usará la Ocaso Ball; el reloj del día
+## y la noche lo actualiza.
+var dark := false
+
+
+func is_dark() -> bool:
+	return dark
+
+
+## --- Mochila --------------------------------------------------------------------
+
+func item_count(id: String) -> int:
+	return int(bag.get(id, 0))
+
+
+func add_item(id: String, amount: int = 1) -> void:
+	bag[id] = item_count(id) + amount
+	bag_changed.emit()
+
+
+## Gasta amount; devuelve false si no hay suficientes.
+func use_item(id: String, amount: int = 1) -> bool:
+	if item_count(id) < amount:
+		return false
+	bag[id] = item_count(id) - amount
+	if bag[id] <= 0:
+		bag.erase(id)
+	bag_changed.emit()
+	return true
+
+
+## Balls que tiene (en el orden del catálogo).
+func owned_balls() -> Array[String]:
+	var result: Array[String] = []
+	for id in Items.ball_ids():
+		if item_count(id) > 0:
+			result.append(id)
+	return result
+
+
+## Cambia a la siguiente (step = 1) o anterior (-1) ball que tenga.
+func cycle_ball(step: int) -> void:
+	var owned := owned_balls()
+	if owned.is_empty():
+		return
+	var index := owned.find(selected_ball)
+	selected_ball = owned[(index + step + owned.size()) % owned.size()] if index >= 0 else owned[0]
+	bag_changed.emit()
+
+
+## --- Pokédex ----------------------------------------------------------------------
+
+func dex_entry(identifier: String) -> Dictionary:
+	if not dex.has(identifier):
+		dex[identifier] = {"seen": 0, "caught": 0, "shiny": false, "behind": 0, "stunned": 0, "fights": 0, "biggest": 0.0, "smallest": 0.0,
+				"male": 0, "female": 0, "shiny_seen": false}
+	return dex[identifier]
+
+
+func mark_seen(identifier: String) -> void:
+	var first: bool = not dex.has(identifier) or dex[identifier]["seen"] == 0
+	dex_entry(identifier)["seen"] += 1
+	if first:
+		dex_changed.emit(identifier)
+
+
+## Suma uno a un contador de la Pokédex ("caught", "behind", "stunned", "fights").
+func dex_count(identifier: String, key: String) -> void:
+	dex_entry(identifier)[key] += 1
+	dex_changed.emit(identifier)
+
+
+func is_seen(identifier: String) -> bool:
+	return dex.has(identifier) and dex[identifier]["seen"] > 0
+
+
+func is_caught(identifier: String) -> bool:
+	return dex.has(identifier) and dex[identifier]["caught"] > 0
 
 
 ## Marca un legendario como capturado (lo llamará la captura en la Fase 4).

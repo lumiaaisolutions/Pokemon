@@ -83,9 +83,11 @@ func _run() -> void:
 	var joltik := _spawner.spawn_species(_species("joltik"), Vector3(0, 0, 0), true, false)
 	await _frames(2)
 	var wailord_sprite := wailord.get_node("Sprite") as Sprite3D
-	var wailord_height := wailord_sprite.texture.get_height() / 4.0 * wailord_sprite.pixel_size
+	# (Cada individuo tiene su talla: se compara sin ella.)
+	var wailord_height := wailord_sprite.texture.get_height() / 4.0 * wailord_sprite.pixel_size / wailord.size_factor
 	_check(is_equal_approx(wailord_height, 32.0 * 3.0 * PokemonActor.PIXEL_SIZE), "Wailord debe medir 32 px ×3 en el mundo (%.2f m)" % wailord_height)
-	_check(is_equal_approx((joltik.get_node("Sprite") as Sprite3D).pixel_size, PokemonActor.PIXEL_SIZE), "Joltik debe dibujarse ×1")
+	_check(is_equal_approx((joltik.get_node("Sprite") as Sprite3D).pixel_size / joltik.size_factor, PokemonActor.PIXEL_SIZE), "Joltik debe dibujarse ×1")
+	_check(joltik.size_factor >= 0.75 and joltik.size_factor <= 1.3, "la talla de cada individuo va de 0.75 a 1.3")
 	_check((joltik.get_node("Sprite") as Sprite3D).texture == _species("joltik").overworld_sheet_shiny, "un shiny debe usar su hoja variocolor")
 	_check(joltik.has_node("ShinySparkles"), "un shiny debe tener destello")
 	_check(is_equal_approx(WildSpawner.SHINY_CHANCE, 0.01), "la probabilidad de shiny debe ser 1 %")

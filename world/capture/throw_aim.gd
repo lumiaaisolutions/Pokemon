@@ -78,9 +78,16 @@ func throw_velocity() -> Vector3:
 ## Lanza una Pokéball si quedan. Devuelve la ball o null.
 func throw_ball() -> PokeballProjectile:
 	if GameState.pokeballs <= 0:
+		var others := GameState.owned_balls()
+		if others.is_empty():
+			_player.notice.emit("¡No te quedan Pokéballs! Consíguelas en tiendas, fabricándolas o explorando.")
+		else:
+			_player.notice.emit("¡No te quedan %s! Cambia de ball con %s / %s." % [Items.display_name(GameState.selected_ball), InputHints.hint("ball_prev"), InputHints.hint("ball_next")])
 		return null
-	GameState.pokeballs -= 1
+	var ball_id := GameState.selected_ball
+	GameState.use_item(ball_id)
 	var ball := PokeballProjectile.create()
+	ball.ball_id = ball_id
 	ball.thrower = _player
 	_player.get_parent().add_child(ball)
 	ball.global_position = throw_origin()

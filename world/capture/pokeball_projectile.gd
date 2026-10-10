@@ -10,6 +10,8 @@ const MISS_LIFETIME := 3.0
 
 var thrower: Node3D
 var ball_bonus: float = CaptureRules.POKEBALL
+## Tipo de ball (id del catálogo); su multiplicador se calcula al tocar al Pokémon.
+var ball_id := "poke-ball"
 ## Resultado forzado para las pruebas (-1 = al azar, 0 = falla, 1 = captura).
 var forced_result: int = -1
 
@@ -75,6 +77,7 @@ func start_capture(actor: PokemonActor) -> void:
 	_target = actor
 	var stunned := actor.state == PokemonActor.State.STUNNED
 	var stealth := thrower != null and CaptureRules.is_stealthy(actor, thrower)
+	ball_bonus = CaptureRules.ball_multiplier(ball_id, actor, thrower)
 	var probability := CaptureRules.probability(actor.species, actor.hp / actor.hp_max, ball_bonus, stunned, stealth)
 	# La ball queda en el suelo frente al Pokémon y él entra en ella.
 	freeze = true
@@ -96,7 +99,10 @@ func start_capture(actor: PokemonActor) -> void:
 		queue_free()
 		return
 	if held == CaptureRules.SHAKES:
-		var location := GameState.add_caught(actor.species, actor.shiny, actor.hp / actor.hp_max)
+		var heals: bool = Items.get_item(ball_id).get("ball", {}).get("heals", false)
+		var location := GameState.add_caught(actor.species, actor.shiny, 1.0 if heals else actor.hp / actor.hp_max, actor.gender, actor.size_factor)
+		if stealth:
+			GameState.dex_count(actor.species.identifier, "behind")
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SAND, 0.8)
 		GameState.pokemon_caught.emit(actor.species.display_name, actor.shiny, location)
 		actor.captured()

@@ -29,7 +29,11 @@ const SECTIONS := [
 		["dive", "", "Bucear más rápido"],
 	]],
 	["Sistema", [
-		["menu", "", "Liberar el mouse (el menú llegará pronto)"],
+		["menu", "", "Abrir o cerrar el menú (equipo, mochila, Pokédex…)"],
+		["menu_prev", "", "Menú: pestaña anterior"],
+		["menu_next", "", "Menú: pestaña siguiente"],
+		["ball_next", "", "Siguiente Pokéball"],
+		["ball_prev", "", "Pokéball anterior"],
 		["help", "", "Abrir o cerrar esta ayuda"],
 	]],
 ]
@@ -61,13 +65,19 @@ func toggle() -> void:
 func _build() -> void:
 	for child in get_children().slice(1):
 		child.queue_free()
+	var content := build_content()
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content.offset_left = 120
+	content.offset_right = -120
+	content.offset_top = 60
+	content.offset_bottom = -40
+	add_child(content)
+
+
+## Lista de todos los controles (también la usa la pestaña Controles del menú).
+static func build_content() -> Control:
 	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scroll.offset_left = 120
-	scroll.offset_right = -120
-	scroll.offset_top = 60
-	scroll.offset_bottom = -40
-	add_child(scroll)
+	scroll.custom_minimum_size = Vector2(0, 700)
 	var layout := VBoxContainer.new()
 	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 10)
@@ -87,22 +97,23 @@ func _build() -> void:
 			row.add_child(_label(entry[2], 22, Color.WHITE))
 			layout.add_child(row)
 	layout.add_child(_label("Cierra con %s o %s" % [InputHints.hint("help", 0), InputHints.hint("help", 1)], 18, Color(0.75, 0.8, 0.9)))
+	return scroll
 
 
-func _glyph(action: String, pad: int) -> Control:
+static func _glyph(action: String, pad: int) -> Control:
 	if action.begins_with("@"):
 		return InputGlyph.text(action.substr(1), pad == 0)
 	return InputGlyph.make(action, pad)
 
 
-func _column(control: Control, width: float) -> Control:
+static func _column(control: Control, width: float) -> Control:
 	var box := HBoxContainer.new()
 	box.custom_minimum_size.x = width
 	box.add_child(control)
 	return box
 
 
-func _label(text: String, size: int, color: Color) -> Label:
+static func _label(text: String, size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", size)

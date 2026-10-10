@@ -93,6 +93,13 @@ var ridden_by: Node3D
 ## Recién nacido en la ceremonia del inicial: se queda quieto mirando al jugador,
 ## sin IA ni barra de vida, hasta que lo eligen o se va.
 var ceremony := false
+## Sexo: -1 sin sexo, 0 macho, 1 hembra (según la especie, al aparecer).
+var gender: int = -1
+## Talla del individuo (1 = la de su especie); se ve en su sprite y en los récords.
+var size_factor: float = 1.0
+## Distancia a la que el jugador "lo ve" (cuenta para la Pokédex).
+const SEEN_RADIUS := 22.0
+var _seen_marked := false
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
 @export var legendary := false
@@ -158,6 +165,11 @@ func _ready() -> void:
 	if role == Role.COMPANION:
 		add_to_group(COMPANION_GROUP)
 	_rng.randomize()
+	if gender < 0 and role == Role.WILD:
+		var rate := int(DexData.info(species.identifier).get("gender_rate", -1))
+		gender = -1 if rate < 0 else (1 if _rng.randf() < rate / 8.0 else 0)
+	if is_equal_approx(size_factor, 1.0) and role == Role.WILD:
+		size_factor = clampf(_rng.randfn(1.0, 0.09), 0.75, 1.3)
 	_sprite.walk_fps = 5.0
 	_sprite.run_fps = 9.0
 	var sheet := species.overworld_sheet_shiny if shiny and species.overworld_sheet_shiny != null else species.overworld_sheet
@@ -189,7 +201,7 @@ func _ready() -> void:
 		add_child(_question)
 	hp_max = 20.0 + species.hp * 0.6
 	hp = hp_max
-	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.3, species.display_name + (" ✦" if shiny else ""))
+	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.3, species.display_name + (" ♂" if gender == 0 else (" ♀" if gender == 1 else "")) + (" ✦" if shiny else ""))
 	add_child(_health_bar)
 	_rival_scan = _rng.randf() * RIVAL_SCAN_INTERVAL
 	_enter(State.FOLLOW if role == Role.COMPANION else State.IDLE)
@@ -197,7 +209,7 @@ func _ready() -> void:
 
 ## Metros por píxel del sprite: 32 px × escalón de tamaño, sea la hoja de 32 o de 64 px.
 func world_pixel_size() -> float:
-	return PIXEL_SIZE * species.size_scale * 32.0 / species.overworld_cell
+	return PIXEL_SIZE * species.size_scale * size_factor * 32.0 / species.overworld_cell
 
 
 ## Velocidad al caminar y al correr según la stat de velocidad (m/s).
@@ -238,6 +250,13 @@ func _physics_process(delta: float) -> void:
 	_update_sparkles(delta)
 	if role == Role.WILD and not legendary:
 		_track_interaction(delta)
+	if role == Role.WILD and not _seen_marked and player != null and not ceremony \
+			and global_position.distance_to(player.global_position) <= SEEN_RADIUS:
+		# Pokédex: visto al acercarse el jugador.
+		_seen_marked = true
+		GameState.mark_seen(species.identifier)
+		if shiny:
+			GameState.dex_entry(species.identifier)["shiny_seen"] = true
 	if legendary and state == State.FLY:
 		_fly(delta)
 		return
@@ -330,7 +349,9 @@ func _think_wild() -> Array:
 	var to_player := INF
 	if player != null:
 		to_player = global_position.distance_to(player.global_position)
-	var sees_player := to_player <= DETECT_RADIUS and _ignore_player <= 0.0
+	# Con Directo (sigilo) te notan a la mitad de distancia; con repelente no te notan.
+	var detect := DETECT_RADIUS * (0.5 if GameState.boost_active("stealth") else 1.0)
+	var sees_player := to_player <= detect and _ignore_player <= 0.0 and not GameState.boost_active("repel")
 	if state == State.FIGHT:
 		return _think_fight()
 	_rival_scan -= get_physics_process_delta_time()
@@ -704,6 +725,15 @@ func _process_controlled(delta: float) -> void:
 	_sprite.animate(horizontal, delta, horizontal.length() > walk_speed())
 
 
+## Bola Humo o Poké Muñeco: deja de perseguir o pelear con el jugador y lo ignora.
+func lose_track(seconds: float) -> void:
+	_ignore_player = maxf(_ignore_player, seconds)
+	if fight_target == player:
+		fight_target = null
+	if state in [State.CHASE, State.FIGHT, State.APPROACH, State.AMBUSH]:
+		_enter(State.RETURN if role == Role.WILD else State.FOLLOW)
+
+
 ## ¿Está esquivando (invulnerable)?
 func is_dashing() -> bool:
 	return _dash_time > 0.0
@@ -891,6 +921,10 @@ func attack_range() -> float:
 func start_fight(target: Node3D) -> void:
 	if target == null or target == self or state == State.STUNNED or legendary:
 		return
+	# Pokédex: el jugador vio a este salvaje pelear con otro salvaje.
+	if role == Role.WILD and target is PokemonActor and (target as PokemonActor).role == Role.WILD \
+			and player != null and global_position.distance_to(player.global_position) <= SEEN_RADIUS:
+		GameState.dex_count(species.identifier, "fights")
 	# Contra el jugador rige el área de persecución: si no venía persiguiéndolo, el
 	# área empieza aquí (o en su casa, si es territorial).
 	if target == player and state != State.CHASE:
@@ -1053,6 +1087,8 @@ func _find_rival() -> PokemonActor:
 ## Debilitado: aturdido STUN_TIME s con estrellitas (se puede capturar). Después, si
 ## es salvaje, desaparece en humo; si es el compañero, lo decide la escena principal.
 func _stun() -> void:
+	if role == Role.WILD and player != null and global_position.distance_to(player.global_position) <= SEEN_RADIUS:
+		GameState.dex_count(species.identifier, "stunned")
 	velocity = Vector3.ZERO
 	_windup = 0.0
 	fight_target = null

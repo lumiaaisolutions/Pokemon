@@ -143,11 +143,15 @@ func _run() -> void:
 	_check(nearest != null, "debe haber un salvaje cerca del compañero")
 	if nearest != null:
 		var hp_before := nearest.hp
+		# Quieto mientras vuela el proyectil (se prueba el ataque, no la puntería).
+		nearest.set_physics_process(false)
 		Input.action_press("attack_2")
 		await _frames(2)
 		Input.action_release("attack_2")
 		await _frames(90)
 		_check(not is_instance_valid(nearest) or nearest.hp < hp_before, "el ataque especial controlado debe dañar al salvaje")
+		if is_instance_valid(nearest):
+			nearest.set_physics_process(true)
 	# Esquivar: impulso invulnerable.
 	Input.action_press("dodge")
 	await _frames(2)
