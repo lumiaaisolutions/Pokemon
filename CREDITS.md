@@ -24,3 +24,5 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | Música de Pokémon Negro/Blanco y Negro 2/Blanco 2 (solo local) | https://downloads.khinsider.com/ | KHInsider |
 | Efectos de sonido de Negro 2/Blanco 2 (solo local) | https://www.sounds-resource.com/ds_dsi/pokemonblack2white2/ | The Sounds Resource |
 | Métodos de evolución | PokeAPI (`pokemon_evolution.csv`, `items.csv`, `evolution_triggers.csv`) | PokeAPI |
+| NPC: clases de BW2 para caminar ("Overworld Entities") | https://www.spriters-resource.com/ds_dsi/pokemonblack2white2/asset/48049/ | Ripeado por Barubary (The Spriters Resource) |
+| Retratos de entrenadores de BW2 ("Trainers"), solo local | https://www.spriters-resource.com/ds_dsi/pokemonblack2white2/asset/48033/ | Ripeado por redblueyellow (The Spriters Resource) |

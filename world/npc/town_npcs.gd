@@ -36,7 +36,6 @@ const ROLES := ["vecino", "vendedor", "enfermera", "investigador", "entrenador",
 const PET_POOL := preload("res://creatures/data/basic_pool.tres")
 const TRAVELERS := 2
 const TRAVELER_SPEED := 1.8
-const TINTS := [Color(1, 1, 1), Color(0.85, 0.95, 1.1), Color(1.1, 0.95, 0.85), Color(0.9, 1.08, 0.9), Color(1.05, 0.9, 1.05), Color(0.95, 0.95, 0.95)]
 
 @export var world_path: NodePath
 @export var player_path: NodePath
@@ -108,11 +107,13 @@ func _populate(index: int, settlement: Dictionary) -> Array:
 	for i in int(PER_KIND.get(settlement["kind"], 3)):
 		var home: Dictionary = homes[rng.randi() % homes.size()] if not homes.is_empty() else {}
 		var work: Dictionary = works[rng.randi() % works.size()] if not works.is_empty() and rng.randf() < 0.6 else {}
-		var entry: Dictionary = PlayerCharacters.LIST[rng.randi() % PlayerCharacters.LIST.size()]
+		var role: String = ROLES[rng.randi() % ROLES.size()] if work.is_empty() else {"center": "enfermera", "mart": "vendedor", "lab": "investigador", "gym": "entrenador", "contest": "coordinador"}[work["kind"]]
+		# Aspecto según su oficio (clases de BW2); su nombre, según el género del aspecto.
+		var look := NpcLooks.for_role(role, rng)
 		var npc := {
-			"look": entry["id"],
-			"name": name_for(entry["gender"], rng),
-			"role": ROLES[rng.randi() % ROLES.size()] if work.is_empty() else {"center": "enfermera", "mart": "vendedor", "lab": "investigador", "gym": "entrenador", "contest": "coordinador"}[work["kind"]],
+			"look": look,
+			"name": name_for(NpcLooks.gender(look), rng),
+			"role": role,
 			"town": settlement["name"],
 			"home": _door(settlement, home) if not home.is_empty() else plaza + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)),
 			"work": _door(settlement, work) if not work.is_empty() else Vector2.INF,
@@ -132,8 +133,8 @@ func _populate(index: int, settlement: Dictionary) -> Array:
 		sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
 		sprite.walk_fps = 5.0
 		node.add_child(sprite)
-		sprite.setup(PlayerCharacters.sheet(entry["id"]), 3, 8, 0.057)
-		sprite.material_override = SpriteMaterials.for_texture(sprite.texture, TINTS[rng.randi() % TINTS.size()])
+		sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+		sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
 		var label := Label3D.new()
 		label.text = npc["name"]
 		label.font_size = 32
@@ -357,7 +358,7 @@ func _update_travelers() -> void:
 
 
 func _make_traveler(road_index: int, point_index: int, at: Vector2) -> Dictionary:
-	var entry: Dictionary = PlayerCharacters.LIST[_rng.randi() % PlayerCharacters.LIST.size()]
+	var look := NpcLooks.for_role("viajero", _rng)
 	var node := Node3D.new()
 	node.name = "Traveler"
 	add_child(node)
@@ -366,12 +367,12 @@ func _make_traveler(road_index: int, point_index: int, at: Vector2) -> Dictionar
 	sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
 	sprite.walk_fps = 5.0
 	node.add_child(sprite)
-	sprite.setup(PlayerCharacters.sheet(entry["id"]), 3, 8, 0.057)
-	sprite.material_override = SpriteMaterials.for_texture(sprite.texture, TINTS[_rng.randi() % TINTS.size()])
+	sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+	sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
 	node.global_position = Vector3(at.x, _world.surface_height_at(at.x, at.y), at.y)
 	var names := _world.layout.settlements.map(func(s: Dictionary) -> String: return s["name"])
-	var traveler := {"look": entry["id"], "node": node, "road": road_index, "index": point_index, "dir": 1 if _rng.randf() < 0.5 else -1, "camp": null,
-			"name": name_for(entry["gender"], _rng), "from": names[_rng.randi() % names.size()], "to": names[_rng.randi() % names.size()]}
+	var traveler := {"look": look, "node": node, "road": road_index, "index": point_index, "dir": 1 if _rng.randf() < 0.5 else -1, "camp": null,
+			"name": name_for(NpcLooks.gender(look), _rng), "from": names[_rng.randi() % names.size()], "to": names[_rng.randi() % names.size()]}
 	traveler["pet"] = _make_pet(_rng) if _rng.randf() < 0.6 else null
 	traveler["point"] = _world.structures.add_point(node.global_position, "Hablar con %s (viajero)" % traveler["name"], _talk_traveler.bind(traveler), TALK_RADIUS)
 	return traveler
@@ -615,15 +616,9 @@ static func person_id(person: Dictionary) -> String:
 	return "npc:%s:%s" % [person.get("town", person.get("from", "")), person.get("name", "")]
 
 
-## Retrato: el primer cuadro (de frente) de la hoja del personaje.
+## Retrato: el cuadro de frente de su aspecto.
 static func portrait(look: String) -> Texture2D:
-	var sheet := PlayerCharacters.sheet(look)
-	if sheet == null:
-		return null
-	var atlas := AtlasTexture.new()
-	atlas.atlas = sheet
-	atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
-	return atlas
+	return NpcLooks.portrait(look)
 
 
 func _dialog() -> DialogBox:
@@ -647,7 +642,7 @@ func _converse(person: Dictionary, lines: Array, role: String) -> void:
 		lines.append("Oye, ¿y si peleamos? ¡Mi %s está listo!" % MenuStyle.species(String((person["pet"] as Node).get_meta("species"))).display_name)
 		options = ["Retar", "Adiós"]
 	var title := "%s (%s)" % [person["name"], role]
-	dialog.open(title, lines, portrait(String(person.get("look", "nate_bw2"))), options, func(index: int) -> void:
+	dialog.open(title, lines, portrait(String(person.get("look", "joven_a"))), options, func(index: int) -> void:
 		if index == 0:
 			_challenge_person(person, role))
 	dialog.closed.connect(func() -> void:

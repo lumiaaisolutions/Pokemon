@@ -72,9 +72,10 @@ func _build_spots() -> void:
 				var biome := _world.region_biome_at(pos.x, pos.y)
 				var classes: Array = CLASSES.get(biome, DEFAULT_CLASSES)
 				var id := "%d:%d" % [road_index, spots.size()]
-				var look_index := rng.randi() % PlayerCharacters.LIST.size()
-				spots.append({"id": id, "name": TownNPCs.name_for(PlayerCharacters.LIST[look_index]["gender"], rng), "pos": pos, "facing": Vector3(-side.x, 0, -side.y),
-						"class": classes[rng.randi() % classes.size()], "look": look_index, "strength": clampf(pos.distance_to(Vector2(start.x, start.z)) / 1800.0, 0.0, 1.0)})
+				var trainer_class: String = classes[rng.randi() % classes.size()]
+				var look := NpcLooks.for_class(trainer_class, rng)
+				spots.append({"id": id, "name": TownNPCs.name_for(NpcLooks.gender(look), rng), "pos": pos, "facing": Vector3(-side.x, 0, -side.y),
+						"class": trainer_class, "look": look, "strength": clampf(pos.distance_to(Vector2(start.x, start.z)) / 1800.0, 0.0, 1.0)})
 			walked -= segment
 
 
@@ -115,8 +116,7 @@ func _make(spot: Dictionary) -> Dictionary:
 	sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
 	sprite.walk_fps = 6.0
 	node.add_child(sprite)
-	var look: Dictionary = PlayerCharacters.LIST[int(spot["look"])]
-	sprite.setup(PlayerCharacters.sheet(look["id"]), 3, 8, 0.057)
+	sprite.setup(NpcLooks.sheet(String(spot["look"])), 3, 8, 0.057)
 	sprite.facing_world = spot["facing"]
 	var mark := Label3D.new()
 	mark.name = "Mark"
