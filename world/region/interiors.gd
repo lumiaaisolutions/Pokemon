@@ -71,6 +71,17 @@ func _process(_delta: float) -> void:
 		var player := services.player()
 		if player != null and player.global_position.x < WorldBuilder.INTERIOR_X:
 			_cleanup()
+		# Red de seguridad: si alguien cae bajo el piso (hueco de un modelo), vuelve a la entrada.
+		elif player != null and current.has("spawn"):
+			var spawn: Vector3 = current["spawn"]
+			if player.global_position.y < spawn.y - 4.0:
+				player.global_position = spawn
+				player.velocity = Vector3.ZERO
+				GameState.notice.emit("¡Cuidado! Volviste a la entrada.")
+			var c := services.companion()
+			if c != null and c.global_position.y < spawn.y - 4.0:
+				c.global_position = spawn + Vector3(1.4, 0.2, 0.0)
+				c.velocity = Vector3.ZERO
 
 
 ## Adentro: fondo oscuro sin cielo ni niebla, y menos luz del sol en mazmorras.
@@ -115,6 +126,7 @@ func enter(kind: String, settlement: Dictionary, data: Dictionary, return_point:
 		spawn = _build_dungeon(root, kind, data, rng)
 	else:
 		spawn = _build_room(root, kind, settlement, data, rng)
+	current["spawn"] = spawn
 	structures.world.interior_habitat = HABITATS.get(kind, SpeciesData.Habitat.MOUNTAIN)
 	_set_indoor_look(true, kind in DUNGEONS)
 	services.navigation_bake_interior(root)
@@ -223,13 +235,15 @@ func _light(parent: Node3D, at: Vector3, color: Color, range_m: float, energy: f
 ## Interiores con modelos originales de B2W2 (art/models/b2w2_int/, acordado con Fernando
 ## el 2026-10-10). tools/fix_dae.py los deja listos para Godot.
 const INTERIOR_MODELS := {
-	"center": ["center"], "mart": ["mall"], "lab": ["lab_juniper", "lab_fennel"],
+	"center": ["center"], "mart": ["mall"], "lab": ["lab_fennel"],
 	"house": ["house_floccesy5", "house_humilau7", "house_mistralton3", "house_accumula2"], "cabin": ["house_hugh"],
 	"gym": ["gym_aspertia", "gym_castelia", "gym_mistralton", "gym_icirrus", "gym_humilau", "gym_nacrene"],
 	"league": ["e4_room2", "e4_room4", "e4_room1"], "contest": ["school_striaton"], "daycare": ["daycare"],
 }
 const INTERIOR_DIR := "res://art/models/b2w2_int/"
 var _modeled := false
+## Pruebas: fuerza una carpeta de modelo.
+var force_model := ""
 
 
 ## Pone el modelo de la sala (centrado, piso en y = 0) con colisión. Devuelve su planta
@@ -239,10 +253,15 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 	if options.is_empty():
 		return Vector2.ZERO
 	var folder: String = options[rng.randi() % options.size()]
+	if force_model != "":
+		folder = force_model
 	var path := INTERIOR_DIR + folder + "/model.dae"
 	if not ResourceLoader.exists(path):
 		return Vector2.ZERO
-	var model := (load(path) as PackedScene).instantiate() as Node3D
+	var scene := load(path) as PackedScene
+	if scene == null:
+		return Vector2.ZERO
+	var model := scene.instantiate() as Node3D
 	model.scale = Vector3.ONE * BuildingModels.SCALE
 	var box := AABB()
 	var first := true
@@ -253,8 +272,13 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 		var local := BuildingModels._local_transform(mesh, model) * mesh.get_aabb()
 		box = local if first else box.merge(local)
 		first = false
-	var center := box.get_center() * BuildingModels.SCALE
-	model.position = Vector3(-center.x, 0.0, -center.z)
+	# El piso real: la superficie horizontal más grande (la caja del modelo incluye
+	# paredes y zonas negras; usarla dejaba la entrada fuera del cuarto).
+	var floor_rect := _floor_rect(model, meshes)
+	if floor_rect.size == Vector3.ZERO:
+		floor_rect = AABB(box.position * BuildingModels.SCALE, box.size * BuildingModels.SCALE)
+	var center := floor_rect.get_center()
+	model.position = Vector3(-center.x, -floor_rect.position.y, -center.z)
 	root.add_child(model)
 	# Colisión: la geometría del modelo (paredes y muebles) como obstáculo, y un piso plano.
 	for node in meshes:
@@ -270,7 +294,21 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 		collision.shape = shape
 		body.add_child(collision)
 		mesh.add_child(body)
-	var size := Vector2(box.size.x, box.size.z) * BuildingModels.SCALE
+	var size := Vector2(floor_rect.size.x, floor_rect.size.z)
+	# Paredes invisibles en todo el contorno: los modelos de la DS dejan abierto el lado
+	# de la entrada y zonas negras; sin esto se podía salir del piso y caer al vacío.
+	var half := size * 0.5
+	for wall: Array in [[Vector3(size.x + 2.0, 6.0, 1.0), Vector3(0, 3.0, -half.y - 0.5)], [Vector3(size.x + 2.0, 6.0, 1.0), Vector3(0, 3.0, half.y + 0.5)],
+			[Vector3(1.0, 6.0, size.y + 2.0), Vector3(-half.x - 0.5, 3.0, 0)], [Vector3(1.0, 6.0, size.y + 2.0), Vector3(half.x + 0.5, 3.0, 0)]]:
+		var fence := StaticBody3D.new()
+		fence.collision_layer = WorldBuilder.LAYER_OBSTACLES
+		var wall_shape := BoxShape3D.new()
+		wall_shape.size = wall[0]
+		var wall_collision := CollisionShape3D.new()
+		wall_collision.shape = wall_shape
+		wall_collision.position = wall[1]
+		fence.add_child(wall_collision)
+		root.add_child(fence)
 	var ground := StaticBody3D.new()
 	ground.collision_layer = WorldBuilder.LAYER_TERRAIN
 	var floor_shape := BoxShape3D.new()
@@ -281,6 +319,72 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 	ground.add_child(floor_collision)
 	root.add_child(ground)
 	return size
+
+
+## Salida visible: tapete rojo brillante y flecha que sube y baja.
+func _exit_mark(root: Node3D, door: Vector3) -> void:
+	var mat := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(2.4, 1.6)
+	mat.mesh = plane
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.85, 0.2, 0.25)
+	material.emission_enabled = true
+	material.emission = Color(0.85, 0.2, 0.25)
+	material.emission_energy_multiplier = 0.4
+	mat.material_override = material
+	mat.position = door + Vector3(0, 0.04, 0.3)
+	root.add_child(mat)
+	var arrow := Label3D.new()
+	arrow.text = "▼ SALIDA"
+	arrow.font_size = 48
+	arrow.outline_size = 12
+	arrow.modulate = Color(1.0, 0.9, 0.4)
+	arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	arrow.no_depth_test = true
+	arrow.position = door + Vector3(0, 1.6, 0.3)
+	root.add_child(arrow)
+	var tween := arrow.create_tween().set_loops()
+	tween.tween_property(arrow, "position:y", door.y + 1.9, 0.6)
+	tween.tween_property(arrow, "position:y", door.y + 1.6, 0.6)
+
+
+## Rectángulo del piso (en metros, coordenadas del modelo ya escalado): agrupa los
+## triángulos que miran hacia arriba por altura y toma la altura con más área.
+func _floor_rect(model: Node3D, meshes: Array) -> AABB:
+	var by_height := {}
+	var rects := {}
+	for node in meshes:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		var xform := model.transform * BuildingModels._local_transform(mesh_instance, model)
+		for surface in mesh_instance.mesh.get_surface_count():
+			var arrays := mesh_instance.mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var count := indices.size() if not indices.is_empty() else vertices.size()
+			for t in range(0, count - 2, 3):
+				var a := xform * vertices[indices[t] if not indices.is_empty() else t]
+				var b := xform * vertices[indices[t + 1] if not indices.is_empty() else t + 1]
+				var c := xform * vertices[indices[t + 2] if not indices.is_empty() else t + 2]
+				var normal := (b - a).cross(c - a)
+				var area := normal.length() * 0.5
+				if area < 0.01 or absf(normal.normalized().y) < 0.95:
+					continue
+				var level := snappedf((a.y + b.y + c.y) / 3.0, 0.2)
+				by_height[level] = float(by_height.get(level, 0.0)) + area
+				var tri := AABB(a, Vector3.ZERO).expand(b).expand(c)
+				rects[level] = (rects[level] as AABB).merge(tri) if rects.has(level) else tri
+	var best := 0.0
+	var best_level := 0.0
+	for level: float in by_height:
+		if float(by_height[level]) > best:
+			best = by_height[level]
+			best_level = level
+	if best <= 0.0:
+		return AABB()
+	return rects[best_level]
 
 
 func _room_shell(root: Node3D, size: Vector2, floor_color: Color, wall_color: Color) -> void:
@@ -336,7 +440,9 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 		_room_shell(root, size, FLOORS.get(kind, Color(0.7, 0.7, 0.7)), wall)
 	var door := Vector3(0, 0, size.y * 0.5 - (2.2 if _modeled else 1.0))
 	_block(root, Vector3(2.4, 0.05, 1.4), door + Vector3(0, 0.02, 0.2), Color(0.6, 0.2, 0.2), false)
-	_point(door + Vector3.UP * 0.5, "Salir", func() -> void: exit_to(current["return"]), 1.8)
+	_exit_mark(root, door)
+	# Salir con E o caminando hacia la salida (como al entrar).
+	(current["points"] as Array).append(structures.add_point(ORIGIN + door + Vector3.UP * 0.5, "Salir", func() -> void: exit_to(current["return"]), 2.0, Vector3(0, 0, 1)))
 	var back := -size.y * 0.5 + 2.0
 	match kind:
 		"center":
