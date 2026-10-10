@@ -132,6 +132,31 @@ func _ready() -> void:
 		rig.set("_zoom", rig.zoom_max)
 		for i in 150:
 			await get_tree().process_frame
+	# "poi:tipo": el jugador frente al punto de interés de ese tipo más cercano al inicio.
+	if args.size() > 5 and args[5].begins_with("poi:"):
+		var world := scene.get_node("World") as WorldBuilder
+		var player := scene.get_node("Player") as Player
+		var pois := scene.get_node("PointsOfInterest") as PointsOfInterest
+		var want := args[5].substr(4)
+		var start := world.start_position()
+		var found: Dictionary = {}
+		for ring in range(1, 18):
+			for k in ring * 8:
+				var a := TAU * k / (ring * 8.0)
+				var key := Vector2i(int(floor((start.x + cos(a) * ring * 128.0) / 128.0)), int(floor((start.z + sin(a) * ring * 128.0) / 128.0)))
+				var p := pois.plan(key)
+				if not p.is_empty() and p["kind"] == want and found.is_empty():
+					found = p
+		if not found.is_empty():
+			var at := Vector3(float(found["x"]), 0, float(found["z"]) + 7.0)
+			world.ensure_area(at)
+			player.global_position = Vector3(at.x, world.surface_height_at(at.x, at.z) + 0.5, at.z)
+			var rig := scene.get_node("CameraRig") as CameraRig
+			rig.set("_yaw_deg", 0.0)
+			rig.set("_pitch_deg", 22.0)
+			print("poi en ", found)
+			for i in 150:
+				await get_tree().process_frame
 	# "lago:N": el jugador en la orilla del lago N (o del primero en pantano con "lago:pantano").
 	if args.size() > 5 and args[5].begins_with("lago:"):
 		var world := scene.get_node("World") as WorldBuilder

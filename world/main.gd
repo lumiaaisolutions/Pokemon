@@ -52,6 +52,10 @@ func _ready() -> void:
 	npcs.world_path = NodePath("../World")
 	npcs.player_path = NodePath("../Player")
 	add_child(npcs)
+	# Puntos de interés del campo (campamentos, pozos, ruinas, árboles, cuevas, miradores).
+	var pois := PointsOfInterest.new()
+	pois.name = "PointsOfInterest"
+	add_child(pois)
 	# Rival (Hugh): te busca tras cada medalla y de vez en cuando en el mundo.
 	var rival := Rival.new()
 	rival.name = "Rival"

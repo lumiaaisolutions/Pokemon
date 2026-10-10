@@ -346,6 +346,10 @@ func _markers() -> Array:
 		result.append({"uv": data.world_to_uv(point), "kind": "town", "title": settlement["name"],
 				"text": "%s · %s" % [kinds.get(settlement["kind"], "Pueblo"), ", ".join(services) if not services.is_empty() else "sin servicios"],
 				"color": UiKit.RED if settlement["kind"] == "city" else Color(0.98, 0.95, 0.9), "min_zoom": 1.0})
+	# Puntos de interés descubiertos.
+	for poi: Dictionary in PointsOfInterest.seen_list():
+		result.append({"uv": data.world_to_uv(Vector3(poi["x"], 0, poi["z"])), "kind": "place", "title": PointsOfInterest.TITLES.get(poi["kind"], "?"),
+				"text": "Punto de interés", "color": Color(0.55, 0.85, 0.45), "min_zoom": 2.0})
 	# El profesor de viaje (la asistente dice dónde).
 	var professor := get_parent().get_node_or_null("Professor") as Professor
 	if professor != null and not professor.trip_place().is_empty():
