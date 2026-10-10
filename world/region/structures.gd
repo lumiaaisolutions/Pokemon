@@ -332,7 +332,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 	if not model.is_empty():
 		var size: Vector3 = model["size"]
 		root.add_child(model["node"])
-		_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, 0), Color(0.62, 0.6, 0.57))
+		_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.53, 0), Color(0.62, 0.6, 0.57))
 		_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.82), Vector3(0, size.y * 0.5, -size.z * 0.06))
 		_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, 0))
 		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
@@ -484,7 +484,7 @@ func _place(place: Dictionary) -> Node3D:
 			var node: Node3D = model["node"]
 			node.position.z = -10.0 if kind == "berry_farm" else 0.0
 			root.add_child(node)
-			_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, node.position.z), stone.darkened(0.2))
+			_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.53, node.position.z), stone.darkened(0.2))
 			_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.85), Vector3(0, size.y * 0.5, node.position.z))
 			_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, node.position.z))
 			match kind:

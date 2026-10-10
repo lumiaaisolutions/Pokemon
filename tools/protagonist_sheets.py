@@ -41,7 +41,9 @@ CHARACTERS = {
                 "walk": {"box": (0, 0, 70, 122), "rows": ["down", "left", "up", "right"], "frames": [1, 0, 2]},
                 "run": {"box": (85, 0, 160, 122), "rows": ["up", "left", "down", "right"], "frames": [1, 0, 2]}},
     "calem": {"file": "candidates/cand_calem_tobalcr.png", "scale": 2,
-              "walk": {"box": (0, 0, 256, 256), "rows": ["down", "left", "right", "up"], "frames": [0, 1, 3]}},
+              "walk": {"box": (0, 0, 256, 256), "rows": ["down", "left", "right", "up"], "frames": [0, 1, 3]},
+              # Su cuadro quieto de perfil viene roto en la fuente: se usa el primer paso.
+              "side_stand_from_step": True},
     "leaf": {"file": "candidates/cand_leaf_zender.png",
              "walk": {"box": (0, 0, 95, 126), "rows": ["up", "down", "left", "right"], "frames": [0, 1, 2]}},
     "lyra": {"file": "hgss_lyra.png",
@@ -212,6 +214,11 @@ def build(name: str, config: dict, debug_dir: Path | None) -> Path | None:
         run = extract(config["run"], image) if "run" in config else walk
     if debug_dir:
         save_debug(debug_dir / f"{name}.png", [walk.get(d, []) for d in DIRECTIONS] + [run.get(d, []) for d in DIRECTIONS])
+    if config.get("side_stand_from_step"):
+        for block in (walk, run):
+            for direction in ("left", "right"):
+                if direction in block and len(block[direction]) >= 2:
+                    block[direction][0] = block[direction][1]
     missing = [d for d in DIRECTIONS if d not in walk or d not in run]
     if missing:
         print(f"{name}: faltan direcciones {missing}")

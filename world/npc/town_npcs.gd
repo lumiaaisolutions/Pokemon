@@ -230,8 +230,9 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 			npc["wait"] = _rng.randf_range(5.0, 12.0)
 			npc["spot"] = (npc["post"] as Vector2) + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(0.0, wander)
 			npc["route"] = [npc["spot"]] as Array[Vector2]
-	# Espacio personal: se apartan de los demás habitantes cercanos.
-	if node.visible:
+	# Espacio personal: solo quietos en la plaza (yendo a casa o al trabajo, quienes
+	# comparten puerta se empujarían y nadie llegaría).
+	if node.visible and goal == "plaza" and route.is_empty():
 		for other: Dictionary in _towns.get(npc.get("town_index", -1), []):
 			if other == npc or not (other["node"] as Node3D).visible:
 				continue

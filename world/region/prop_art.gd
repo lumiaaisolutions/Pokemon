@@ -71,9 +71,16 @@ static func texture(kind: String) -> Texture2D:
 			image = _flowers(Color(0.98, 0.98, 0.92))
 		"dry_bush":
 			image = _dry_bush()
+		"tuft_green":
+			image = _grass_tuft(Color(0.36, 0.62, 0.3))
+		"tuft_light":
+			image = _grass_tuft(Color(0.5, 0.74, 0.36))
+		"tuft_dry":
+			image = _grass_tuft(Color(0.7, 0.62, 0.35))
 		_:
 			image = Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
-	_outline(image)
+	if not kind.begins_with("tuft"):
+		_outline(image)
 	var result := ImageTexture.create_from_image(image)
 	_cache[kind] = result
 	return result
@@ -265,14 +272,39 @@ static func _fence() -> Image:
 	return image
 
 
+## Mata de flores: montículo de hojas con flores encima (sin tallos sueltos que se veían
+## cortados contra el suelo).
 static func _flowers(color: Color) -> Image:
-	var image := Image.create_empty(24, 14, false, Image.FORMAT_RGBA8)
-	for i in 6:
-		var x := 1 + i * 4
-		var y := 3 + (i * 5) % 6
-		_rect(image, x + 1, y + 2, 1, 14 - y - 2, Color(0.3, 0.55, 0.28))
-		_rect(image, x, y, 3, 3, color)
-		image.set_pixel(x + 1, y + 1, Color(1.0, 0.9, 0.3))
+	var image := Image.create_empty(26, 16, false, Image.FORMAT_RGBA8)
+	var leaf := Color(0.32, 0.6, 0.3)
+	var leaf_dark := Color(0.24, 0.46, 0.24)
+	for y in 16:
+		var half := int(sqrt(maxf(0.0, 1.0 - pow((y - 15.0) / 10.0, 2.0))) * 12.0)
+		for x in range(13 - half, 13 + half):
+			image.set_pixel(x, y, leaf if (x + y * 3) % 7 else leaf_dark)
+	var spots := [Vector2i(5, 8), Vector2i(10, 6), Vector2i(15, 7), Vector2i(20, 9), Vector2i(8, 11), Vector2i(13, 10), Vector2i(18, 12)]
+	for spot: Vector2i in spots:
+		_rect(image, spot.x - 1, spot.y - 1, 3, 3, color)
+		image.set_pixel(spot.x, spot.y, Color(1.0, 0.9, 0.35))
+		image.set_pixel(spot.x - 1, spot.y - 1, color.lightened(0.3))
+	return image
+
+
+## Pasto menudo: hojas finas que se abren hacia los lados, base oscura y puntas claras
+## (sin contorno, para que se fundan con el suelo).
+static func _grass_tuft(color: Color) -> Image:
+	var image := Image.create_empty(16, 12, false, Image.FORMAT_RGBA8)
+	var blades := [[7, 11, 0.0], [5, 8, -0.45], [9, 9, 0.4], [3, 6, -0.8], [11, 6, 0.75], [8, 5, 0.15]]
+	for blade: Array in blades:
+		var base_x: float = blade[0]
+		var height: int = blade[1]
+		var lean: float = blade[2]
+		for step in height:
+			var t := float(step) / height
+			var x := int(round(base_x + lean * step * 0.6 + 0.5))
+			var y := 11 - step
+			if x >= 0 and x < 16 and y >= 0:
+				image.set_pixel(x, y, color.darkened(0.25).lerp(color.lightened(0.25), t))
 	return image
 
 

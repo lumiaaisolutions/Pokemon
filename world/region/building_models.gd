@@ -153,6 +153,15 @@ static var window_materials: Array[BaseMaterial3D] = []
 static func _fix_materials(mesh: MeshInstance3D) -> void:
 	if mesh.mesh == null:
 		return
+	# Sombras pintadas ("kage") y alfombras van en el mismo plano que el piso y
+	# parpadeaban (z-fighting): se suben un poco y se dibujan después.
+	for surface in mesh.mesh.get_surface_count():
+		var source := mesh.get_active_material(surface) as BaseMaterial3D
+		var texture := source.albedo_texture if source != null else null
+		var shadow := source != null and (source.resource_name.contains("kage") or (texture != null and texture.resource_path.get_file().contains("kage")))
+		if shadow and not mesh.has_meta("lifted"):
+			mesh.set_meta("lifted", true)
+			mesh.position.y += 0.4
 	for surface in mesh.mesh.get_surface_count():
 		var material := mesh.get_active_material(surface)
 		if material == null:
@@ -176,10 +185,11 @@ static func _fix_materials(mesh: MeshInstance3D) -> void:
 					var hour := GameState.clock_hour()
 					base.emission_energy_multiplier = 0.35 if hour < 6.5 or hour >= 18.5 else 0.0
 					window_materials.append(base)
-				if path.contains("kage"):
-					# Sombra pintada del modelo: semitransparente.
+				if path.contains("kage") or base.resource_name.contains("kage"):
+					# Sombra pintada del modelo: semitransparente, sin escribir profundidad.
 					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 					base.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+					base.render_priority = 1
 				elif texture != null and texture.get_image() != null and texture.get_image().detect_alpha() != Image.ALPHA_NONE:
 					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 					base.alpha_scissor_threshold = 0.5

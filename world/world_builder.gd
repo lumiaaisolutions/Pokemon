@@ -47,6 +47,16 @@ const SKIRT := 5.0
 const TREE_TRIES := 64
 const ROCK_TRIES := 16
 const DECOR_TRIES := 260
+## Matas de pasto menudo por zona y qué tipos lleva cada bioma.
+const GROUND_TUFTS := 3000
+## Manchones de flores agrupadas por zona (pradera y campo de flores).
+const FLOWER_PATCHES := 6
+const TUFTS := {
+	RegionLayout.Biome.MEADOW: ["tuft_green", "tuft_light", "tuft_light"], RegionLayout.Biome.FLOWERS: ["tuft_light", "tuft_green"],
+	RegionLayout.Biome.SAVANNA: ["tuft_dry", "tuft_dry", "tuft_light"], RegionLayout.Biome.FOREST: ["tuft_green"],
+	RegionLayout.Biome.JUNGLE: ["tuft_green", "tuft_green"], RegionLayout.Biome.SWAMP: ["tuft_green"],
+	RegionLayout.Biome.DARK_FOREST: ["tuft_green"],
+}
 const GRASS_TRIES := 3
 ## Desde esta x empiezan los interiores (ver Interiors): suelo plano en y = 0, sin agua.
 const INTERIOR_X := 10000.0
@@ -714,6 +724,49 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 		var points: PackedVector3Array = decor[group]
 		points.append(Vector3(x, _local_base(heights, key, x, z, width * 0.5) - config.decor_sink, z))
 		decor[group] = points
+	# Pasto menudo: muchas matas pequeñas en los biomas con pasto, para que el campo
+	# abierto no se vea vacío (pedido de Fernando, 2026-10-10).
+	for i in GROUND_TUFTS:
+		var x := x0 + rng.randf() * CHUNK
+		var z := z0 + rng.randf() * CHUNK
+		var pick := rng.randi()
+		var tuft_kinds: Array = TUFTS.get(layout.biome_at(x, z), [])
+		if tuft_kinds.is_empty():
+			continue
+		if _water_level_pure(x, z, ponds) - _local_height(heights, key, x, z) > -0.2:
+			continue
+		if layout.road_info(x, z).x < RegionLayout.ROAD_WIDTH or _in_settlement(x, z, -4.0):
+			continue
+		var texture := PropArt.texture(tuft_kinds[pick % tuft_kinds.size()])
+		var group := [texture, Color.WHITE]
+		if not decor.has(group):
+			decor[group] = PackedVector3Array()
+		var points: PackedVector3Array = decor[group]
+		points.append(Vector3(x, _local_height(heights, key, x, z) - 0.04, z))
+		decor[group] = points
+	# Manchones de flores: grupos de 8 a 18 matas del mismo color.
+	for i in FLOWER_PATCHES:
+		var cx := x0 + rng.randf() * CHUNK
+		var cz := z0 + rng.randf() * CHUNK
+		var biome_patch := layout.biome_at(cx, cz)
+		var kind_pick := rng.randi()
+		if not biome_patch in [RegionLayout.Biome.MEADOW, RegionLayout.Biome.FLOWERS, RegionLayout.Biome.JUNGLE]:
+			continue
+		var flower_kind: String = ["flowers_pink", "flowers_blue", "flowers_white"][kind_pick % 3]
+		var texture := PropArt.texture(flower_kind)
+		var group := [texture, Color.WHITE]
+		if not decor.has(group):
+			decor[group] = PackedVector3Array()
+		var points: PackedVector3Array = decor[group]
+		for j in rng.randi_range(8, 18):
+			var x := cx + rng.randf_range(-5.0, 5.0)
+			var z := cz + rng.randf_range(-5.0, 5.0)
+			if layout.road_info(x, z).x < RegionLayout.ROAD_WIDTH or _in_settlement(x, z, -4.0):
+				continue
+			if _water_level_pure(x, z, ponds) - _local_height(heights, key, x, z) > -0.2:
+				continue
+			points.append(Vector3(x, _local_height(heights, key, x, z) - 0.04, z))
+		decor[group] = points
 	# Arrecife: corales en el fondo del mar.
 	for i in 40:
 		var x := x0 + rng.randf() * CHUNK
@@ -1195,7 +1248,7 @@ const BIOME_KITS := {
 	RegionLayout.Biome.TOXIC_SWAMP: ["toxic_mushroom", "cattails", "bones", "mossy_log"],
 	RegionLayout.Biome.BEACH: ["shell", "shell_blue", "driftwood"],
 }
-const KIT_DENSITY := {RegionLayout.Biome.SWAMP: 140.0, RegionLayout.Biome.TOXIC_SWAMP: 140.0, RegionLayout.Biome.MEADOW: 50.0,
+const KIT_DENSITY := {RegionLayout.Biome.SWAMP: 140.0, RegionLayout.Biome.TOXIC_SWAMP: 140.0, RegionLayout.Biome.MEADOW: 110.0, RegionLayout.Biome.SAVANNA: 70.0, RegionLayout.Biome.FOREST: 60.0,
 		RegionLayout.Biome.BEACH: 60.0, RegionLayout.Biome.DESERT: 30.0, RegionLayout.Biome.TUNDRA: 50.0, RegionLayout.Biome.VOLCANO: 40.0}
 
 
