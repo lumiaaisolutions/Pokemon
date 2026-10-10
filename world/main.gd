@@ -52,6 +52,14 @@ func _ready() -> void:
 	npcs.world_path = NodePath("../World")
 	npcs.player_path = NodePath("../Player")
 	add_child(npcs)
+	# Rival (Hugh): te busca tras cada medalla y de vez en cuando en el mundo.
+	var rival := Rival.new()
+	rival.name = "Rival"
+	add_child(rival)
+	# Profesor (laboratorio y viajes) y su asistente.
+	var professor := Professor.new()
+	professor.name = "Professor"
+	add_child(professor)
 	# Héroes no elegidos: entrenadores únicos que viajan por la región.
 	var heroes := Heroes.new()
 	heroes.name = "Heroes"

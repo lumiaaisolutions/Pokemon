@@ -29,7 +29,12 @@ LOOKS = {
     "musica": 42, "musico_c": 43, "guay_a": 44, "guay_b": 45, "medium": 46, "motorista": 48, "policia": 49,
     "joven_f": 53, "abuelo_a": 55, "abuelo_b": 59, "mochilero": 64, "dama_b": 65, "guay_chica": 68,
     "karateka_b": 96,
+    # Personajes importantes.
+    "hugh": 25,
 }
+# Personajes de 7 cuadros (arriba ×2, abajo ×2, izquierda ×3; la derecha es el espejo):
+# clave -> índice entre los bloques de 7 cuadros.
+LOOKS_7 = {"cientifico": 39}
 
 
 def blocks(image):
@@ -62,7 +67,7 @@ def blocks(image):
                 stack += [(a + 1, b), (a - 1, b), (a, b + 1), (a, b - 1)]
             frames = sorted([c for c in cells if has_art(c[0], c[1], color)], key=lambda c: (c[1], c[0]))
             result.append((color, frames))
-    return [b for b in result if len(b[1]) == 12]
+    return result
 
 
 def frame(image, cell, color):
@@ -81,7 +86,9 @@ def _has_body(art):
 
 def main():
     image = Image.open(SRC).convert("RGBA")
-    full = blocks(image)
+    every = blocks(image)
+    full = [b for b in every if len(b[1]) == 12]
+    seven = [b for b in every if len(b[1]) in (7, 14)]
     OUT.mkdir(parents=True, exist_ok=True)
     # Del bloque (arriba, abajo, izquierda, derecha) a las filas del juego (abajo, izquierda, derecha, arriba).
     order = [1, 2, 3, 0]
@@ -110,7 +117,20 @@ def main():
                 sheet.paste(art, (col * CELL, row * CELL))
                 sheet.paste(art, (col * CELL, (row + 4) * CELL))
         sheet.save(OUT / f"{key}.png")
-    print(f"{len(LOOKS)} hojas de NPC en {OUT}")
+    for key, index in LOOKS_7.items():
+        color, frames = seven[index]
+        arts = [frame(image, cell, color) for cell in frames[:7]]
+        up = [arts[0], arts[1], arts[1]]
+        down = [arts[2], arts[3], arts[3]]
+        left = [arts[4], arts[5], arts[6]]
+        right = [a.transpose(Image.FLIP_LEFT_RIGHT) for a in left]
+        sheet = Image.new("RGBA", (CELL * 3, CELL * 8), (0, 0, 0, 0))
+        for row, cells in enumerate([down, left, right, up]):
+            for col in range(3):
+                sheet.paste(cells[col], (col * CELL, row * CELL))
+                sheet.paste(cells[col], (col * CELL, (row + 4) * CELL))
+        sheet.save(OUT / f"{key}.png")
+    print(f"{len(LOOKS) + len(LOOKS_7)} hojas de NPC en {OUT}")
 
 
 if __name__ == "__main__":

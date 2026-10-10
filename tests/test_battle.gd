@@ -24,6 +24,8 @@ func _ready() -> void:
 	_world = _main.get_node("World") as WorldBuilder
 	_spawner = _main.get_node("Spawner") as WildSpawner
 	_battle = _main.get_node("Battle") as BattleManager
+	# El rival no aparece por su cuenta durante esta prueba (se prueba en la sección 13).
+	GameState.world_flags["rival_next_day"] = 99999
 	_battle.ended.connect(func(result: String) -> void: _results.append(result))
 	await _run()
 	for failure: String in _failures:
@@ -299,7 +301,50 @@ func _run() -> void:
 			_battle.finish("flee")
 		await _frames(10)
 
-	# 12. Perder la racha al desmayarte.
+	# 12. Profesor: 1 o 2 viajes por semana y la asistente marca dónde está.
+	var professor := _main.get_node("Professor") as Professor
+	var trips := 0
+	for d in 7:
+		trips += 1 if Professor.traveling(d) else 0
+	_check(trips >= 1 and trips <= 2, "el profesor viaja 1 o 2 días por semana (%d)" % trips)
+	var trip_day := -1
+	for d in 14:
+		if Professor.traveling(d):
+			trip_day = d
+			break
+	_check(trip_day >= 0 and not professor.trip_place(trip_day).is_empty(), "en su día de viaje tiene un lugar de investigación")
+	GameState.play_time = (10.0 - GameState.START_HOUR) * 60.0 + trip_day * GameState.DAY_SECONDS
+	GameState.world_flags.erase("waypoint")
+	professor.talk_assistant(_world.structures.services)
+	await _frames(2)
+	_check(GameState.world_flags.has("waypoint"), "la asistente marca en el mapa dónde está el profesor")
+	var dialog_box := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	if dialog_box != null:
+		dialog_box.close()
+
+	# 13. Rival: aparece tras una medalla nueva, se acerca y te reta.
+	var hugh := _main.get_node("Rival") as Rival
+	_player.global_position = arena + Vector3(0, 0.5, 6)
+	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
+	await _frames(20)
+	GameState.world_flags["rival_badges"] = -1
+	var rival_fight := false
+	for i in 900:
+		await get_tree().physics_frame
+		var box := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+		if box != null and box.is_open() and DialogBox.blocking:
+			box.advance()
+			box.advance()
+		if _battle.active and String(_battle.trainer.get("id", "")) == "rival":
+			rival_fight = true
+			break
+	_check(rival_fight, "tras una medalla el rival te busca y te reta")
+	if _battle.active:
+		_battle.finish("flee")
+	await _frames(10)
+	_check(not hugh.busy(), "el rival se va al terminar")
+
+	# 14. Perder la racha al desmayarte.
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 

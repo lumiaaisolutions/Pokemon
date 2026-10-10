@@ -14,7 +14,9 @@ const PATHS := {
 	"academia": {"name": "Academia y Tesoro", "group": "Academia", "goal": "tesoros", "max": 6},
 }
 const PROFESSORS := ["Oak", "Elm", "Birch", "Rowan", "Encina", "Sycamore", "Kukui", "Magnolia", "Sada", "Turo"]
-const RIVALS := ["Blue", "Silver", "Wally", "Barry", "Cheren", "Bianca", "Hugh", "Shauna", "Hau", "Hop", "Nemona", "Arven"]
+## Rival: solo los que tienen sprite original de BW2 (acordado con Fernando: de Hugh,
+## Cheren y Bianca, solo Hugh está en la hoja de B2W2).
+const RIVALS := ["Hugh"]
 const TEAMS := ["Team Rocket", "Team Aqua", "Team Magma", "Team Galaxia", "Team Plasma", "Team Flare", "Team Skull", "Team Star"]
 const TYPE_NAMES := MenuStyle.TYPE_NAMES
 
@@ -31,6 +33,9 @@ func _ready() -> void:
 		GameState.professor = PROFESSORS[_rng.randi() % PROFESSORS.size()]
 		GameState.rival = RIVALS[_rng.randi() % RIVALS.size()]
 		GameState.villain_team = TEAMS[_rng.randi() % TEAMS.size()]
+	# Partidas viejas con otro rival: pasa a uno con sprite.
+	if not RIVALS.has(GameState.rival):
+		GameState.rival = RIVALS[_rng.randi() % RIVALS.size()]
 	for path: String in PATHS:
 		if not GameState.reputation.has(PATHS[path]["group"]):
 			GameState.reputation[PATHS[path]["group"]] = 50

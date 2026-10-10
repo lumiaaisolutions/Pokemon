@@ -346,6 +346,12 @@ func _markers() -> Array:
 		result.append({"uv": data.world_to_uv(point), "kind": "town", "title": settlement["name"],
 				"text": "%s · %s" % [kinds.get(settlement["kind"], "Pueblo"), ", ".join(services) if not services.is_empty() else "sin servicios"],
 				"color": UiKit.RED if settlement["kind"] == "city" else Color(0.98, 0.95, 0.9), "min_zoom": 1.0})
+	# El profesor de viaje (la asistente dice dónde).
+	var professor := get_parent().get_node_or_null("Professor") as Professor
+	if professor != null and not professor.trip_place().is_empty():
+		var trip := professor.trip_place()
+		result.append({"uv": data.world_to_uv(Vector3(float(trip["x"]), 0, float(trip["z"]))), "kind": "hero", "title": "✚ " + Professor.title(),
+				"text": "Investigando en %s (8:00–19:00)" % Structures.place_title(trip), "color": Color(0.55, 0.85, 1.0), "min_zoom": 1.0})
 	# Héroes con rumor hoy (el Rotom dice dónde se vieron).
 	var heroes := get_parent().get_node_or_null("Heroes") as Heroes
 	if heroes != null:

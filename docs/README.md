@@ -45,6 +45,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Música y sonido de BW/BW2 (hecho) | [sistemas/musica_y_sonido.md](sistemas/musica_y_sonido.md) |
 | Edificios y decoración con modelos de B2W2 (hecho) | [sistemas/edificios_b2w2.md](sistemas/edificios_b2w2.md) |
 | Héroes no elegidos: entrenadores únicos con IA lista (hecho) | [sistemas/heroes.md](sistemas/heroes.md) |
+| Profesor con viajes, asistente y rival (hecho) | [sistemas/personajes_importantes.md](sistemas/personajes_importantes.md) |
 | Viaje por regiones (diseñado, por hacer) | [sistemas/regiones.md](sistemas/regiones.md) |
 
 Regla: cada tema se documenta en su propio `.md`; al cerrar una fase se actualiza el documento del sistema afectado, [ESTADO.md](ESTADO.md) y [historial.md](historial.md).

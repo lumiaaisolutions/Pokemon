@@ -240,7 +240,8 @@ func _npc(root: Node3D, at: Vector3, trainer_id: String = "", pokemon: String = 
 		sprite.pixel_size = 0.03
 		sprite.offset.y = 40
 	else:
-		var sheet := PlayerCharacters.sheet(trainer_id)
+		# Aspectos de BW2 (NpcLooks); los héroes no se usan como figurantes.
+		var sheet := NpcLooks.sheet(trainer_id) if NpcLooks.GENDER.has(trainer_id) else PlayerCharacters.sheet(trainer_id)
 		var atlas := AtlasTexture.new()
 		atlas.atlas = sheet
 		atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
@@ -282,22 +283,28 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_block(root, Vector3(2.0, 0.6, 3.0), Vector3(size.x * 0.5 - 1.6, 0.3, back + 0.6), Color(0.85, 0.85, 0.95))
 			_point(Vector3(size.x * 0.5 - 1.6, 0.5, back + 2.4), "Dormir (hasta la mañana)", services.rest.bind(current["return"]))
 			_block(root, Vector3(2.0, 0.9, 1.4), Vector3(-1.5, 0.45, 0), Color(0.55, 0.38, 0.25))
-			var resident: String = PlayerCharacters.LIST[rng.randi() % PlayerCharacters.LIST.size()]["id"]
+			var resident := NpcLooks.for_role("vecino", rng)
 			_npc(root, Vector3(-3.4, 0, -0.5), resident)
 			_point(Vector3(-3.4, 0.5, 0.8), "Hablar", services.talk_resident.bind(settlement, building))
 			# En las ciudades, algunas casas son de tutores de movimientos.
 			if settlement.get("kind", "") == "city" and int(building.get("color", 0)) % 2 == 0:
-				_npc(root, Vector3(2.6, 0, -1.5), PlayerCharacters.LIST[(rng.randi() + 3) % PlayerCharacters.LIST.size()]["id"])
+				_npc(root, Vector3(2.6, 0, -1.5), "abuelo_a")
 				_point(Vector3(2.6, 0.5, -0.2), "Tutor de movimientos ($%d)" % TownServices.TUTOR_PRICE, services.tutor)
 		"lab":
 			for i in 3:
 				_block(root, Vector3(3.0, 1.0, 1.2), Vector3(-5 + i * 5, 0.5, back + 1.5), Color(0.85, 0.88, 0.92))
-			_npc(root, Vector3(0, 0, back + 3.2), "red" if GameState.gender == "female" else "leaf")
-			_point(Vector3(0, 0.5, back + 4.5), "Hablar con el Prof. %s" % GameState.professor, services.talk_professor)
+			# El profesor (de 8 a 19 h, si no salió de viaje) y su asistente (siempre).
+			var professor := services.main().get_node_or_null("Professor") as Professor
+			if professor == null or professor.in_lab():
+				_npc(root, Vector3(0, 0, back + 3.2), Professor.look())
+				_point(Vector3(0, 0.5, back + 4.5), "Hablar con el Prof. %s" % GameState.professor, services.talk_professor)
+			_npc(root, Vector3(5.0, 0, back + 4.0), "doctor")
+			if professor != null:
+				_point(Vector3(5.0, 0.5, back + 5.3), "Hablar con la asistente", professor.talk_assistant.bind(services))
 		"gym", "league":
 			_block(root, Vector3(size.x - 6, 0.05, size.y - 10), Vector3(0, 0.03, -1), Color(0.75, 0.75, 0.55), false)
 			var leader_at := Vector3(0, 0, back + 1.0)
-			var leader_id: String = PlayerCharacters.LIST[rng.randi() % PlayerCharacters.LIST.size()]["id"]
+			var leader_id := NpcLooks.pick(["guay_a", "guay_b", "guay_chica"], rng)
 			_npc(root, leader_at, leader_id)
 			if kind == "gym":
 				var type := structures.gym_type(settlement)
@@ -307,7 +314,7 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_light(root, Vector3(0, 4.5, -8), Color(1, 1, 1), 30.0, 1.5)
 		"contest":
 			_block(root, Vector3(12, 0.8, 5), Vector3(0, 0.4, back + 2.0), Color(0.85, 0.55, 0.7))
-			_npc(root, Vector3(6, 0, back + 6.0), "may")
+			_npc(root, Vector3(6, 0, back + 6.0), "guay_chica")
 			_point(Vector3(6, 0.5, back + 7.4), "Participar en el concurso", services.contest.bind(settlement))
 	return ORIGIN + door + Vector3(0, 0.3, -1.5)
 

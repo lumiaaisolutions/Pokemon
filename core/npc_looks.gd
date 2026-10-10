@@ -13,7 +13,7 @@ const GENDER := {
 	"doctor": "male", "enfermera": "female", "dama_a": "female", "dama_b": "female", "dama_sombrilla": "female",
 	"obrero_a": "male", "obrero_b": "male", "musico_a": "male", "musico_b": "male", "musico_c": "male", "musica": "female",
 	"dependiente": "male", "cientifica": "female", "ornitologo": "male", "marinero": "male", "guay_a": "male",
-	"guay_b": "male", "guay_chica": "female", "medium": "female", "motorista": "male", "policia": "male", "mochilero": "male",
+	"guay_b": "male", "guay_chica": "female", "medium": "female", "motorista": "male", "policia": "male", "mochilero": "male", "cientifico": "male", "hugh": "male",
 }
 ## Oficio de los habitantes -> aspectos.
 const ROLES := {
