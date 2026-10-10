@@ -1,8 +1,9 @@
 class_name Hud
 extends CanvasLayer
 ## HUD de exploración: corazones de vida (estilo Minecraft), burbujas de aire (solo
-## bajo el agua), barra de stamina (solo si no está llena), tinte azul al bucear y
-## pantalla negra al desmayarse.
+## bajo el agua), barra de stamina (solo si no está llena), tinte azul al bucear,
+## pantalla negra al desmayarse, mira al apuntar, contador de Pokéballs y avisos de
+## captura.
 
 const HEARTS := 10
 const BUBBLES := 10
@@ -17,6 +18,9 @@ const ICON_SCALE := 3
 @onready var _underwater: ColorRect = $Underwater
 @onready var _blackout: ColorRect = $Blackout
 @onready var _blackout_label: Label = $Blackout/Label
+@onready var _reticle: TextureRect = $Reticle
+@onready var _balls: Label = $Balls
+@onready var _toast: Label = $Toast
 
 var _player: Player
 var _fill: StyleBoxFlat
@@ -40,6 +44,12 @@ func _ready() -> void:
 	for i in BUBBLES:
 		_bubbles_box.add_child(_icon(_bubble))
 	_blackout.visible = false
+	_reticle.texture = _reticle_texture()
+	_reticle.visible = false
+	_toast.visible = false
+	GameState.pokemon_caught.connect(func(name: String, shiny: bool, location: String) -> void:
+		show_toast("¡Atrapaste a %s%s! (va a tu %s)" % [name, " ✦" if shiny else "", location]))
+	GameState.capture_failed.connect(func(name: String) -> void: show_toast("¡%s escapó de la Pokéball!" % name))
 
 
 func _process(_delta: float) -> void:
@@ -60,6 +70,8 @@ func _process(_delta: float) -> void:
 	_bubbles_box.visible = air_ratio < 0.999
 	for i in BUBBLES:
 		(_bubbles_box.get_child(i) as TextureRect).visible = air_ratio > float(i) / BUBBLES
+	_reticle.visible = _player.mode == Player.Mode.WALK and Input.is_action_pressed("aim")
+	_balls.text = "Pokéballs × %d" % GameState.pokeballs
 	# Tinte azul si la cámara está bajo el agua.
 	if _world == null:
 		_world = get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
@@ -78,6 +90,30 @@ func show_blackout(message: String, seconds: float) -> void:
 	tween.tween_interval(seconds)
 	tween.tween_property(_blackout, "modulate:a", 0.0, 0.6)
 	tween.tween_callback(func() -> void: _blackout.visible = false)
+
+
+## Mensaje breve arriba al centro.
+func show_toast(message: String) -> void:
+	_toast.text = message
+	_toast.visible = true
+	_toast.modulate.a = 1.0
+	var tween := create_tween()
+	tween.tween_interval(2.2)
+	tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
+	tween.tween_callback(func() -> void: _toast.visible = false)
+
+
+func _reticle_texture() -> Texture2D:
+	var rows := ["....W....", "....W....", ".........", ".........", "WW..K..WW", ".........", ".........", "....W....", "....W...."]
+	var image := Image.create_empty(9, 9, false, Image.FORMAT_RGBA8)
+	for y in rows.size():
+		for x in 9:
+			match rows[y][x]:
+				"W":
+					image.set_pixel(x, y, Color(1, 1, 1, 0.95))
+				"K":
+					image.set_pixel(x, y, Color(1, 0.3, 0.3, 1))
+	return ImageTexture.create_from_image(image)
 
 
 func _icon(texture: Texture2D) -> TextureRect:

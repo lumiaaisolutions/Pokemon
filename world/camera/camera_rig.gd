@@ -17,6 +17,13 @@ extends Node3D
 @export var zoom_max: float = 11.0
 @export var zoom_step: float = 1.0
 @export var zoom_smoothing: float = 10.0
+@export_group("Apuntar")
+## Al apuntar: cámara sobre el hombro, más cerca y casi horizontal.
+@export var aim_zoom: float = 2.8
+@export var aim_pitch_deg: float = 6.0
+@export var aim_shoulder: float = 0.8
+@export var aim_blend_speed: float = 10.0
+
 @export_group("Seguimiento")
 @export var follow_smoothing: float = 12.0
 ## Altura del punto al que mira la cámara sobre los pies del objetivo.
@@ -25,13 +32,19 @@ extends Node3D
 @onready var _pitch: Node3D = $Pitch
 @onready var _arm: SpringArm3D = $Pitch/SpringArm
 
+const CAMERA_GROUP := &"camera_rig"
+
+## Apuntando (lo activa el jugador al mantener "aim").
+var aiming := false
 var _target: Node3D
+var _aim_blend: float = 0.0
 var _yaw_deg: float = 0.0
 var _pitch_deg: float = 30.0
 var _zoom: float = 7.0
 
 
 func _ready() -> void:
+	add_to_group(CAMERA_GROUP)
 	top_level = true
 	_target = get_node_or_null(target_path) as Node3D
 	if _target is CollisionObject3D:
@@ -65,9 +78,13 @@ func _process(delta: float) -> void:
 	_pitch_deg = clampf(_pitch_deg + look.y * stick_speed_deg * 0.6 * delta, pitch_min_deg, pitch_max_deg)
 	_apply_rotation()
 
-	_arm.spring_length = lerpf(_arm.spring_length, _zoom, 1.0 - exp(-zoom_smoothing * delta))
+	_aim_blend = move_toward(_aim_blend, 1.0 if aiming else 0.0, aim_blend_speed * delta)
+	var zoom := lerpf(_zoom, aim_zoom, _aim_blend)
+	_arm.spring_length = lerpf(_arm.spring_length, zoom, 1.0 - exp(-zoom_smoothing * delta))
 	if _target != null:
-		global_position = global_position.lerp(_focus_point(), 1.0 - exp(-follow_smoothing * delta))
+		# Sobre el hombro derecho al apuntar.
+		var shoulder := global_basis.x * aim_shoulder * _aim_blend
+		global_position = global_position.lerp(_focus_point() + shoulder, 1.0 - exp(-follow_smoothing * delta))
 
 
 ## Pitch actual en grados (hacia abajo). Lo usan las pruebas.
@@ -77,7 +94,7 @@ func get_pitch_deg() -> float:
 
 func _apply_rotation() -> void:
 	rotation_degrees.y = _yaw_deg
-	_pitch.rotation_degrees.x = -_pitch_deg
+	_pitch.rotation_degrees.x = -lerpf(_pitch_deg, aim_pitch_deg, _aim_blend)
 
 
 func _focus_point() -> Vector3:

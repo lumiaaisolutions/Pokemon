@@ -660,6 +660,10 @@ func attack_range() -> float:
 func start_fight(target: Node3D) -> void:
 	if target == null or target == self or state == State.STUNNED or legendary:
 		return
+	# Contra el jugador rige el área de persecución: si no venía persiguiéndolo, el
+	# área empieza aquí (o en su casa, si es territorial).
+	if target == player and state != State.CHASE:
+		chase_origin = home if species.temperament == SpeciesData.Temperament.TERRITORIAL else global_position
 	fight_target = target
 	_enter(State.FIGHT)
 
@@ -707,6 +711,12 @@ func _think_fight() -> Array:
 		fight_target = null
 		_enter(State.IDLE if role == Role.WILD else State.FOLLOW)
 		return [global_position, 0.0]
+	# Si el jugador sale del área de persecución, el salvaje se rinde y regresa.
+	if role == Role.WILD and fight_target == player and player.global_position.distance_to(chase_origin) > chase_leash():
+		fight_target = null
+		_ignore_player = 6.0
+		_enter(State.RETURN)
+		return [home, walk_speed()]
 	var target_pos := fight_target.global_position
 	var distance := global_position.distance_to(target_pos)
 	_sprite.look_at_point(target_pos)
@@ -1075,6 +1085,43 @@ func _update_sparkles(delta: float) -> void:
 	if _sparkle_time >= SPARKLE_INTERVAL:
 		_sparkle_time = 0.0
 		_sparkles.restart()
+
+
+# --- Captura --------------------------------------------------------------------
+
+## Dentro de la Pokéball: invisible y en pausa (conserva su estado, p. ej. aturdido).
+func set_inside_ball(inside: bool) -> void:
+	visible = not inside
+	process_mode = Node.PROCESS_MODE_DISABLED if inside else Node.PROCESS_MODE_INHERIT
+	collision_layer = 0 if inside else (0 if swimming or perched else 4)
+
+
+## Capturado: sale del mundo.
+func captured() -> void:
+	vanished.emit(self)
+	queue_free()
+
+
+## Escapó de la Pokéball: si estaba aturdido sigue así; si no, se enoja o huye.
+func escape_from_ball(thrower: Node3D) -> void:
+	_unseen_time = 0.0
+	if state == State.STUNNED or thrower == null:
+		return
+	if legendary:
+		_choose_escape_target()
+		_fly_start = global_position
+		_enter(State.FLY if can_fly() else State.ESCAPE)
+		return
+	match species.temperament:
+		SpeciesData.Temperament.AGGRESSIVE, SpeciesData.Temperament.TERRITORIAL:
+			start_fight(thrower)
+		_:
+			_enter(State.FLEE)
+
+
+## Hacia dónde mira en el mundo (para el sigilo de la captura).
+func facing_world() -> Vector3:
+	return _sprite.facing_world
 
 
 ## Dirección visible (para pruebas).

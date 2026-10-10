@@ -16,6 +16,9 @@ signal blacked_out
 
 enum Mode { WALK, SWIM, DIVE, DOWNED }
 
+## Velocidad al caminar mientras apunta (fracción de la normal).
+const AIM_SPEED_FACTOR := 0.6
+
 @export var config: PlayerConfig
 
 @onready var _sprite: DirectionalSprite = $Sprite
@@ -58,10 +61,13 @@ func _physics_process(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := _camera_relative(input)
 	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
-	var wants_run := Input.is_action_pressed("run") and input.length() > 0.1 and not swimming
+	var aiming := Input.is_action_pressed("aim") and not swimming
+	var wants_run := Input.is_action_pressed("run") and input.length() > 0.1 and not swimming and not aiming
 	var running := wants_run and not exhausted and stamina > 0.0
 	_update_stamina(running, swimming, delta)
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
+	if aiming:
+		target_speed = config.walk_speed * AIM_SPEED_FACTOR
 	# Con stick analógico, la velocidad escala con la inclinación.
 	var target := direction * target_speed * minf(input.length(), 1.0)
 
@@ -84,6 +90,11 @@ func _physics_process(delta: float) -> void:
 	_update_fall(swimming)
 	_update_air(delta)
 	_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
+	if aiming:
+		# Al apuntar, Nate mira hacia donde apunta la cámara.
+		var camera := get_viewport().get_camera_3d()
+		if camera != null:
+			_sprite.look_at_point(global_position - camera.global_basis.z)
 
 
 ## Velocidad horizontal actual (la usan las pruebas y, más adelante, la UI y el audio).

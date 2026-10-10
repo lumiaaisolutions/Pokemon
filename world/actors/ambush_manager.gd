@@ -74,8 +74,7 @@ func _pick_tree() -> Node3D:
 		var distance := tree.global_position.distance_to(_player.global_position)
 		if distance < min_distance or distance > max_distance:
 			continue
-		var occupant: Variant = tree.get_meta("ambusher", null)
-		if occupant != null and is_instance_valid(occupant):
+		if tree.has_meta("ambusher") and is_instance_valid(tree.get_meta("ambusher")):
 			continue
 		return tree
 	return null

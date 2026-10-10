@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://world/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://world/player/player_config.tres" id="2_cfg"]
 [ext_resource type="Script" path="res://world/actors/directional_sprite.gd" id="3_dsprite"]
+[ext_resource type="Script" path="res://world/capture/throw_aim.gd" id="4_aim"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -40,3 +41,6 @@ size = Vector3(1.2, 2, 1.2)
 texture_albedo = SubResource("GradientTexture2D_blob")
 upper_fade = 0.0
 lower_fade = 0.5
+
+[node name="ThrowAim" type="Node3D" parent="."]
+script = ExtResource("4_aim")
