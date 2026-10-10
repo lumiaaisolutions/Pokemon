@@ -60,3 +60,10 @@ Habitantes por pueblo con casa, oficio y horario según la hora y el clima; habl
 - **Fase 5.5:** evolución sin niveles traducida del método oficial (victorias, piedras, vínculo); Piedra Llave en el primer acertijo de ruinas; misiones de megapiedra por especie en el Rotom; modo foto con misión diaria.
 - **Fase 5.6:** entrenadores en los caminos con campo de visión, "¡!", combate con su equipo, dinero y objeto, revancha al día siguiente.
 - Prueba nueva `test_battle` (combate, huida, victoria, cambio, mega, captura, evolución, megapiedras, foto y entrenadores).
+
+## 2026-10-10 (tarde) — Pulido del mundo tras la prueba de Fernando
+Fernando probó las fases 3–5.6 y pidió muchos cambios; desde aquí **todo se pregunta antes** (no asumir) y se documenta durante el trabajo. El plan y su avance están en [plan_pulido_mundo.md](plan_pulido_mundo.md).
+- **Bugs:** cámara dentro de edificios, cercas, compañero pegado a la pared, fogata de día, brillo nocturno, nombres por género, NPC que nadan, rayo en zigzag, frutos distintos al objeto, charcas que flotaban, huecos traseros en modelos, caída al vacío en interiores (sala sobre el piso real del modelo, paredes invisibles, red de seguridad), parpadeo, Calem de perfil, decoración que nunca se guardaba (error de copia de PackedVector3Array).
+- **Interfaz estilo Pokopia** en todo el juego, avisos en tarjetas, caja de diálogo, mapa con zoom, tablero de misiones, leyenda plegable.
+- **Gente:** NPC con clases de BW2, oficios, conversación con Retar, retos al verte, campamentos animados; héroes no elegidos con IA lista; profesor con viajes y asistente (sprites de Platino, HGSS y Zender1752); rival Hugh.
+- **Lugares:** interiores con modelos de B2W2 (4 lotes de descargas aprobados), kit por bioma, pantanos reconocibles, pasto menudo y flores, puntos de interés, pueblos con tema y monumento.
