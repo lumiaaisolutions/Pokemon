@@ -16,6 +16,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | [historial.md](historial.md) | Qué se hizo en cada fase y por qué cambió |
 | [catalogo_mundo.md](catalogo_mundo.md) | Todo lo planeado para el mundo, por capas |
 | [herramientas.md](herramientas.md) | Scripts de `tools/` y pruebas |
+| [plan_pulido_mundo.md](plan_pulido_mundo.md) | Plan acordado tras la prueba de Fernando (bugs, NPC, mapa, interiores, biomas, interfaz, pueblos, tablero, regiones) y su avance |
 
 ### Sistemas
 | Sistema | Documento |
@@ -43,5 +44,6 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Interfaz: kit visual, pantalla de inicio, menú y HUD (hecho) | [sistemas/interfaz.md](sistemas/interfaz.md) |
 | Música y sonido de BW/BW2 (hecho) | [sistemas/musica_y_sonido.md](sistemas/musica_y_sonido.md) |
 | Edificios y decoración con modelos de B2W2 (hecho) | [sistemas/edificios_b2w2.md](sistemas/edificios_b2w2.md) |
+| Viaje por regiones (diseñado, por hacer) | [sistemas/regiones.md](sistemas/regiones.md) |
 
 Regla: cada tema se documenta en su propio `.md`; al cerrar una fase se actualiza el documento del sistema afectado, [ESTADO.md](ESTADO.md) y [historial.md](historial.md).
