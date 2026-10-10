@@ -39,3 +39,6 @@ Código: `core/mission_board.gd` (junta las misiones), `ui/notices/mission_panel
 - **En pantalla, a la izquierda** (debajo del panel de bienvenida si está): "MISIONES · [J] ver todas" y **3 tarjetas** con ícono, nombre y barra: las en curso con más avance.
 - **J** (o mantener la cruceta ↓ medio segundo) abre el **tablero completo** en su propia capa, con marco rojo, por categoría: **Rotom** (actividades con plazo), **Megapiedras**, **Foto del día**, **Héroes** (rumores del día sin vencer) e **Investigación** (las 3 especies más cerca de completarse), con avance, detalle y premio. J o Esc lo cierran; pausa el juego.
 - Acción nueva `missions` (J; reasignable en Opciones). Las regiones se agregarán como categoría cuando existan.
+
+## Saludo personal (2026-10-10)
+- Pedido de Fernando: la portada dice "¡Bienvenido, Fernando Cachondo!" y, al entrar al mundo (partida nueva o cargada), aparece una tarjeta de aviso con el mismo saludo a los 1.2 s (`world/main.gd`, `ui/character_select/character_select.gd`).

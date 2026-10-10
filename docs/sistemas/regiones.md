@@ -16,6 +16,8 @@
 
 ## Gimnasios y Liga
 - **8 gimnasios por región** con líderes **al azar de Kanto a Teselia** (generaciones 1–5), **sin repetirse** entre regiones; cada uno con **su tipo** y equipo de ese tipo. Sprites originales de B2W2 (Torneo Mundial Pokémon, hoja "Overworld Entities").
+  - **Catálogo confirmado (2026-10-10, "Todos bien"):** 29 líderes con sprite de la hoja de BW2 (Brock, Misty, Lt. Surge, Erika, Janine, Sabrina, Blaine, Falkner, Bugsy, Whitney, Morty, Jasmine, Pryce, Clair, Roxanne, Brawly, Wattson, Norman, Winona, Juan, Roark, Gardenia, Maylene, Crasher Wake, Byron, Elesa, Steven, Cynthia, Alder) + Clay, Skyla, Marlon e Iris = 33.
+  - **Los 15 que faltan para 6×8:** se buscan **sprites de fans** en estilo DS (decisión de Fernando, 2026-10-10), con permiso por lote antes de descargar.
 - **Liga por región:** Alto Mando y Campeón al azar de las generaciones 1–5 (Lorelei, Karen, Cynthia, Alder…), con sus sprites, sin repetirse.
 - Fuera de horario, los **líderes entrenan** cerca del pueblo o en un lugar de su tipo; ahí se les puede retar (amistoso).
 

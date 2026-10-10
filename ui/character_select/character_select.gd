@@ -176,7 +176,7 @@ func _show_step(step: Step) -> void:
 	match step:
 		Step.TITLE:
 			_set_title("Pokémon", Items.icon("poke-ball"))
-			_subtitle.text = "Mundo abierto · Una región nueva te espera"
+			_subtitle.text = "¡Bienvenido, Fernando Cachondo! · Una región nueva te espera"
 			_content.add_child(_title_showcase())
 			var column := VBoxContainer.new()
 			column.add_theme_constant_override("separation", 14)
