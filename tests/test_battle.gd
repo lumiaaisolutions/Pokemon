@@ -236,7 +236,36 @@ func _run() -> void:
 				await _frames(30)
 				_check(not _battle.active and trainer["state"] != "approach", "vencido, no vuelve a retarte hoy")
 
-	# 10. Perder la racha al desmayarte.
+	# 10. Un viajero con ganas de pelear te ve, se acerca y te reta.
+	var npcs := _main.get_node("TownNPCs") as TownNPCs
+	var walker: Dictionary = {}
+	for i in 600:
+		await get_tree().physics_frame
+		if not npcs.travelers().is_empty():
+			walker = npcs.travelers()[0]
+			break
+	_check(not walker.is_empty(), "debe aparecer un viajero en los caminos")
+	if not walker.is_empty():
+		if walker["pet"] == null:
+			walker["pet"] = npcs._make_pet(RandomNumberGenerator.new())
+		walker["mood"] = true
+		var node: Node3D = walker["node"]
+		var sprite := node.get_node("Sprite") as DirectionalSprite
+		_main.companion.global_position = node.global_position + sprite.facing_world * 7.0 + Vector3(1, 1, 0)
+		_player.global_position = node.global_position + sprite.facing_world * 7.0 + Vector3.UP * 0.5
+		_player.velocity = Vector3.ZERO
+		var challenged := false
+		for i in 400:
+			await get_tree().physics_frame
+			if _battle.active:
+				challenged = true
+				break
+		_check(challenged and String(_battle.trainer.get("name", "")).contains(String(walker["name"])), "el viajero te ve, se acerca y te reta")
+		if _battle.active:
+			_battle.finish("flee")
+		await _frames(10)
+
+	# 11. Perder la racha al desmayarte.
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 

@@ -190,6 +190,9 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 		sprite.look_at_point(_player.global_position)
 		sprite.animate(Vector3.ZERO, delta)
 		return
+	# En el pueblo solo retan al verte los peleoneros (oficio "entrenador").
+	if npc["role"] == "entrenador" and node.visible and _sight_update(npc, "entrenador", sprite, delta):
+		return
 	var goal := goal_for(npc, hour, stormy)
 	if goal != npc["goal"]:
 		npc["goal"] = goal
@@ -408,17 +411,37 @@ func _update_traveler(traveler: Dictionary, hour: float, delta: float) -> void:
 		sprite.look_at_point(_player.global_position)
 		sprite.animate(Vector3.ZERO, delta)
 		return
+	# Fuera del pueblo, los viajeros con Pokémon y ganas de pelear te retan al verte.
+	if traveler["camp"] == null and _sight_update(traveler, "viajero", sprite, delta):
+		return
 	var night := hour >= 21.0 or hour < 6.0
 	# Nunca acampan dentro de un pueblo: siguen caminando hasta salir.
 	if night and traveler["camp"] == null and not _world.settlement_at(node.global_position.x, node.global_position.z, 25.0).is_empty():
 		night = false
+	var camp := traveler["camp"] as Camp
+	if camp != null and not is_instance_valid(camp):
+		traveler["camp"] = null
+		camp = null
 	if night:
-		if traveler["camp"] == null:
-			traveler["camp"] = _make_camp(node.global_position + Vector3(2.0, 0, 0))
-	else:
-		if traveler["camp"] != null:
-			(traveler["camp"] as Node).queue_free()
+		if camp == null:
+			# Arma su campamento junto a él (animación: se agacha y la carpa se levanta).
+			var at := node.global_position + Vector3(2.0, 0, 0)
+			at.y = _world.surface_height_at(at.x, at.z)
+			camp = Camp.create(self, at, hash(traveler["name"]))
+			camp.pitch(sprite)
+			traveler["camp"] = camp
+	elif camp != null and not camp.busy and not traveler.get("packing", false):
+		# Amanece: apaga el fuego, recoge la carpa y sigue su camino.
+		traveler["packing"] = true
+		camp.pack(sprite)
+		camp.tree_exited.connect(func() -> void:
 			traveler["camp"] = null
+			traveler["packing"] = false)
+	if camp != null and (camp.busy or traveler.get("packing", false)):
+		sprite.animate(Vector3.ZERO, delta)
+		return
+	# De día camina por su camino; de noche se queda junto a su fogata.
+	if not night:
 		var road: PackedVector2Array = _world.layout.roads[traveler["road"]]
 		var target := road[clampi(int(traveler["index"]), 0, road.size() - 1)]
 		var here := Vector2(node.global_position.x, node.global_position.z)
@@ -441,46 +464,6 @@ func _update_traveler(traveler: Dictionary, hour: float, delta: float) -> void:
 	if traveler["pet"] != null:
 		_follow(traveler["pet"], node, sprite, velocity, delta)
 	(traveler["point"] as Dictionary)["pos"] = node.global_position + Vector3.UP * 0.5
-
-
-func _make_camp(at: Vector3) -> Node3D:
-	var camp := Node3D.new()
-	camp.name = "Camp"
-	add_child(camp)
-	camp.global_position = Vector3(at.x, _world.surface_height_at(at.x, at.z), at.z)
-	var tent := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(2.4, 1.8, 2.6)
-	tent.mesh = prism
-	tent.position = Vector3(0, 0.9, 0)
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.85, 0.55, 0.3)
-	tent.material_override = material
-	camp.add_child(tent)
-	var fire := OmniLight3D.new()
-	fire.light_color = Color(1.0, 0.6, 0.3)
-	fire.omni_range = 6.0
-	fire.light_energy = 1.6
-	fire.position = Vector3(-2.0, 0.6, 1.0)
-	camp.add_child(fire)
-	var flames := CPUParticles3D.new()
-	flames.amount = 16
-	flames.lifetime = 0.8
-	flames.direction = Vector3.UP
-	flames.initial_velocity_min = 0.6
-	flames.initial_velocity_max = 1.2
-	flames.gravity = Vector3(0, 1.0, 0)
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.18, 0.18)
-	var flame_material := StandardMaterial3D.new()
-	flame_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	flame_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	flame_material.albedo_color = Color(1.0, 0.65, 0.2)
-	quad.material = flame_material
-	flames.mesh = quad
-	flames.position = Vector3(-2.0, 0.2, 1.0)
-	camp.add_child(flames)
-	return camp
 
 
 func travelers() -> Array:
@@ -628,6 +611,9 @@ const FIGHT_MOOD := {"entrenador": 0.8, "viajero": 0.4, "vecino": 0.3, "investig
 
 
 static func wants_fight(person: Dictionary, role: String) -> bool:
+	# Las pruebas pueden fijar las ganas del día.
+	if person.has("mood"):
+		return bool(person["mood"])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%s:%s:%d" % [person.get("name", ""), person.get("town", person.get("from", "")), GameState.game_day()])
 	return rng.randf() < float(FIGHT_MOOD.get(role, 0.3))
@@ -674,6 +660,81 @@ func _converse(person: Dictionary, lines: Array, role: String) -> void:
 			GameState.add_item(gift, 1)
 			AudioBus.play_jingle("me_item")
 			GameState.notice.emit("Recibiste %s." % Items.display_name(gift)), CONNECT_ONE_SHOT)
+
+
+## Retos al verte (acordado con Fernando): si lleva Pokémon, hoy tiene ganas, no lo has
+## vencido hoy y te ve de frente (cono de SIGHT_DISTANCE m), sale "¡!", se acerca y pelea.
+## Devuelve true mientras se ocupa del movimiento (acercándose).
+const SIGHT_DISTANCE := 10.0
+const SIGHT_ANGLE := 38.0
+const SIGHT_RETRY := 40.0
+
+
+func _sight_update(person: Dictionary, role: String, sprite: DirectionalSprite, delta: float) -> bool:
+	var node: Node3D = person["node"]
+	var battle := get_parent().get_node_or_null("Battle") as BattleManager
+	person["sight_retry"] = maxf(float(person.get("sight_retry", 0.0)) - delta, 0.0)
+	if person.get("approaching", false):
+		var to := _player.global_position - node.global_position
+		to.y = 0.0
+		if battle == null or battle.active or _player.mode != Player.Mode.WALK:
+			person["approaching"] = false
+			_set_mark(node, false)
+			return false
+		if to.length() > 2.4:
+			var velocity := to.normalized() * 3.2
+			node.global_position += velocity * delta
+			node.global_position.y = _stand_y(node)
+			sprite.animate(velocity, delta)
+			return true
+		person["approaching"] = false
+		person["sight_retry"] = SIGHT_RETRY
+		_set_mark(node, false)
+		var dialog := _dialog()
+		if dialog != null:
+			dialog.say("%s (%s)" % [person["name"], role], "¡Te vi! ¡Mi %s y yo queremos pelear!" % _pet_name(person["pet"]))
+		_challenge_person(person, role)
+		return true
+	if not BattleManager.enabled or battle == null or battle.active or not battle.ready_to_fight() or float(person["sight_retry"]) > 0.0:
+		return false
+	var pet: Variant = person.get("pet")
+	if pet == null or not is_instance_valid(pet) or not (pet as Node).has_meta("species"):
+		return false
+	if int(GameState.world_flags.get("trainer_beaten:" + person_id(person), -1)) == GameState.game_day() or not wants_fight(person, role):
+		return false
+	var to_player := _player.global_position - node.global_position
+	to_player.y = 0.0
+	if to_player.length() > SIGHT_DISTANCE or to_player.length() < 0.1:
+		return false
+	if rad_to_deg(sprite.facing_world.angle_to(to_player.normalized())) > SIGHT_ANGLE:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(node.global_position + Vector3.UP * 1.2, _player.global_position + Vector3.UP, 2)
+	if not node.get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+		return false
+	person["approaching"] = true
+	_set_mark(node, true)
+	AudioBus.play_sfx("spotted")
+	AudioBus.play_jingle("bw1_spotted")
+	return true
+
+
+## "¡!" rojo sobre la cabeza.
+func _set_mark(node: Node3D, on: bool) -> void:
+	var mark := node.get_node_or_null("Mark") as Label3D
+	if mark == null:
+		if not on:
+			return
+		mark = Label3D.new()
+		mark.name = "Mark"
+		mark.text = "!"
+		mark.font_size = 96
+		mark.outline_size = 18
+		mark.modulate = Color(1.0, 0.25, 0.2)
+		mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		mark.no_depth_test = true
+		mark.position = Vector3(0, 2.6, 0)
+		node.add_child(mark)
+	mark.visible = on
 
 
 func _challenge_person(person: Dictionary, role: String) -> void:
