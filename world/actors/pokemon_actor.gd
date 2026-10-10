@@ -13,7 +13,7 @@ signal vanished(actor: PokemonActor)
 signal stunned(actor: PokemonActor)
 
 enum Role { WILD, COMPANION }
-enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY, FIGHT, STUNNED }
+enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY, FIGHT, STUNNED, PERCHED, AMBUSH, DROP }
 
 const PIXEL_SIZE := 0.057
 const GRAVITY := 20.0
@@ -48,6 +48,13 @@ const ATTACK_COOLDOWN_MAX := 2.4
 const MELEE_RANGE := 1.8
 const RANGED_MIN := 5.0
 const RANGED_MAX := 9.0
+## Emboscadas desde los árboles.
+const AMBUSH_TRIGGER_RADIUS := 3.0
+const AMBUSH_WATCH_RADIUS := 8.0
+const AMBUSH_SHY_FLEE_RADIUS := 4.0
+const AMBUSH_WINDUP := 0.5
+const DROP_SPEED := 14.0
+const AMBUSH_HIT_RADIUS := 1.6
 ## Cada cuánto busca pelea con otros salvajes (rivalidades), en segundos.
 const RIVAL_SCAN_INTERVAL := 1.5
 const RIVAL_RADIUS := 9.0
@@ -117,6 +124,14 @@ var _windup: float = 0.0
 var _rival_scan: float = 0.0
 var _health_bar: HealthBar3D
 var _dizzy: DizzyStars
+## Emboscada: colgado de una rama (Bicho) o posado en la copa (ave) de perch_tree.
+var perched := false
+var perch_is_bird := false
+var perch_tree: Node3D
+var _drop_target := Vector3.ZERO
+var _exclaim: Sprite3D
+var _thread: MeshInstance3D
+var _shake_timer: float = 3.0
 var _escape_target := Vector3.ZERO
 var _fly_start := Vector3.ZERO
 var _question: Sprite3D
@@ -198,6 +213,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if state == State.STUNNED:
 		_process_stunned(delta)
+		return
+	if perched:
+		_process_perched(delta)
 		return
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	if swimming:
@@ -462,6 +480,12 @@ func _track_interaction(delta: float) -> void:
 func hide_now() -> void:
 	if state == State.HIDE:
 		return
+	if perched:
+		# Posado en un árbol: se pierde entre las hojas de la copa.
+		PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.FOREST_LEAVES, species.size_scale)
+		vanished.emit(self)
+		queue_free()
+		return
 	_enter(State.HIDE)
 	_tell_pack(State.HIDE)
 
@@ -493,6 +517,132 @@ func _tell_pack(new_state: State) -> void:
 			mate._enter(State.FLEE)
 		elif new_state == State.CHASE and mate.species.temperament != SpeciesData.Temperament.SHY:
 			mate._enter(State.CHASE)
+
+
+# --- Emboscadas desde los árboles ---------------------------------------------
+
+## Lo cuelga de una rama de tree (Bicho) o lo posa en su copa (ave). Sin física
+## hasta que caiga.
+func perch_on(tree: Node3D, as_bird: bool) -> void:
+	perched = true
+	perch_is_bird = as_bird
+	perch_tree = tree
+	collision_layer = 0
+	collision_mask = 0
+	($BlobShadow as Decal).visible = false
+	var sprite := tree.get_node("Sprite") as Sprite3D
+	var tree_height := sprite.texture.get_height() * sprite.pixel_size
+	global_position = tree.global_position + Vector3(0.0, tree_height * (0.92 if as_bird else 0.6), 0.0)
+	if not as_bird:
+		# Hilo de seda desde la rama.
+		var line := BoxMesh.new()
+		line.size = Vector3(0.03, tree_height * 0.25, 0.03)
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(0.95, 0.95, 0.95, 0.8)
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		line.material = material
+		_thread = MeshInstance3D.new()
+		_thread.mesh = line
+		_thread.position.y = species.overworld_cell * world_pixel_size() + tree_height * 0.125
+		add_child(_thread)
+	_exclaim = _make_exclamation()
+	add_child(_exclaim)
+	_shake_timer = _rng.randf_range(2.0, 6.0)
+	_enter(State.PERCHED)
+
+
+func _process_perched(delta: float) -> void:
+	_tree_shake_cue(delta)
+	if player == null:
+		return
+	var flat := player.global_position - global_position
+	flat.y = 0.0
+	var distance := flat.length()
+	var hostile := species.temperament == SpeciesData.Temperament.AGGRESSIVE or species.temperament == SpeciesData.Temperament.TERRITORIAL
+	var player_down := player is Player and (player as Player).mode == Player.Mode.DOWNED
+	match state:
+		State.PERCHED:
+			if distance < AMBUSH_WATCH_RADIUS:
+				_sprite.look_at_point(player.global_position)
+			if hostile and not player_down and distance < AMBUSH_TRIGGER_RADIUS:
+				_drop_target = player.global_position
+				_exclaim.visible = true
+				_enter(State.AMBUSH)
+			elif species.temperament == SpeciesData.Temperament.SHY and distance < AMBUSH_SHY_FLEE_RADIUS:
+				# Los tímidos se van: el ave sale volando y el Bicho se esconde en la copa.
+				PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.FOREST_LEAVES, species.size_scale)
+				vanished.emit(self)
+				queue_free()
+		State.AMBUSH:
+			if _state_time >= AMBUSH_WINDUP:
+				_enter(State.DROP)
+		State.DROP:
+			var to_target := _drop_target - global_position
+			var step := DROP_SPEED * delta
+			if to_target.length() <= step:
+				_land()
+			else:
+				global_position += to_target.normalized() * step
+				_sprite.animate(Vector3(to_target.x, 0, to_target.z), delta, true)
+
+
+## Aterriza: si cae sobre Nate lo golpea y empieza la pelea; si no, lo persigue.
+func _land() -> void:
+	perched = false
+	global_position = _drop_target
+	collision_layer = 4
+	collision_mask = 3
+	($BlobShadow as Decal).visible = true
+	_exclaim.visible = false
+	if _thread != null:
+		_thread.queue_free()
+		_thread = null
+	home = global_position
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.LEAVES if not perch_is_bird else PixelBurst.Kind.DUST, species.size_scale)
+	if player != null and player.global_position.distance_to(global_position) <= AMBUSH_HIT_RADIUS:
+		_apply_hit(player, true)
+		start_fight(player)
+	else:
+		_enter(State.CHASE)
+
+
+## Pista: la copa se sacude de vez en cuando.
+func _tree_shake_cue(delta: float) -> void:
+	if perch_tree == null or not is_instance_valid(perch_tree) or state != State.PERCHED:
+		return
+	_shake_timer -= delta
+	if _shake_timer > 0.0:
+		return
+	_shake_timer = _rng.randf_range(4.0, 7.0)
+	var sprite := perch_tree.get_node("Sprite") as Sprite3D
+	var base_x := sprite.position.x
+	var tween := create_tween()
+	for k in 4:
+		tween.tween_property(sprite, "position:x", base_x + (0.06 if k % 2 == 0 else -0.06), 0.06)
+	tween.tween_property(sprite, "position:x", base_x, 0.06)
+
+
+## Signo de exclamación pixel art (rojo) sobre la cabeza.
+func _make_exclamation() -> Sprite3D:
+	var rows := ["WW", "WW", "WW", "WW", "WW", "..", "WW"]
+	var image := Image.create_empty(2, rows.size(), false, Image.FORMAT_RGBA8)
+	for y in rows.size():
+		for x in 2:
+			if rows[y][x] == "W":
+				image.set_pixel(x, y, Color(1.0, 0.25, 0.2))
+	var sprite := Sprite3D.new()
+	sprite.name = "Exclamation"
+	sprite.texture = ImageTexture.create_from_image(image)
+	sprite.pixel_size = PIXEL_SIZE * 2.0
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.shaded = false
+	sprite.no_depth_test = true
+	sprite.layers = WorldBuilder.VISUAL_LAYER_SPRITES
+	sprite.position.y = species.overworld_cell * world_pixel_size() + 0.5
+	sprite.visible = false
+	return sprite
 
 
 # --- Peleas en el mundo -----------------------------------------------------

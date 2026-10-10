@@ -50,6 +50,7 @@ func _run() -> void:
 	# Aparición por hábitat: 60 intentos repartidos por el mundo.
 	_spawner.set_process(false)
 	(_main.get_node("Legendaries") as LegendaryManager).set_process(false)
+	(_main.get_node("Ambushes") as Node).set_process(false)
 	_clear_wild()
 	var checked := 0
 	var spots: Array[Vector3] = [Vector3(0, 0, -20), Vector3(-150, 0, 20), Vector3(20, 0, -150), Vector3(70, 0, 40), Vector3(-165, 0, 95), Vector3(100, 0, 150)]

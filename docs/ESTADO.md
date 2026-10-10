@@ -211,6 +211,10 @@ Pasos:
 - Las manadas solo incluyen especies de la línea que viven en ese hábitat (antes podía salir Marill en la pradera por la línea de Azurill).
 - Pruebas: `tests/test_fights.tscn` y `tools/run_tests.sh` (todas, con límite de tiempo por prueba: un error de script ya no deja a Godot trabado).
 
+### Avance 2.8 (bloque 5d): emboscadas
+- `world/actors/ambush_manager.gd`: hasta 3 emboscadores en árboles a 18–40 m del jugador. Los Bicho (pequeños o medianos) cuelgan de un hilo a media altura y las aves voladoras se posan en la copa (55 % y 45 %).
+- Pista: la copa se sacude cada 4–7 s. Los agresivos y territoriales, si Nate pasa a menos de 3 m, muestran "¡!" y a los 0.5 s caen o se lanzan en picada hacia donde estaba: si lo alcanzan, lo golpean y pelean; si no, aterrizan y lo persiguen. Los tímidos observan y se van entre las hojas si Nate se acerca a 4 m; los curiosos solo observan.
+
 ### Vida del jugador y emboscadas (decisiones de Fernando)
 - Vida con corazones estilo Minecraft. Se pierde por ataques de salvajes, por caídas desde altura y al ahogarse.
 - Agua: nadar en la superficie (más lento) y bucear con burbujas de aire; sin aire pierde vida poco a poco. El mar abierto cansa. Con Surf (5.8) se cruza sin gastar.

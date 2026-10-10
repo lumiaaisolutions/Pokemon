@@ -40,6 +40,7 @@ func _run() -> void:
 		await get_tree().physics_frame
 	_spawner.set_process(false)
 	(_main.get_node("Legendaries") as Node).set_process(false)
+	(_main.get_node("Ambushes") as Node).set_process(false)
 	_clear_wild()
 	var companion: PokemonActor = _main.companion
 	# El compañero queda lejos para las pruebas entre salvajes.
@@ -148,6 +149,50 @@ func _run() -> void:
 	_check(blacked[0], "si cae el compañero con Nate desmayado, es desmayo definitivo")
 	_check(_player.mode == Player.Mode.WALK and _player.global_position.distance_to(GameState.respawn_point) < 3.0, "Nate reaparece en el punto de inicio")
 	_player.config.downed_duration = saved_duration
+
+	# Emboscadas: un Bicho agresivo cae sobre Nate al pasar bajo su árbol.
+	companion.process_mode = Node.PROCESS_MODE_DISABLED
+	_clear_wild()
+	await _frames(5)
+	var ambushes := _main.get_node("Ambushes") as AmbushManager
+	var trees := _trees_near(_player.global_position, 60.0)
+	_check(trees.size() >= 2, "debe haber árboles cerca para las emboscadas")
+	if trees.size() >= 2:
+		var bug := ambushes.place(_species("pinsir"), trees[0], false)
+		_check(bug.perched and bug.global_position.y > trees[0].global_position.y + 1.0, "el Bicho debe quedar colgado en lo alto del árbol")
+		_player.heal(100.0)
+		_player.global_position = trees[0].global_position + Vector3(1.0, 0.5, 0.0)
+		var warned := false
+		for i in 60:
+			await get_tree().physics_frame
+			if is_instance_valid(bug) and (bug.get_node("Exclamation") as Sprite3D).visible:
+				warned = true
+		await _frames(30)
+		_check(warned, "antes de caer debe mostrar el signo de exclamación")
+		_check(is_instance_valid(bug) and not bug.perched, "el Bicho agresivo debe caer al pasar Nate debajo")
+		var hit_or_fight := _player.health < _player.config.health_max or (is_instance_valid(bug) and bug.state in [PokemonActor.State.FIGHT, PokemonActor.State.CHASE])
+		_check(hit_or_fight, "al caer debe golpear a Nate o perseguirlo")
+		_clear_wild()
+		await _frames(5)
+
+		# Un ave tímida solo observa y sale volando si Nate se acerca.
+		var bird := ambushes.place(_species("pidgeot"), trees[1], true)
+		_player.global_position = trees[1].global_position + Vector3(6.0, 0.5, 0.0)
+		await _frames(90)
+		_check(is_instance_valid(bird) and bird.perched, "el ave tímida debe quedarse observando desde la copa")
+		_player.global_position = trees[1].global_position + Vector3(2.0, 0.5, 0.0)
+		await _frames(30)
+		_check(not is_instance_valid(bird), "el ave tímida debe salir volando si Nate se acerca")
+
+
+## Árboles del mundo ordenados por cercanía a point (hasta radius).
+func _trees_near(point: Vector3, radius: float) -> Array[Node3D]:
+	var found: Array[Node3D] = []
+	for body in _world.find_children("Tree*", "StaticBody3D", true, false):
+		if (body as Node3D).global_position.distance_to(point) < radius:
+			found.append(body as Node3D)
+	found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_to(point) < b.global_position.distance_to(point))
+	return found
 
 
 func _species(identifier: String) -> SpeciesData:

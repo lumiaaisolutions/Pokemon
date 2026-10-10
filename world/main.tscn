@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://world/actors/wild_spawner.gd" id="6_spawner"]
 [ext_resource type="PackedScene" path="res://ui/hud.tscn" id="7_hud"]
 [ext_resource type="Script" path="res://world/actors/legendary_manager.gd" id="8_legendary"]
+[ext_resource type="Script" path="res://world/actors/ambush_manager.gd" id="9_ambush"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.38, 0.6, 0.9, 1)
@@ -67,6 +68,12 @@ navigation_path = NodePath("../Navigation")
 
 [node name="Legendaries" type="Node3D" parent="."]
 script = ExtResource("8_legendary")
+world_path = NodePath("../World")
+spawner_path = NodePath("../Spawner")
+player_path = NodePath("../Player")
+
+[node name="Ambushes" type="Node3D" parent="."]
+script = ExtResource("9_ambush")
 world_path = NodePath("../World")
 spawner_path = NodePath("../Spawner")
 player_path = NodePath("../Player")
