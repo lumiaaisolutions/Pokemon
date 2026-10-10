@@ -18,6 +18,8 @@ static func action_label(id: String) -> String:
 		return "Dar a tu compañero"
 	if item.has("tm"):
 		return "Enseñar a tu compañero"
+	if item.get("pocket", "") == "evolucion":
+		return "Usar en tu compañero"
 	if id == "bicycle":
 		return "Montar / bajar"
 	if id == "town-map":
@@ -33,6 +35,17 @@ static func use(id: String, main: Node) -> String:
 		return "No te quedan."
 	var player := main.get_node_or_null("Player") as Player if main != null else null
 	var companion := main.get("companion") as PokemonActor if main != null else null
+	if item.get("pocket", "") == "evolucion" and not item.has("ball"):
+		if GameState.party.is_empty():
+			return "No tienes Pokémon."
+		var member: Dictionary = GameState.party[GameState.companion_index]
+		var option := Evolution.item_option(member, id)
+		var name := MenuStyle.species(member["species"]).display_name
+		if option.is_empty():
+			return "%s no reacciona a %s." % [name, item["name"]]
+		GameState.use_item(id)
+		EvolutionScene.play(main if main != null else Engine.get_main_loop().root, GameState.companion_index, option["to"])
+		return "¡%s reacciona a %s!" % [name, item["name"]]
 	if item.has("ball"):
 		GameState.selected_ball = id
 		GameState.bag_changed.emit()

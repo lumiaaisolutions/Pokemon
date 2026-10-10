@@ -419,6 +419,11 @@ func ruin_stone(place: Dictionary, symbol: int) -> void:
 	_flags()[key] = true
 	GameState.add_item("star-piece", 2)
 	GameState.add_item("old-charm", 1)
+	# La Piedra Llave está en un lugar fijo: el primer acertijo de ruinas que resuelvas.
+	if GameState.item_count("key-stone") <= 0:
+		GameState.add_item("key-stone", 1)
+		AudioBus.play_jingle("me_item")
+		GameState.notice.emit("¡En el centro de las piedras brilla la Piedra Llave! Con ella y una megapiedra tu Pokémon puede megaevolucionar en combate.")
 	_discovery("ruin_puzzle:%d" % int(place["id"]), "el acertijo de las Ruinas Antiguas")
 	GameState.notice.emit("¡Las tres piedras despertaron! Encontraste 2 Trozos Estrella y un Amuleto Antiguo. Los Unown se acercan...")
 	var unown := MenuStyle.species("unown")

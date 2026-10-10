@@ -50,3 +50,13 @@ Pedido de Fernando: "el mundo es muy pequeño", con más biomas generados, estru
 
 ## Fase 2.7 — Habitantes con rutina (2026-10-10)
 Habitantes por pueblo con casa, oficio y horario según la hora y el clima; hablan con saludo, oficio y comentario del clima; tienda y gimnasio con horario. El día/noche y el clima por bioma ya estaban hechos.
+
+## 2026-10-10 — Fases 3, 4, 5.5 y 5.6, interfaz nueva, edificios B2W2 y música
+- **Correcciones pedidas por Fernando a mitad de fase (prioridad):** edificios con modelos 3D de B2W2, caminos y decoración; entrar caminando hacia la puerta; NPC que pelean entre ellos; Mochila con B (Esc solo libera el mouse); recolección con contexto (bayas en arbustos y árboles, setas junto a árboles, conchas junto al agua); vuelo con el jugador y Charizard mirando al mismo lado y subir, bajar y moverse libre.
+- **Interfaz completa al estilo Z-A** con sus imágenes de referencia: kit `UiKit`, íconos, gráfica hexagonal, menú lateral, Cajas, Mochila, pantalla de título, nueva partida en 5 pasos y HUD. Dificultad cambiable durante la partida.
+- **Música y efectos de BW/BW2** por lugar, bioma, ruta, estación y situación.
+- **Fase 3:** combate en arena en el lugar (decisión de Fernando), con cambio, Mochila, recompensas (las que eligió: PE, objetos, vínculo y dominio, investigación, racha y fragmentos) y megaevolución.
+- **Fase 4:** captura dentro de la arena con carga de potencia, zona excelente y esquiva de Nate; el rival sigue atacando.
+- **Fase 5.5:** evolución sin niveles traducida del método oficial (victorias, piedras, vínculo); Piedra Llave en el primer acertijo de ruinas; misiones de megapiedra por especie en el Rotom; modo foto con misión diaria.
+- **Fase 5.6:** entrenadores en los caminos con campo de visión, "¡!", combate con su equipo, dinero y objeto, revancha al día siguiente.
+- Prueba nueva `test_battle` (combate, huida, victoria, cambio, mega, captura, evolución, megapiedras, foto y entrenadores).

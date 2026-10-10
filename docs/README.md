@@ -1,10 +1,10 @@
 # Pokémon Mundo Abierto — documentación
 
-Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD-2D con gráficos de Pokémon Negro 2/Blanco 2, Pokémon que viven por su cuenta, peleas y captura en el mundo, combate en tiempo real (por hacer) y megaevolución.
+Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD-2D con gráficos de Pokémon Negro 2/Blanco 2, Pokémon que viven por su cuenta, peleas y captura en el mundo, combate en arena en tiempo real, megaevolución, evolución sin niveles y entrenadores en los caminos.
 
 ## Empezar
 - Jugar: `godot --path .` (o abrir el proyecto en Godot).
-- Pruebas: `tools/run_tests.sh` (unos 6 min, 10 pruebas; deben pasar todas antes de cada commit).
+- Pruebas: `tools/run_tests.sh` (unos 8 min, 11 pruebas; deben pasar todas antes de cada commit).
 - Regenerar datos y sprites: ver [herramientas.md](herramientas.md).
 
 ## Documentos
@@ -37,7 +37,11 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Bicicleta, montura y vuelo (hecho) | [sistemas/montar_y_volar.md](sistemas/montar_y_volar.md) |
 | Habitantes con rutina, Fase 2.7 (hecho) | [sistemas/habitantes.md](sistemas/habitantes.md) |
 | Movimientos y crecimiento sin niveles (hecho) | [sistemas/movimientos_y_crecimiento.md](sistemas/movimientos_y_crecimiento.md) |
-| Combate y megaevolución (por hacer) | [sistemas/combate.md](sistemas/combate.md) |
-| Progresión, iniciales, misiones y entrenadores (por hacer) | [sistemas/progresion.md](sistemas/progresion.md) |
+| Combate en arena, captura en combate y megaevolución, Fases 3 y 4 (hecho) | [sistemas/combate.md](sistemas/combate.md) |
+| Progresión: inicial, evolución sin niveles, Piedra Llave, megapiedras y fotografía, 5.5 (hecho) | [sistemas/progresion.md](sistemas/progresion.md) |
+| Entrenadores en los caminos, 5.6 (hecho) | [sistemas/entrenadores.md](sistemas/entrenadores.md) |
+| Interfaz: kit visual, pantalla de inicio, menú y HUD (hecho) | [sistemas/interfaz.md](sistemas/interfaz.md) |
+| Música y sonido de BW/BW2 (hecho) | [sistemas/musica_y_sonido.md](sistemas/musica_y_sonido.md) |
+| Edificios y decoración con modelos de B2W2 (hecho) | [sistemas/edificios_b2w2.md](sistemas/edificios_b2w2.md) |
 
 Regla: cada tema se documenta en su propio `.md`; al cerrar una fase se actualiza el documento del sistema afectado, [ESTADO.md](ESTADO.md) y [historial.md](historial.md).

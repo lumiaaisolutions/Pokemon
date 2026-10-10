@@ -81,3 +81,13 @@ Todas tomadas por Fernando el 2026-10-09, salvo las marcadas como *(Claude)*.
 - **Idioma:** solo español (el juego está escrito en español); la opción queda para el futuro.
 - **Habitantes (2.7):** con los sprites de los 10 protagonistas teñidos; caminan pasando por la plaza.
 - **Pokédex regional:** por cercanía de cada línea evolutiva al pueblo inicial.
+
+## 2026-10-10 — Combate, progresión y entrenadores (decisiones al implementar)
+- **Arena en el lugar** de 15 m; el mundo se pausa; huir es salir del círculo (Fernando).
+- **Evolución sin niveles:** nivel oficial / 5 = victorias (mínimo 2); piedra = usarla en la Mochila; amistad = vínculo 5; intercambio = vínculo 7; otros = vínculo 4 y 6 victorias. Nunca evoluciona sola: se confirma con el botón "Evolucionar".
+- **Piedra Llave:** el primer acertijo de Ruinas Antiguas resuelto (Fernando pidió lugar fijo: ruinas o Alfa; se eligió el acertijo porque ya existe en cada mundo).
+- **Misiones de megapiedra:** tipo fijo por especie (capturar 2, investigación completa o vencer a su Alfa/dominante), se abren al tener la línea evolutiva en el equipo.
+- **Fragmento místico:** 4 fragmentos = cualquier MT.
+- **Captura en combate:** potencia que sube y baja; zona excelente ≥ 82 % (×1,5). Esquiva de Nate con el mismo botón de saltar mientras apuntas.
+- **Entrenadores:** cada ~260 m de camino, cono de 13 m y 32°, equipo distinto cada día, no se capturan; retirarse no cuenta como derrota.
+- **Foto:** tecla P (Compartir en el mando); la Mochila en el mando sigue en el menú (Start).

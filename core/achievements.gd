@@ -16,6 +16,12 @@ const LIST := [
 	["activities_5", "Ocupado", "Cumple 5 actividades del Rotom Móvil.", "activities", 5],
 	["behind_10", "Sigiloso", "Captura 10 Pokémon por la espalda.", "behind", 10],
 	["survivor", "Siempre de pie", "Recupérate de 5 desmayos sin ir al Centro Pokémon.", "recoveries", 5],
+	["first_evolution", "¿Eh?", "Haz evolucionar a un Pokémon.", "evolutions", 1],
+	["first_mega", "Más allá de la evolución", "Megaevoluciona por primera vez.", "megas", 1],
+	["win_streak_10", "Imparable", "Gana 10 combates seguidos sin desmayarte.", "best_streak", 10],
+	["trainers_10", "Retador", "Vence a 10 entrenadores en los caminos.", "trainers", 10],
+	["photos_25", "Fotógrafo", "Saca 25 fotos.", "photos", 25],
+	["mega_stones_3", "Coleccionista de megapiedras", "Consigue 3 megapiedras.", "mega_stones", 3],
 ]
 
 

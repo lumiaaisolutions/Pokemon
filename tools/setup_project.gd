@@ -123,6 +123,7 @@ func _setup_input_map() -> void:
 	_action("menu_next", [_key(KEY_E), _button(JOY_BUTTON_RIGHT_SHOULDER)])
 	# Ayuda: todos los controles en pantalla (teclado de Mac y control de PlayStation).
 	_action("help", [_key(KEY_H), _button(JOY_BUTTON_TOUCHPAD)])
+	_action("photo", [_key(KEY_P), _button(JOY_BUTTON_MISC1)])
 
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])

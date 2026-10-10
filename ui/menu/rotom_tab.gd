@@ -55,7 +55,27 @@ static func build() -> Control:
 		line.add_child(MenuStyle.label("  Reputación con %s " % path["group"], 15, MenuStyle.MUTED))
 		line.add_child(MenuStyle.bar(rep / 100.0, 160, Color(0.95, 0.75, 0.25), 8))
 		side.add_child(line)
+	# Misión de fotografía del día.
+	var photo := (_main_photo() as PhotoMode)
+	if photo != null:
+		var current := photo.mission()
+		if not current.is_empty():
+			side.add_child(MenuStyle.label("Fotografía del día", 22, Color(0.6, 0.85, 1.0)))
+			side.add_child(MenuStyle.wrapped(("✓ " if current.get("done", false) else "📷 ") + "Retrata a un %s (%s Foto)." % [MenuStyle.species(current["species"]).display_name, InputHints.hint("photo")], 15))
+	# Megaevolución: Piedra Llave y misiones de megapiedras.
+	side.add_child(MenuStyle.label("Megapiedras", 22, Color(1.0, 0.7, 1.0)))
+	side.add_child(MenuStyle.wrapped("Piedra Llave: " + ("¡la tienes!" if GameState.item_count("key-stone") > 0 else "dicen que duerme en unas Ruinas Antiguas (resuelve su acertijo)."), 15, MenuStyle.MUTED))
+	var missions := MegaMissions.all()
+	if missions.is_empty():
+		side.add_child(MenuStyle.wrapped("Cuando tengas un Pokémon que pueda megaevolucionar, aparecerá aquí su misión.", 15, MenuStyle.MUTED))
+	for mission: Dictionary in missions:
+		side.add_child(MenuStyle.wrapped(("✓ " if mission.get("done", false) else "◇ ") + MegaMissions.describe(mission), 15, MenuStyle.ACCENT if mission.get("done", false) else Color(0.95, 0.95, 1.0)))
 	side.add_child(MenuStyle.label("Noticias", 22, MenuStyle.ACCENT))
 	for item: Dictionary in GameState.news.slice(0, 8):
 		side.add_child(MenuStyle.wrapped("Día %d · %s" % [int(item["day"]), item["text"]], 15))
 	return row
+
+
+static func _main_photo() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.get_first_node_in_group(&"photo_mode") if tree != null else null

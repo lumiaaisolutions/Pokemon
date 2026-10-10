@@ -146,7 +146,33 @@ func _detail(index: int) -> Control:
 		for mega in megas:
 			names.append("%s (%s)" % [mega.display_name, mega.stone if mega.stone != "" else "Ascenso del Dragón"])
 		right.add_child(UiKit.wrapped("✦ Megaevolución: " + ", ".join(names), 16, Color(1.0, 0.7, 1.0)))
+	_evolution_section(right, entry, index)
 	return box
+
+
+## Evolución sin niveles: a qué evoluciona, qué le falta y el botón si ya puede.
+func _evolution_section(box: VBoxContainer, entry: Dictionary, index: int) -> void:
+	var options := Evolution.options(entry["species"])
+	if options.is_empty():
+		return
+	for option: Dictionary in options.slice(0, 4):
+		var into := MenuStyle.species(option["to"])
+		if into == null:
+			continue
+		var ready: bool = option.get("method", "") != "item" and Evolution.met(entry, option)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		row.add_child(UiKit.icon_rect(MenuStyle.front_sprite(into, entry.get("shiny", false)), Vector2(44, 44)))
+		row.add_child(UiKit.label("→ %s · %s" % [into.display_name, Evolution.requirement_text(entry, option)], 16, UiKit.MINT if ready else UiKit.MUTED, ready))
+		box.add_child(row)
+		if ready:
+			var button := UiKit.slant_button("✦ Evolucionar en %s" % into.display_name, UiKit.MINT, 18)
+			button.pressed.connect(func() -> void:
+				var scene := EvolutionScene.play(_menu.get_parent() if _menu.main == null else _menu.main, index, option["to"])
+				scene.finished.connect(func() -> void:
+					if is_instance_valid(_menu):
+						_menu.show_tab(_menu.tab)))
+			box.add_child(button)
 
 
 ## Movimientos: los 4 que lleva en rombo (toca uno para elegir el espacio) y los

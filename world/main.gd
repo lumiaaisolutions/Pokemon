@@ -43,12 +43,19 @@ func _ready() -> void:
 	var music := MusicDirector.new()
 	music.name = "Music"
 	add_child(music)
+	var photo := PhotoMode.new()
+	photo.name = "Photo"
+	add_child(photo)
 	# Habitantes de los pueblos con rutina (Fase 2.7).
 	var npcs := TownNPCs.new()
 	npcs.name = "TownNPCs"
 	npcs.world_path = NodePath("../World")
 	npcs.player_path = NodePath("../Player")
 	add_child(npcs)
+	# Entrenadores en los caminos (Fase 5.6).
+	var trainers := RouteTrainers.new()
+	trainers.name = "RouteTrainers"
+	add_child(trainers)
 	# Menú (Esc / Options) en su propia capa, sobre el HUD.
 	var menu_layer := CanvasLayer.new()
 	menu_layer.name = "MenuLayer"
@@ -103,6 +110,26 @@ func sync_companion_to_party() -> void:
 		return
 	var index := clampi(GameState.companion_index, 0, GameState.party.size() - 1)
 	GameState.party[index]["hp_ratio"] = companion.hp / companion.hp_max
+
+
+## Vuelve a crear al acompañante actual (tras evolucionar), en el mismo lugar y estado.
+func refresh_companion() -> void:
+	if companion == null or GameState.party.is_empty():
+		return
+	var at := companion.global_position
+	var was_out := companion_state == CompanionState.OUT
+	if _player.mount == companion:
+		_player.end_ride()
+	if _player.riding == companion:
+		_player.riding = null
+	companion.queue_free()
+	companion = null
+	var entry: Dictionary = GameState.party[GameState.companion_index]
+	_create_companion(MenuStyle.species(entry["species"]), entry.get("shiny", false), at)
+	if not was_out:
+		companion.visible = false
+		companion.process_mode = Node.PROCESS_MODE_DISABLED
+		companion_state = CompanionState.IN_BALL
 
 
 ## Cambia de acompañante por otro del equipo (desde el menú).
@@ -257,8 +284,12 @@ func _on_dex_changed(identifier: String) -> void:
 			done += 1
 			var learned := Moves.unlock_next(entry)
 			if learned != "":
+				AudioBus.play_jingle("me_waza")
 				($Hud as Hud).show_toast("¡La investigación desbloqueó %s para %s!" % [Moves.get_move(learned)["name"], MenuStyle.species(identifier).display_name])
 		entry["research_unlocks"] = done
+	# Misiones de megapiedras (se abren con el equipo y se cumplen al capturar o investigar).
+	for message in MegaMissions.update():
+		($Hud as Hud).show_toast(message)
 
 
 ## Botón del compañero: tocar lo guarda o lo saca; mantener (más de WHEEL_HOLD s) abre
@@ -543,5 +574,7 @@ func _on_battle_ended(result: String) -> void:
 	match result:
 		"win":
 			AudioBus.play_jingle("bw1_victory_wild")
+		"trainer_win":
+			AudioBus.play_jingle("bw1_victory_trainer")
 		"capture":
 			AudioBus.play_jingle("bw1_item")

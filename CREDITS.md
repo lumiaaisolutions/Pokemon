@@ -20,3 +20,7 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | Gritos de los Pokémon (ogg) | https://github.com/PokeAPI/cries | PokeAPI |
 | Descripciones, categorías, altura, peso y sexo | PokeAPI (`pokemon_species_flavor_text.csv`, `pokemon_species_names.csv`, `pokemon.csv`) | PokeAPI |
 | Íconos de objetos (24 px) | Paquete de sprites de Pokémon Showdown (`sprites/itemicons/`) | Comunidad de Pokémon Showdown |
+| Modelos 3D de edificios, decoración y lugares (B2W2) | https://www.models-resource.com/ds_dsi/pokemonblack2white2/ | The Models Resource |
+| Música de Pokémon Negro/Blanco y Negro 2/Blanco 2 (solo local) | https://downloads.khinsider.com/ | KHInsider |
+| Efectos de sonido de Negro 2/Blanco 2 (solo local) | https://www.sounds-resource.com/ds_dsi/pokemonblack2white2/ | The Sounds Resource |
+| Métodos de evolución | PokeAPI (`pokemon_evolution.csv`, `items.csv`, `evolution_triggers.csv`) | PokeAPI |

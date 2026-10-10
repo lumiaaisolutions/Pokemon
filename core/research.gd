@@ -11,6 +11,8 @@ const TASKS := [
 	["behind", "Capturas por la espalda", [1, 3, 5]],
 	["fights", "Verlo pelear con otro salvaje", [1, 3]],
 	["stunned", "Verlo debilitado en una pelea", [1, 3, 5]],
+	["battles", "Vencerlo en combate", [1, 3]],
+	["photos", "Fotografiarlo", [1, 3]],
 ]
 const POINTS_PER_GOAL := 10
 const COMPLETE_POINTS := 100

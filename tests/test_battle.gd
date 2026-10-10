@@ -147,7 +147,96 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(5)
 
-	# 6. Perder la racha al desmayarte.
+	# 6. Evolución sin niveles (Fase 5.5).
+	var bulba := {"species": "bulbasaur", "shiny": false, "hp_ratio": 1.0, "wins": 3}
+	GameState.party.append(bulba)
+	var bulba_index := GameState.party.size() - 1
+	_check(Evolution.ready_option(bulba).is_empty(), "Bulbasaur con 3 victorias aún no evoluciona (nivel 16 = 4)")
+	bulba["wins"] = 4
+	_check(Evolution.ready_option(bulba).get("to", "") == "ivysaur", "con 4 victorias puede evolucionar en Ivysaur")
+	_check(Evolution.item_option({"species": "pikachu"}, "thunderstone").get("to", "") == "raichu", "Pikachu evoluciona con la Piedra Trueno")
+	_check(Evolution.requirement_text({"species": "eevee", "bond": 2}, Evolution.options("eevee")[3]).begins_with("Vínculo"), "la amistad se pide como vínculo")
+	var scene := EvolutionScene.play(_main, bulba_index, "ivysaur")
+	await scene.finished
+	_check(GameState.party[bulba_index]["species"] == "ivysaur", "tras la animación, Bulbasaur es Ivysaur")
+	_check(int(GameState.dex_entry("ivysaur").get("caught", 0)) >= 1, "la evolución se registra en la Pokédex")
+
+	# 7. Misiones de megapiedras.
+	GameState.party.append({"species": "charmander", "shiny": false, "hp_ratio": 1.0})
+	MegaMissions.update()
+	var charizard := MegaMissions.all().filter(func(m: Dictionary) -> bool: return m["species"] == "charizard")
+	_check(not charizard.is_empty(), "un Charmander en el equipo abre la misión de megapiedra de Charizard")
+	if not charizard.is_empty():
+		var mission: Dictionary = charizard[0]
+		mission["kind"] = "alpha"
+		GameState.world_flags["alpha_beaten:charizard"] = true
+		MegaMissions.update()
+		_check(mission["done"] and GameState.item_count("stone-" + String(mission["mega"])) > 0, "vencer a su Alfa entrega la megapiedra")
+
+	# 8. Misión de fotografía del día.
+	var photo := _main.get_node("Photo") as PhotoMode
+	_spawner.spawn_species(_species("patrat"), arena + Vector3(0, 0, -6), false, false)
+	await _frames(2)
+	var mission := photo.mission()
+	_check(not mission.is_empty(), "debe haber una misión de fotografía con un salvaje cerca")
+	if not mission.is_empty():
+		var money := GameState.money
+		var subjects: Array[String] = [String(mission["species"])]
+		photo._check_mission(subjects)
+		_check(mission["done"] and GameState.money == money + PhotoMode.REWARD_MONEY, "fotografiar a la especie pedida da el premio")
+	_clear_wild()
+
+	# 9. Entrenadores en los caminos (Fase 5.6).
+	var trainers := _main.get_node("RouteTrainers") as RouteTrainers
+	_check(trainers.spots.size() >= 5, "debe haber entrenadores a lo largo de los caminos (%d)" % trainers.spots.size())
+	if not trainers.spots.is_empty():
+		var spot: Dictionary = trainers.spots[0]
+		for candidate: Dictionary in trainers.spots:
+			if _world.is_near_loaded(Vector3((candidate["pos"] as Vector2).x, 0, (candidate["pos"] as Vector2).y)):
+				spot = candidate
+				break
+		var team := trainers.team_for(spot)
+		_check((team["team"] as Array).size() >= 2, "el entrenador lleva al menos 2 Pokémon")
+		var spot_pos := Vector3((spot["pos"] as Vector2).x, 0, (spot["pos"] as Vector2).y)
+		# Primero detrás de él (fuera de su vista) para que aparezca.
+		var behind := spot_pos - (spot["facing"] as Vector3) * 6.0
+		_player.global_position = Vector3(behind.x, _world.surface_height_at(behind.x, behind.z) + 0.5, behind.z)
+		await _frames(40)
+		var trainer: Dictionary = {}
+		for t: Dictionary in trainers.active_trainers():
+			if t["spot"] == spot:
+				trainer = t
+		_check(not trainer.is_empty(), "el entrenador aparece al acercarte")
+		if not trainer.is_empty():
+			# Delante de él, en su campo de visión.
+			var front: Vector3 = (trainer["node"] as Node3D).global_position + (spot["facing"] as Vector3) * 7.0
+			_main.companion.global_position = front + Vector3(1.0, 1.0, 0)
+			_player.global_position = front + Vector3(0, 0.5, 0)
+			_player.velocity = Vector3.ZERO
+			var started := false
+			for i in 400:
+				await get_tree().physics_frame
+				if _battle.active:
+					started = true
+					break
+			_check(started and not _battle.trainer.is_empty(), "al verte, el entrenador se acerca y empieza el combate (estado %s)" % trainer["state"])
+			if started:
+				var money := GameState.money
+				var count := (_battle.trainer["team"] as Array).size()
+				for round in count:
+					var foe := _battle.opponent
+					if foe == null or not is_instance_valid(foe):
+						break
+					foe.receive_hit(foe.hp + 100.0, _main.companion)
+					await _frames(12)
+				await _frames(10)
+				_check(_results.has("trainer_win"), "vencer a todo su equipo gana el combate")
+				_check(GameState.money > money, "el entrenador paga al perder")
+				_check(trainers.beaten_today(spot), "queda vencido por hoy (revancha mañana)")
+				await _frames(30)
+				_check(not _battle.active and trainer["state"] != "approach", "vencido, no vuelve a retarte hoy")
+
+	# 10. Perder la racha al desmayarte.
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 

@@ -49,6 +49,8 @@ func pick() -> String:
 	var battle := _main.get_node_or_null("Battle") as BattleManager
 	if battle != null and battle.active and battle.opponent != null and is_instance_valid(battle.opponent):
 		var opponent := battle.opponent
+		if not battle.trainer.is_empty():
+			return "bw2_battle_trainer2" if absi(hash(String(battle.trainer.get("id", "")))) % 2 == 0 else "bw1_battle_trainer"
 		if opponent.legendary:
 			return "bw1_battle_legendary"
 		if opponent.has_meta("Alfa") or opponent.has_meta("dominante"):

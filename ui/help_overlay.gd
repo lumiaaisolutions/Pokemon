@@ -16,7 +16,15 @@ const SECTIONS := [
 	]],
 	["Captura", [
 		["aim", "", "Apuntar (toca para fijar, mantén para sostener)"],
-		["throw", "", "Lanzar Pokéball"],
+		["throw", "", "Lanzar Pokéball (en combate: mantén para cargar potencia)"],
+		["dodge", "", "En combate, apuntando: Nate esquiva"],
+		["photo", "", "Sacar una foto (cuenta para la investigación)"],
+	]],
+	["Combate en arena", [
+		["lock_on", "", "Fijar objetivo"],
+		["mega_evolve", "", "Megaevolucionar (Piedra Llave y megapiedra)"],
+		["companion", "", "Mantener: cambiar de Pokémon (2 s de espera)"],
+		["bag", "", "Mochila (pausa el combate)"],
 	]],
 	["Tu Pokémon", [
 		["companion", "", "Tocar: guardarlo o sacarlo · Mantener: rueda para cambiar"],
@@ -31,6 +39,7 @@ const SECTIONS := [
 	]],
 	["Sistema", [
 		["menu", "", "Abrir o cerrar el menú (equipo, mochila, Pokédex…)"],
+		["bag", "", "Abrir la Mochila"],
 		["menu_prev", "", "Menú: pestaña anterior"],
 		["menu_next", "", "Menú: pestaña siguiente"],
 		["ball_next", "", "Siguiente Pokéball"],

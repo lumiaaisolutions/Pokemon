@@ -54,6 +54,9 @@ var _rng := RandomNumberGenerator.new()
 var _moves_used: Array[String] = []
 var _ending := false
 var _aim_attack := 0.0
+## Combate contra un entrenador (Fase 5.6): {id, name, team: Array[SpeciesData], index,
+## money, item, at, on_end: Callable}. Vacío en combates contra salvajes.
+var trainer: Dictionary = {}
 
 
 func _ready() -> void:
@@ -81,17 +84,73 @@ func can_start(wild: PokemonActor) -> bool:
 		return false
 	if wild.ceremony or wild.legendary or wild.has_meta("trainer") or wild.state == PokemonActor.State.STUNNED or wild.has_meta("fled_until") and float(wild.get_meta("fled_until")) > GameState.play_time:
 		return false
+	if not ready_to_fight():
+		return false
+	return wild.global_position.distance_to(player().global_position) < 30.0
+
+
+## Tu Pokémon está fuera y tú caminas (sin montar): se puede pelear.
+func ready_to_fight() -> bool:
 	var c := companion()
 	var p := player()
-	if c == null or p == null or int(_main.get("companion_state")) != 0 or p.mode != Player.Mode.WALK or p.ride != Player.Ride.NONE:
-		return false
-	return wild.global_position.distance_to(p.global_position) < 30.0
+	return enabled and not active and c != null and p != null and int(_main.get("companion_state")) == 0 and p.mode == Player.Mode.WALK and p.ride == Player.Ride.NONE
 
 
 ## Empieza el combate contra wild (devuelve false si no se puede).
 func start(wild: PokemonActor) -> bool:
 	if not can_start(wild):
 		return false
+	return _begin(wild)
+
+
+## Combate contra un entrenador: saca su primer Pokémon junto a él (ver trainer).
+func start_trainer(info: Dictionary) -> bool:
+	if not ready_to_fight() or (info.get("team", []) as Array).is_empty():
+		return false
+	trainer = info
+	trainer["index"] = 0
+	var first := _trainer_pokemon(0)
+	if first == null:
+		trainer = {}
+		return false
+	GameState.notice.emit("¡%s quiere pelear! (%d Pokémon)" % [info["name"], (info["team"] as Array).size()])
+	return _begin(first)
+
+
+func _trainer_pokemon(index: int) -> PokemonActor:
+	var spawner := _main.get_node("Spawner") as WildSpawner
+	var team: Array = trainer["team"]
+	var at: Vector3 = trainer.get("at", player().global_position + Vector3(0, 0, -6))
+	var actor := spawner.spawn_species(team[index], at, false, false)
+	if actor != null:
+		actor.set_meta("trainer", true)
+		actor.add_to_group(&"trainer_pokemon")
+	return actor
+
+
+## El Pokémon del entrenador cayó: sale el siguiente.
+func _next_trainer_pokemon() -> void:
+	var old := opponent
+	PixelBurst.spawn(old.get_parent(), old.global_position, PixelBurst.Kind.HEAL, 0.6)
+	trainer["index"] = int(trainer["index"]) + 1
+	var at := old.global_position
+	old.queue_free()
+	trainer["at"] = at
+	var next := _trainer_pokemon(int(trainer["index"]))
+	if next == null:
+		_win()
+		return
+	opponent = next
+	next.battle_center = center
+	next.battle_radius = ARENA_RADIUS - 0.5
+	var c := companion()
+	if c != null:
+		next.start_fight(c)
+	GameState.notice.emit("%s saca a %s (%d/%d)" % [trainer["name"], next.species.display_name, int(trainer["index"]) + 1, (trainer["team"] as Array).size()])
+	_ui.setup(self)
+
+
+func _begin(wild: PokemonActor) -> bool:
 	active = true
 	_ending = false
 	opponent = wild
@@ -123,7 +182,8 @@ func start(wild: PokemonActor) -> bool:
 	rig.set_target(c)
 	_ui.visible = true
 	_ui.setup(self)
-	GameState.notice.emit("¡Combate contra %s! Sal del círculo para huir." % wild.species.display_name)
+	if trainer.is_empty():
+		GameState.notice.emit("¡Combate contra %s! Sal del círculo para huir." % wild.species.display_name)
 	started.emit(wild)
 	return true
 
@@ -137,7 +197,10 @@ func _process(delta: float) -> void:
 		_end("capture")
 		return
 	if opponent.state == PokemonActor.State.STUNNED:
-		_win()
+		if not trainer.is_empty() and int(trainer["index"]) + 1 < (trainer["team"] as Array).size():
+			_next_trainer_pokemon()
+		else:
+			_win()
 		return
 	if c == null:
 		return
@@ -165,7 +228,7 @@ func _process(delta: float) -> void:
 	if c.controlled and Vector2(c.global_position.x - center.x, c.global_position.z - center.z).length() > ARENA_RADIUS + 1.0:
 		opponent.set_meta("fled_until", GameState.play_time + FLEE_IGNORE)
 		opponent.lose_track(FLEE_IGNORE)
-		GameState.notice.emit("¡Escapaste del combate!")
+		GameState.notice.emit("¡Escapaste del combate!" if trainer.is_empty() else "Te retiraste del combate contra %s." % trainer["name"])
 		AudioBus.play_sfx("flee")
 		_end("flee")
 		return
@@ -295,18 +358,36 @@ func _win() -> void:
 	# Racha de victorias.
 	var streak := int(GameState.world_flags.get("win_streak", 0)) + 1
 	GameState.world_flags["win_streak"] = streak
+	if streak > int(GameState.stats.get("best_streak", 0)):
+		Achievements.add("best_streak", streak - int(GameState.stats.get("best_streak", 0)))
 	# Vínculo y dominio extra.
 	if c != null and not GameState.party.is_empty():
 		var entry: Dictionary = GameState.party[GameState.companion_index]
 		entry["bond_xp"] = float(entry.get("bond_xp", 0.0)) + 3.0
+		entry["wins"] = int(entry.get("wins", 0)) + 1
+		if not Evolution.ready_option(entry).is_empty():
+			lines.append("¡%s puede evolucionar! (Menú → Pokémon)" % c.species.display_name)
 		for id in _moves_used:
 			var mastery: Dictionary = entry.get("mastery", {})
 			mastery[id] = int(mastery.get(id, 0)) + 2
 			entry["mastery"] = mastery
 	# Investigación: vencido en combate.
 	GameState.dex_count(species.identifier, "battles")
+	if defeated.has_meta("Alfa") or defeated.has_meta("dominante"):
+		GameState.world_flags["alpha_beaten:" + species.identifier] = true
+	# Entrenador: dinero y un objeto (revancha al día siguiente).
+	if not trainer.is_empty():
+		var money := int(trainer.get("money", 500))
+		GameState.add_money(money, "Combate contra %s" % trainer["name"])
+		lines.append("¡Venciste a %s! +$%d." % [trainer["name"], money])
+		var prize := String(trainer.get("item", ""))
+		if Items.exists(prize):
+			GameState.add_item(prize, 1)
+			lines.append("Te dio %s." % Items.display_name(prize))
+		GameState.world_flags["trainer_beaten:" + String(trainer["id"])] = GameState.game_day()
+		Achievements.add("trainers")
 	# Objetos que suelta.
-	var drop_chance := 0.45 + minf(streak, 10) * 0.03
+	var drop_chance := 0.0 if not trainer.is_empty() else 0.45 + minf(streak, 10) * 0.03
 	if _rng.randf() < drop_chance:
 		var pool: Array = DROPS.get(species.types[0], ["oran-berry"])
 		var item: String = pool[_rng.randi() % pool.size()]
@@ -324,7 +405,9 @@ func _win() -> void:
 	if streak >= 3:
 		lines.append("Racha: %d victorias." % streak)
 	GameState.notice.emit(" ".join(lines))
-	_end("win")
+	for message in MegaMissions.update():
+		GameState.notice.emit(message)
+	_end("win" if trainer.is_empty() else "trainer_win")
 
 
 func _end(result: String) -> void:
@@ -347,6 +430,15 @@ func _end(result: String) -> void:
 		(_main.get_node("CameraRig") as CameraRig).set_target(player())
 	_ui.visible = false
 	active = false
+	# Entrenador: su Pokémon vuelve a la ball y él se entera del resultado.
+	if not trainer.is_empty():
+		if opponent != null and is_instance_valid(opponent):
+			opponent.queue_free()
+		var info := trainer
+		trainer = {}
+		var on_end: Callable = info.get("on_end", Callable())
+		if on_end.is_valid():
+			on_end.call(result)
 	opponent = null
 	ended.emit(result)
 
