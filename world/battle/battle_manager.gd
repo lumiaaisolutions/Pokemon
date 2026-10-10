@@ -53,6 +53,7 @@ var _ui: BattleUI
 var _rng := RandomNumberGenerator.new()
 var _moves_used: Array[String] = []
 var _ending := false
+var _aim_attack := 0.0
 
 
 func _ready() -> void:
@@ -147,9 +148,19 @@ func _process(delta: float) -> void:
 		c.battle_center = center
 		c.start_fight(opponent)
 		(_main.get_node("CameraRig") as CameraRig).set_target(player())
+		_aim_attack = 1.5
 	elif not aiming and not c.controlled and c.state != PokemonActor.State.STUNNED and int(_main.get("companion_state")) == 0:
 		c.set_controlled(true)
 		(_main.get_node("CameraRig") as CameraRig).set_target(c)
+	# Mientras apuntas, el rival sigue peleando y a veces va por ti: esquívalo.
+	if aiming:
+		_aim_attack -= delta
+		if _aim_attack <= 0.0:
+			_aim_attack = 4.0
+			if _rng.randf() < 0.6:
+				opponent.start_fight(player())
+	elif opponent.fight_target == player() and c.state != PokemonActor.State.STUNNED:
+		opponent.start_fight(c)
 	# Huir: tu Pokémon salió del círculo.
 	if c.controlled and Vector2(c.global_position.x - center.x, c.global_position.z - center.z).length() > ARENA_RADIUS + 1.0:
 		opponent.set_meta("fled_until", GameState.play_time + FLEE_IGNORE)

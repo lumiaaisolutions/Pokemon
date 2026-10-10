@@ -10,6 +10,8 @@ const MISS_LIFETIME := 3.0
 
 var thrower: Node3D
 var ball_bonus: float = CaptureRules.POKEBALL
+## Lanzamiento excelente en combate (Fase 4): multiplica la ball.
+var throw_bonus := 1.0
 ## Tipo de ball (id del catálogo); su multiplicador se calcula al tocar al Pokémon.
 var ball_id := "poke-ball"
 ## Resultado forzado para las pruebas (-1 = al azar, 0 = falla, 1 = captura).
@@ -84,7 +86,7 @@ func start_capture(actor: PokemonActor) -> void:
 	_target = actor
 	var stunned := actor.state == PokemonActor.State.STUNNED
 	var stealth := thrower != null and CaptureRules.is_stealthy(actor, thrower)
-	ball_bonus = CaptureRules.ball_multiplier(ball_id, actor, thrower)
+	ball_bonus = CaptureRules.ball_multiplier(ball_id, actor, thrower) * throw_bonus
 	var probability := CaptureRules.probability(actor.species, actor.hp / actor.hp_max, ball_bonus, stunned, stealth)
 	# La ball queda en el suelo frente al Pokémon y él entra en ella.
 	freeze = true

@@ -115,7 +115,39 @@ func _run() -> void:
 	await _frames(5)
 	_check(_main.companion.mega == null, "al terminar el combate vuelve a su forma normal")
 
-	# 5. Perder la racha al desmayarte.
+	# 5. Captura dentro de la arena (Fase 4): carga de potencia, excelente y esquiva.
+	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
+	var target := _spawner.spawn_species(_species("lillipup"), arena + Vector3(0, 0, -4), false, false)
+	await _frames(2)
+	_check(_battle.start(target), "debe empezar un combate para capturar")
+	await _frames(5)
+	var aim := _player.get_node("ThrowAim") as ThrowAim
+	aim.locked = true
+	await _frames(5)
+	_check(not _main.companion.controlled, "al apuntar, tu Pokémon pelea solo y tú controlas a Nate")
+	var health := _player.health
+	_player.dodge(Vector3.RIGHT)
+	_player.take_damage(4.0)
+	_check(_player.health == health, "esquivando, Nate no recibe daño")
+	await _frames(30)
+	_check(not _player.is_dodging(), "la esquiva dura poco")
+	aim.charging = true
+	aim.charge = 0.5
+	var slow := aim.throw_velocity().length()
+	aim.charge = 1.0
+	_check(aim.throw_velocity().length() > slow, "más carga lanza más lejos")
+	aim.charge = 0.9
+	var balls := GameState.item_count(GameState.selected_ball)
+	var ball := aim.release_charge()
+	_check(ball != null and is_equal_approx(ball.throw_bonus, ThrowAim.THROW_EXCELLENT_BONUS), "soltar en la zona dorada da lanzamiento excelente")
+	_check(GameState.item_count(GameState.selected_ball) == balls - 1, "el lanzamiento gasta una ball")
+	_check(not aim.charging and aim.charge == 0.0, "la carga se reinicia al lanzar")
+	aim.locked = false
+	_battle.finish("flee")
+	_clear_wild()
+	await _frames(5)
+
+	# 6. Perder la racha al desmayarte.
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 

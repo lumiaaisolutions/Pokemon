@@ -15,6 +15,8 @@ var _own_portrait: TextureRect
 var _moves: Array[Dictionary] = []
 var _hints: Label
 var _mega: Label
+var _charge: ProgressBar
+var _charge_box: VBoxContainer
 
 
 func _ready() -> void:
@@ -106,6 +108,31 @@ func _ready() -> void:
 	_hints.offset_bottom = -12
 	_hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(_hints)
+	# Potencia del lanzamiento (Fase 4): barra con la zona excelente marcada.
+	_charge_box = VBoxContainer.new()
+	_charge_box.anchor_left = 0.5
+	_charge_box.anchor_right = 0.5
+	_charge_box.anchor_top = 1.0
+	_charge_box.anchor_bottom = 1.0
+	_charge_box.offset_left = -220
+	_charge_box.offset_right = 220
+	_charge_box.offset_top = -170
+	_charge_box.offset_bottom = -110
+	_charge_box.visible = false
+	_root.add_child(_charge_box)
+	var charge_label := MenuStyle.label("POTENCIA", 18, Color(1.0, 0.95, 0.7))
+	charge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_charge_box.add_child(charge_label)
+	_charge = _bar()
+	_charge.custom_minimum_size = Vector2(440, 20)
+	_charge_box.add_child(_charge)
+	var zone := ColorRect.new()
+	zone.color = Color(1.0, 0.85, 0.3, 0.45)
+	zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zone.anchor_left = ThrowAim.EXCELLENT
+	zone.anchor_right = 1.0
+	zone.anchor_bottom = 1.0
+	_charge.add_child(zone)
 
 
 func _card(border: Color) -> PanelContainer:
@@ -178,6 +205,11 @@ func setup(manager: BattleManager) -> void:
 func refresh() -> void:
 	if battle == null or battle.opponent == null or not is_instance_valid(battle.opponent):
 		return
+	var aim := battle.player().get_node_or_null("ThrowAim") as ThrowAim if battle.player() != null else null
+	_charge_box.visible = aim != null and aim.charging
+	if _charge_box.visible:
+		_charge.value = aim.charge * 100.0
+		(_charge.get_theme_stylebox("fill") as StyleBoxFlat).bg_color = Color(1.0, 0.85, 0.3) if aim.charge >= ThrowAim.EXCELLENT else Color(0.5, 0.75, 1.0)
 	_set_bar(_enemy_bar, battle.opponent.hp / battle.opponent.hp_max)
 	var own := battle.companion()
 	if own != null:
@@ -188,5 +220,9 @@ func refresh() -> void:
 				(move["cooldown"] as Label).text = "%.1f s" % left if left > 0.0 else "Listo"
 	var mega := battle.available_mega()
 	_mega.text = ("✦ Megaevolución lista (%s)" % InputHints.hint("mega_evolve")) if mega != null else ("✦ Megaevolucionado" if battle.mega_used else "")
-	_hints.text = "%s Mover   ·   %s Esquivar   ·   %s Fijar objetivo   ·   %s Apuntar Pokéball   ·   Mantén %s Cambiar   ·   %s Mochila   ·   Sal del círculo para huir" % [
-			InputHints.hint("move_forward"), InputHints.hint("dodge"), InputHints.hint("lock_on"), InputHints.hint("aim"), InputHints.hint("companion"), InputHints.hint("menu")]
+	if aim != null and aim.is_aiming():
+		_hints.text = "Mantén %s y suelta en la zona dorada: lanzamiento excelente   ·   %s Esquivar (Nate)   ·   Suelta %s para volver a tu Pokémon" % [
+				InputHints.hint("throw"), InputHints.hint("dodge"), InputHints.hint("aim")]
+	else:
+		_hints.text = "%s Mover   ·   %s Esquivar   ·   %s Fijar objetivo   ·   %s Apuntar Pokéball   ·   Mantén %s Cambiar   ·   %s Mochila   ·   Sal del círculo para huir" % [
+				InputHints.hint("move_forward"), InputHints.hint("dodge"), InputHints.hint("lock_on"), InputHints.hint("aim"), InputHints.hint("companion"), InputHints.hint("bag")]

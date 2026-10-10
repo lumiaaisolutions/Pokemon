@@ -37,6 +37,11 @@ const LAND_HEIGHT := 3.0
 const SWIM_SURFACE_DEPTH := 1.0
 ## Velocidad al caminar mientras apunta (fracción de la normal).
 const AIM_SPEED_FACTOR := 0.6
+## Esquiva de Nate en combate (Fase 4): mientras apuntas, "dodge" lo lanza de lado o
+## hacia atrás; durante la esquiva no recibe daño.
+const DODGE_SPEED := 12.0
+const DODGE_TIME := 0.3
+const DODGE_COOLDOWN := 0.8
 
 @export var config: PlayerConfig
 
@@ -68,6 +73,9 @@ var _heal_sparkle: float = 0.0
 var _downed_time: float = 0.0
 ## Compañero de tipo Agua sobre el que surfea (lo asigna la escena principal).
 var riding: PokemonActor
+var _dodge_left := 0.0
+var _dodge_cooldown := 0.0
+var _dodge_direction := Vector3.ZERO
 const HURT_COLOR := Color(1.0, 0.3, 0.3)
 var _since_damage: float = 0.0
 var _distance_buffer: float = 0.0
@@ -142,13 +150,15 @@ func _physics_process(delta: float) -> void:
 	horizontal = horizontal.move_toward(target, rate * delta)
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
+	var battle_aim := battle != null and battle.active and aiming
+	_update_dodge(direction, battle_aim, delta)
 
 	if swimming:
 		velocity.y = _swim_vertical(delta)
 		_apply_sea_current(delta)
 	elif is_on_floor():
 		velocity.y = 0.0
-		if Input.is_action_just_pressed("jump"):
+		if Input.is_action_just_pressed("jump") and not battle_aim:
 			if ride == Ride.MOUNT and mount != null and can_carry_flying(mount) and GameState.world_flags.get("fly_license", false):
 				take_off()
 			else:
@@ -238,9 +248,31 @@ func get_ground_speed() -> float:
 	return Vector2(velocity.x, velocity.z).length()
 
 
-## Resta vida (en medios corazones). A 0, queda desmayado.
+func is_dodging() -> bool:
+	return _dodge_left > 0.0
+
+
+func _update_dodge(direction: Vector3, battle_aim: bool, delta: float) -> void:
+	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
+	if battle_aim and is_on_floor() and Input.is_action_just_pressed("dodge") and _dodge_cooldown <= 0.0:
+		dodge(direction)
+	if _dodge_left > 0.0:
+		_dodge_left -= delta
+		velocity.x = _dodge_direction.x * DODGE_SPEED
+		velocity.z = _dodge_direction.z * DODGE_SPEED
+
+
+## Esquiva hacia direction (o hacia atrás de la cámara si no hay dirección).
+func dodge(direction: Vector3 = Vector3.ZERO) -> void:
+	_dodge_direction = direction.normalized() if direction.length() > 0.1 else -_camera_relative(Vector2(0, -1)).normalized()
+	_dodge_left = DODGE_TIME
+	_dodge_cooldown = DODGE_COOLDOWN
+	AudioBus.play_sfx("jump", 1.3)
+
+
+## Resta vida (en medios corazones). A 0, queda desmayado. Esquivando no recibe daño.
 func take_damage(amount: float) -> void:
-	if mode == Mode.DOWNED or amount <= 0.0:
+	if mode == Mode.DOWNED or amount <= 0.0 or is_dodging():
 		return
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health)

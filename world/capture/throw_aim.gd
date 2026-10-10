@@ -34,6 +34,19 @@ func _ready() -> void:
 		_dots.append(dot)
 
 
+## Combate en arena (Fase 4): mantener "throw" carga la potencia, que sube y baja;
+## al soltar se lanza. En la zona alta (EXCELLENT) el lanzamiento es excelente y
+## captura mejor (THROW_EXCELLENT_BONUS).
+const CHARGE_TIME := 0.9
+const EXCELLENT := 0.82
+const THROW_EXCELLENT_BONUS := 1.5
+
+var charging := false
+## Potencia cargada de 0 a 1.
+var charge := 0.0
+var _charge_time := 0.0
+
+
 ## Toque más corto que esto = fijar o soltar la mira.
 const TAP_TIME := 0.25
 
@@ -72,7 +85,17 @@ func throw_origin() -> Vector3:
 func throw_velocity() -> Vector3:
 	var camera := get_viewport().get_camera_3d()
 	var forward := -camera.global_basis.z if camera != null else Vector3.FORWARD
-	return forward * THROW_SPEED + Vector3.UP * THROW_LIFT
+	return forward * THROW_SPEED * power() + Vector3.UP * THROW_LIFT
+
+
+## Multiplicador de la velocidad del lanzamiento (carga en combate; fuera, siempre 1).
+func power() -> float:
+	return 0.55 + 0.6 * charge if charging else 1.0
+
+
+func in_battle() -> bool:
+	var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
+	return battle != null and battle.active
 
 
 ## Lanza una Pokéball si quedan. Devuelve la ball o null.
@@ -104,9 +127,38 @@ func _process(delta: float) -> void:
 	var aiming := is_aiming()
 	if _rig != null:
 		_rig.aiming = aiming
-	if aiming and Input.is_action_just_pressed("throw"):
+	if aiming and in_battle():
+		_update_charge(delta)
+	elif aiming and Input.is_action_just_pressed("throw"):
 		throw_ball()
+	if not aiming:
+		charging = false
+		charge = 0.0
 	_update_arc(aiming)
+
+
+func _update_charge(delta: float) -> void:
+	if Input.is_action_just_pressed("throw"):
+		charging = true
+		_charge_time = 0.0
+		charge = 0.0
+	elif charging and Input.is_action_pressed("throw"):
+		_charge_time += delta
+		charge = pingpong(_charge_time / CHARGE_TIME, 1.0)
+	elif charging:
+		release_charge()
+
+
+## Suelta la carga: lanza con la potencia actual (lo usan también las pruebas).
+func release_charge() -> PokeballProjectile:
+	var excellent := charge >= EXCELLENT
+	var ball := throw_ball()
+	if ball != null and excellent:
+		ball.throw_bonus = THROW_EXCELLENT_BONUS
+		_player.notice.emit("¡Lanzamiento excelente!")
+	charging = false
+	charge = 0.0
+	return ball
 
 
 ## Arco de la trayectoria con la misma gravedad que la física.
