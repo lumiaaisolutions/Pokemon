@@ -379,8 +379,12 @@ func _update_hints() -> void:
 				context = "aim%s" % aim.locked
 				rows = [["throw", "Lanzar Pokéball"], ["aim", "Dejar de apuntar" if aim.locked else "Suelta para dejar de apuntar"], [null, "Mueve la cámara para subir o bajar la mira"]]
 			else:
-				context = "walk"
-				rows = [["aim", "Apuntar (toca para fijar)"], ["jump", "Saltar"], ["run", "Correr"], ["companion", "Guardar o sacar a tu Pokémon"], ["map", "Mapa"], ["help", "Ayuda: todos los controles"]]
+				var has_companion: bool = main != null and main.get("companion") != null
+				context = "walk%s" % has_companion
+				rows = [["aim", "Apuntar (toca para fijar)"], ["jump", "Saltar"], ["run", "Correr"]]
+				if has_companion:
+					rows.append(["companion", "Guardar o sacar a tu Pokémon"])
+				rows += [["map", "Mapa"], ["help", "Ayuda: todos los controles"]]
 		Player.Mode.SWIM:
 			context = "surf" if _player.riding != null else "swim"
 			rows = [[null, "Surfeando sobre tu Pokémon"], ["help", "Ayuda"]] if _player.riding != null \

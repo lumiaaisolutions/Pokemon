@@ -11,24 +11,55 @@ var companion: PokemonActor
 @onready var _navigation: WorldNavigation = $Navigation
 
 
+## Ceremonia del inicial al empezar (las pruebas la apagan y usan un compañero al azar).
+@export var starter_ceremony := true
+
+
 func _ready() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	companion = ACTOR_SCENE.instantiate() as PokemonActor
-	companion.species = STARTER_POOL.pick_distinct(rng, 1)[0]
-	companion.role = PokemonActor.Role.COMPANION
-	companion.player = _player
-	companion.world = $World
-	companion.position = _player.position + Vector3(1.5, 0.3, 1.5)
-	add_child(companion)
 	$Spawner.wild_contact.connect(_on_wild_contact)
 	_player.blacked_out.connect(_on_blacked_out)
-	companion.stunned.connect(_on_companion_stunned)
 	_player.downed.connect(_on_player_downed)
 	_player.revived.connect(_on_player_revived)
 	($Hud as Hud).main = self
 	GameState.respawn_point = _player.global_position
 	_warm_up_shaders()
+	if starter_ceremony and GameState.party.is_empty():
+		_start_ceremony.call_deferred()
+	else:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		_create_companion(STARTER_POOL.pick_distinct(rng, 1)[0], false, _player.position + Vector3(1.5, 0.3, 1.5))
+
+
+func _create_companion(species: SpeciesData, shiny: bool, at: Vector3) -> void:
+	companion = ACTOR_SCENE.instantiate() as PokemonActor
+	companion.species = species
+	companion.shiny = shiny
+	companion.role = PokemonActor.Role.COMPANION
+	companion.player = _player
+	companion.world = $World
+	companion.position = at
+	add_child(companion)
+	companion.stunned.connect(_on_companion_stunned)
+	companion_state = CompanionState.OUT
+
+
+## Los 5 huevos eclosionan; sin salvajes cerca mientras eliges.
+func _start_ceremony() -> void:
+	($Spawner as Node).set_process(false)
+	var ceremony := StarterCeremony.new()
+	ceremony.name = "StarterCeremony"
+	ceremony.player = _player
+	ceremony.world = $World
+	ceremony.hud = $Hud
+	add_child(ceremony)
+	ceremony.chosen.connect(func(species: SpeciesData, shiny: bool, at: Vector3) -> void:
+		_create_companion(species, shiny, at + Vector3.UP * 0.3)
+		PixelBurst.spawn(self, at + Vector3.UP * 0.5, PixelBurst.Kind.HEAL, 1.5)
+		($Hud as Hud).show_toast("¡%s será tu compañero de viaje!" % species.display_name)
+		($Spawner as Node).set_process(true)
+		ceremony.queue_free())
+	await ceremony.start()
 
 
 ## Estado del compañero para el HUD.
@@ -44,6 +75,8 @@ var _recalled_for_water := false
 
 
 func _physics_process(_delta: float) -> void:
+	if companion == null:
+		return
 	var in_water := _player.mode == Player.Mode.SWIM or _player.mode == Player.Mode.DIVE
 	if in_water and companion_state == CompanionState.OUT and not _busy and not companion.controlled:
 		if companion.can_surf():
@@ -65,7 +98,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("companion") and not _busy and _player.mode == Player.Mode.WALK:
+	if event.is_action_pressed("companion") and companion != null and not _busy and _player.mode == Player.Mode.WALK:
 		if companion_state == CompanionState.OUT:
 			_recall_companion()
 		elif companion_state == CompanionState.IN_BALL:
@@ -123,6 +156,8 @@ func _side_offset() -> Vector3:
 ## Nate cayó: su compañero sale (si estaba guardado) y el jugador lo controla
 ## para protegerlo mientras se recupera; la cámara lo sigue.
 func _on_player_downed() -> void:
+	if companion == null:
+		return
 	if companion_state == CompanionState.IN_BALL:
 		await _send_out_companion()
 	if companion_state != CompanionState.OUT or _player.mode != Player.Mode.DOWNED:
@@ -133,6 +168,8 @@ func _on_player_downed() -> void:
 
 ## Nate se levantó: el compañero vuelve a seguirlo solo.
 func _on_player_revived() -> void:
+	if companion == null:
+		return
 	companion.set_controlled(false)
 	($CameraRig as CameraRig).set_target(_player)
 	($Hud as Hud).show_toast("¡%s se recuperó!" % GameState.player_name)
@@ -152,6 +189,8 @@ func _on_companion_stunned(_actor: PokemonActor) -> void:
 
 
 func _return_companion(ratio: float) -> void:
+	if companion == null:
+		return
 	companion.process_mode = Node.PROCESS_MODE_INHERIT
 	companion.visible = true
 	companion.global_position = _player.global_position + _side_offset()
@@ -163,12 +202,13 @@ func _return_companion(ratio: float) -> void:
 ## Pokémon con todo curado.
 func _on_blacked_out() -> void:
 	var lost := GameState.apply_blackout_penalty()
-	var name := companion.species.display_name
+	var name := companion.species.display_name if companion != null else "Tu equipo"
 	var player_name := GameState.player_name
 	var message := ("¡%s se desmayó!" % player_name) if companion_state != CompanionState.FAINTED else "¡%s no puede continuar!" % name
 	($Hud as Hud).show_blackout("%s\nCorriste al Centro Pokémon...\nPerdiste $%d en el camino.\n\n%s y %s están curados." % [message, lost, name, player_name], 2.6)
 	await get_tree().create_timer(0.7).timeout
-	companion.set_controlled(false)
+	if companion != null:
+		companion.set_controlled(false)
 	($CameraRig as CameraRig).set_target(_player)
 	_player.respawn_at(GameState.respawn_point)
 	_return_companion(1.0)

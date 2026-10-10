@@ -11,6 +11,7 @@
 | 2.5 | Hecha (probada por Fernando; sus comentarios dieron la 2.8) | `cadf095` | 3 biomas con agua, aparición por hábitat, shiny, persecución con stamina |
 | 2.8 | Implementada, esperando revisión de Fernando | ver `git log` | Los 7 bloques (ver [historial](historial.md)); 7 pruebas en headless con 0 fallos |
 | 2.8+ | Correcciones tras la prueba de Fernando | ver `git log` | Vista despejada, mira libre, compañero con botón y tarjeta, control del compañero con Nate desmayado, Centro Pokémon al debilitarse, nado y buceo, emboscadas sin parpadeo, barras con ícono |
+| 2.8++ | Correcciones de la segunda prueba | ver `git log` | Nado y surf, mira fija, guía de botones y Ayuda, vista desde arriba, límite del mundo, clima, daño en rojo, descanso, ceremonia del inicial |
 | 2.9 | En curso | — | Personaje (10), nombre y dificultad; menú con pestañas, mochila, Pokédex con investigación, caja, guardado y opciones ([plan](sistemas/menu_y_personaje.md)) |
 | 2.6 | Pendiente | — | Asentamientos y lugares icónicos ([catálogo](catalogo_mundo.md)) |
 | 2.7 | Pendiente | — | NPC con rutinas, día/noche, clima |

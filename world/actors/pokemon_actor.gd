@@ -87,6 +87,9 @@ const REPATH_DISTANCE := 1.5
 var controlled := false
 ## El jugador surfea sobre él (compañero de tipo Agua).
 var ridden_by: Node3D
+## Recién nacido en la ceremonia del inicial: se queda quieto mirando al jugador,
+## sin IA ni barra de vida, hasta que lo eligen o se va.
+var ceremony := false
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
 @export var legendary := false
@@ -215,6 +218,14 @@ func _physics_process(delta: float) -> void:
 	_state_time += delta
 	if ridden_by != null:
 		_process_ridden(delta)
+		return
+	if ceremony:
+		_health_bar.visible = false
+		if player != null:
+			_sprite.look_at_point(player.global_position)
+		_sprite.animate(Vector3.ZERO, delta)
+		velocity = Vector3(0.0, 0.0 if is_on_floor() else velocity.y - GRAVITY * delta, 0.0)
+		move_and_slide()
 		return
 	_update_occlusion()
 	contact_cooldown = maxf(contact_cooldown - delta, 0.0)

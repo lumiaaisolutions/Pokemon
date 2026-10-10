@@ -64,6 +64,9 @@ func _on_body_entered(body: Node) -> void:
 	var actor := body as PokemonActor
 	if actor.role != PokemonActor.Role.WILD or actor.state == PokemonActor.State.DROP:
 		return
+	# El inicial de la ceremonia siempre se captura.
+	if actor.ceremony:
+		forced_result = 1
 	start_capture(actor)
 
 

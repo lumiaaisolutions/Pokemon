@@ -26,6 +26,7 @@
 | `test_player_movement` | Caminar, correr, frenar, mando analógico, direcciones del sprite, colisiones con terreno, árboles y muros, que nada flote, stamina, salto, caída, nadar, bucear y ahogarse, desmayo y reaparición |
 | `test_creatures` | Navegación, compañero, aparición por hábitat, tamaños y shiny, los 5 temperamentos, área de persecución, territorio, cupo por zona, manadas, esconderse, legendarios (santuarios, "?", escape corriendo y volando, sin combate) |
 | `test_fights` | Tabla de tipos, enemigos clásicos hasta el aturdido y el humo, agresivo contra débil, tímido pacífico, daño al jugador, defensa y guardia del compañero (máx. 2), control del compañero con el jugador desmayado (cámara, ataque especial, esquivar), desmayo definitivo, emboscadas (Bicho que cae y ave tímida que se va) |
+| `test_starter` | Ceremonia del inicial: 5 básicos distintos, quietos, sin salvajes; la Pokéball siempre captura, el elegido es el compañero y entra al equipo, los demás se van |
 | `test_capture` | Fórmula, apuntar (cámara y arco), lanzar con física, captura exitosa y fallida, legendario marcado, mapa (exploración y pausa) |
 
 ## Medición de rendimiento

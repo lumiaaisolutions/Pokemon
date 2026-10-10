@@ -13,6 +13,8 @@ var _rig: CameraRig
 
 func _ready() -> void:
 	_main = MAIN_SCENE.instantiate() as Node3D
+	# Sin ceremonia del inicial: compañero al azar (la ceremonia se prueba en test_starter).
+	_main.set("starter_ceremony", false)
 	add_child(_main)
 	_player = _main.get_node("Player") as Player
 	_world = _main.get_node("World") as WorldBuilder
