@@ -121,10 +121,12 @@ func _setup_input_map() -> void:
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])
 	_action("lock_on", [_key(KEY_TAB), _button(JOY_BUTTON_RIGHT_STICK)])
-	_action("attack_1", [_key(KEY_1), _mouse(MOUSE_BUTTON_LEFT), _button(JOY_BUTTON_X)])
-	_action("attack_2", [_key(KEY_2), _mouse(MOUSE_BUTTON_RIGHT), _button(JOY_BUTTON_Y)])
-	_action("attack_3", [_key(KEY_3), _button(JOY_BUTTON_LEFT_SHOULDER)])
-	_action("attack_4", [_key(KEY_4), _button(JOY_BUTTON_RIGHT_SHOULDER)])
+	# Movimientos del compañero: teclas 1-4; en el mando R1 (move_modifier) + □ △ ○ ✕.
+	_action("attack_1", [_key(KEY_1), _button(JOY_BUTTON_X)])
+	_action("attack_2", [_key(KEY_2), _button(JOY_BUTTON_Y)])
+	_action("attack_3", [_key(KEY_3), _button(JOY_BUTTON_B)])
+	_action("attack_4", [_key(KEY_4), _button(JOY_BUTTON_A)])
+	_action("move_modifier", [_key(KEY_ALT), _button(JOY_BUTTON_RIGHT_SHOULDER)])
 	_action("mega_evolve", [_key(KEY_G), _button(JOY_BUTTON_DPAD_UP)])
 	_action("capture", [_key(KEY_C), _button(JOY_BUTTON_DPAD_DOWN)])
 

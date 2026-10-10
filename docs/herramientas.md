@@ -15,6 +15,7 @@
 | `protagonist_sheets.py` | Las 10 hojas de personajes jugables al formato de Nate (`--debug` guarda hojas numeradas) |
 | `build_dex_info.py` | Datos de la Pokédex (categoría, descripción, altura, peso, sexo), sprites de frente Gen 5 y gritos de PokeAPI |
 | `copy_item_icons.py` | Íconos de los objetos del catálogo (`creatures/data/items.json`) |
+| `build_moves.py` | Movimientos (nombre en español, tipo, potencia, clase, efecto) y la lista oficial de cada especie |
 | `build_megas.py` | Catálogo de las 97 megas (`creatures/data/megas/`, `all_megas.tres`) y sus sprites de combate Gen 5 |
 | `snapshot.tscn` | Captura de pantalla de una escena con el render real (selección, mundo o desmayo) |
 
@@ -29,7 +30,7 @@
 | `test_creatures` | Navegación, compañero, aparición por hábitat, tamaños y shiny, los 5 temperamentos, área de persecución, territorio, cupo por zona, manadas, esconderse, legendarios (santuarios, "?", escape corriendo y volando, sin combate) |
 | `test_fights` | Tabla de tipos, enemigos clásicos hasta el aturdido y el humo, agresivo contra débil, tímido pacífico, daño al jugador, defensa y guardia del compañero (máx. 2), control del compañero con el jugador desmayado (cámara, ataque especial, esquivar), desmayo definitivo, emboscadas (Bicho que cae y ave tímida que se va) |
 | `test_starter` | Ceremonia del inicial: 5 básicos distintos, quietos, sin salvajes; la Pokéball siempre captura, el elegido es el compañero y entra al equipo, los demás se van |
-| `test_menu` | Mochila y balls (cambio, multiplicadores, aviso sin balls), objetos, fabricación, Pokédex e investigación, premios, áreas propias, guardar y cargar, pestañas del menú y cambio de acompañante |
+| `test_menu` | Movimientos (inicio, dominio, desbloqueo, estilos, curación al entrenador), Rotom Móvil (actividades, premios, plazos vencidos), recolección, día y noche, mochila y balls (cambio, multiplicadores, aviso sin balls), objetos, fabricación, Pokédex e investigación, premios, áreas propias, guardar y cargar, pestañas del menú y cambio de acompañante |
 | `test_capture` | Fórmula, apuntar (cámara y arco), lanzar con física, captura exitosa y fallida, legendario marcado, mapa (exploración y pausa) |
 
 ## Medición de rendimiento

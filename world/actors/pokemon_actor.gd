@@ -100,6 +100,17 @@ var size_factor: float = 1.0
 ## Distancia a la que el jugador "lo ve" (cuenta para la Pokédex).
 const SEEN_RADIUS := 22.0
 var _seen_marked := false
+## Sus 4 movimientos (ver Moves). Del compañero salen de su ficha del equipo.
+var moves: Array[String] = []
+## Ficha del equipo (solo el compañero): dominio, desbloqueos, entrenamiento y vínculo.
+var party_entry: Dictionary = {}
+var _move_cooldowns := {}
+var _pending_move := ""
+var _pending_style: int = Moves.Style.NORMAL
+var _buff_until: float = 0.0
+var _dazed: float = 0.0
+var _survived_hit := false
+const GLOBAL_MOVE_COOLDOWN := 0.6
 var _last_attacker: Node3D
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
@@ -205,6 +216,12 @@ func _ready() -> void:
 	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.3, species.display_name + (" ♂" if gender == 0 else (" ♀" if gender == 1 else "")) + (" ✦" if shiny else ""))
 	add_child(_health_bar)
 	_rival_scan = _rng.randf() * RIVAL_SCAN_INTERVAL
+	if moves.is_empty():
+		if not party_entry.is_empty():
+			Moves.ensure_entry(party_entry)
+			moves.assign(party_entry["moves"])
+		else:
+			moves = _wild_moves()
 	_enter(State.FOLLOW if role == Role.COMPANION else State.IDLE)
 
 
@@ -236,6 +253,18 @@ func _physics_process(delta: float) -> void:
 	_state_time += delta
 	if ridden_by != null:
 		_process_ridden(delta)
+		return
+	for id: String in _move_cooldowns.keys():
+		_move_cooldowns[id] = maxf(float(_move_cooldowns[id]) - delta, 0.0)
+	if _dazed > 0.0:
+		# Aturdido por un movimiento (parálisis, sueño, confusión…): no actúa un momento.
+		_dazed -= delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if not swimming:
+			velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
+			move_and_slide()
+		_sprite.animate(Vector3.ZERO, delta)
 		return
 	if ceremony:
 		_health_bar.visible = false
@@ -677,43 +706,22 @@ func _process_controlled(delta: float) -> void:
 		_sprite.modulate.a = 0.55
 	else:
 		_sprite.modulate.a = 1.0
-	# Golpe físico: embestida hacia el más cercano.
-	if Input.is_action_just_pressed("attack_1") and _attack_cooldown <= 0.0 and _dash_time <= 0.0:
-		_attack_cooldown = PHYSICAL_COOLDOWN
-		var target := _nearest_wild(CONTROL_TARGET_RADIUS * 0.5)
-		var lunge_dir := _sprite.facing_world
-		if target != null:
-			lunge_dir = target.global_position - global_position
-			lunge_dir.y = 0.0
-			lunge_dir = lunge_dir.normalized()
-			_sprite.look_at_point(target.global_position)
-		_lunge_time = LUNGE_TIME
-		_lunge_dir = lunge_dir
-		_lunge_target = target
-		_flash(Color(1.6, 1.6, 1.6))
+	# Sus 4 movimientos: teclas 1-4 (en el mando, R1 + □ △ ○ ✕). Mantener correr =
+	# estilo Fuerte; mantener bucear = estilo Ágil.
+	for slot in mini(moves.size(), 4):
+		if MoveInput.just_pressed(slot):
+			var id := moves[slot]
+			if move_ready(id) and _attack_cooldown <= 0.0:
+				var target := _nearest_wild(CONTROL_TARGET_RADIUS)
+				if Moves.get_move(id)["class"] == "physical" and target != null:
+					_lunge_time = LUNGE_TIME
+					var to_target := target.global_position - global_position
+					to_target.y = 0.0
+					_lunge_dir = to_target.normalized()
+				use_move(id, target, MoveInput.style())
 	if _lunge_time > 0.0:
 		_lunge_time -= delta
 		horizontal = _lunge_dir * DASH_SPEED * 0.9
-		if _lunge_target != null and is_instance_valid(_lunge_target) \
-				and global_position.distance_to(_lunge_target.global_position) <= MELEE_RANGE + 0.4 * _lunge_target.species.size_scale:
-			_apply_hit(_lunge_target, true)
-			PixelBurst.spawn(get_parent(), _lunge_target.global_position + Vector3.UP * 0.5, PixelBurst.Kind.DUST, 0.7)
-			_lunge_target = null
-			_lunge_time = 0.0
-	# Ataque especial: proyectil de su tipo.
-	if Input.is_action_just_pressed("attack_2") and _special_cooldown <= 0.0:
-		_special_cooldown = SPECIAL_COOLDOWN
-		var target := _nearest_wild(CONTROL_TARGET_RADIUS)
-		var origin := global_position + Vector3.UP * 0.6 * species.size_scale
-		var to := origin + _sprite.facing_world * RANGED_MAX
-		var targets: Array[Node3D] = []
-		if target != null:
-			_sprite.look_at_point(target.global_position)
-			to = target.global_position + Vector3.UP * 0.6
-			targets.append(target)
-		var hit := func(node: Node3D) -> bool: return _apply_hit(node, false)
-		AttackProjectile.launch(get_parent(), origin, to, species.types[0], self, targets, hit)
-		_flash(Color(1.4, 1.4, 1.8))
 	# Correa: no se aleja de Nate.
 	if player != null:
 		var next := global_position + horizontal * delta
@@ -911,7 +919,9 @@ func _make_exclamation() -> Sprite3D:
 
 ## Pelea a distancia si su ataque especial supera al físico; si no, cuerpo a cuerpo.
 func is_ranged() -> bool:
-	return species.sp_attack > species.attack
+	var special := moves.any(func(id: String) -> bool: return Moves.get_move(id)["class"] == "special")
+	var physical := moves.any(func(id: String) -> bool: return Moves.get_move(id)["class"] == "physical")
+	return special and (not physical or species.sp_attack > species.attack)
 
 
 func attack_range() -> float:
@@ -922,6 +932,8 @@ func attack_range() -> float:
 func start_fight(target: Node3D) -> void:
 	if target == null or target == self or state == State.STUNNED or legendary:
 		return
+	if fight_target == null:
+		_survived_hit = false
 	# Pokédex: el jugador vio a este salvaje pelear con otro salvaje.
 	if role == Role.WILD and target is PokemonActor and (target as PokemonActor).role == Role.WILD \
 			and player != null and global_position.distance_to(player.global_position) <= SEEN_RADIUS:
@@ -943,6 +955,11 @@ func receive_hit(damage: float, from: Node3D) -> void:
 		_drop_target = Vector3(from.global_position.x, world.surface_height_at(from.global_position.x, from.global_position.z) if world != null else from.global_position.y, from.global_position.z) \
 				+ (global_position - from.global_position).normalized() * 1.5 * Vector3(1, 0, 1)
 		_land()
+	# Vínculo 5 o más: el compañero aguanta con 1 de vida una vez por pelea.
+	if role == Role.COMPANION and hp - damage <= 0.0 and int(party_entry.get("bond", 1)) >= 5 and not _survived_hit:
+		_survived_hit = true
+		damage = hp - 1.0
+		GameState.notice.emit("¡%s resistió el golpe por su vínculo contigo!" % species.display_name)
 	hp = maxf(hp - damage, 0.0)
 	_health_bar.set_ratio(hp / hp_max)
 	_last_attacker = from
@@ -1009,8 +1026,12 @@ func _think_fight() -> Array:
 	elif distance > MELEE_RANGE:
 		return [target_pos, run_speed()]
 	if _attack_cooldown <= 0.0:
-		_windup = ATTACK_WINDUP
-		_flash(Color(1.6, 1.6, 1.6))
+		_pending_move = _forced_move if _forced_move != "" else _choose_move(distance)
+		_forced_move = ""
+		_pending_style = Moves.Style.NORMAL
+		if _pending_move != "":
+			_windup = ATTACK_WINDUP
+			_flash(Color(1.6, 1.6, 1.6))
 	return [global_position, 0.0]
 
 
@@ -1026,19 +1047,212 @@ func _fight_target_valid() -> bool:
 
 
 func _deliver_attack() -> void:
-	_attack_cooldown = _rng.randf_range(ATTACK_COOLDOWN_MIN, ATTACK_COOLDOWN_MAX)
+	_attack_cooldown = _rng.randf_range(ATTACK_COOLDOWN_MIN, ATTACK_COOLDOWN_MAX) * (0.6 if role == Role.COMPANION else 1.0)
 	if not _fight_target_valid():
 		return
-	var origin := global_position + Vector3.UP * 0.6 * species.size_scale
-	if is_ranged():
-		var hit := func(node: Node3D) -> bool: return _apply_hit(node, false)
-		AttackProjectile.launch(get_parent(), origin, fight_target.global_position + Vector3.UP * 0.6, species.types[0], self, [fight_target] as Array[Node3D], hit)
-	elif global_position.distance_to(fight_target.global_position) <= MELEE_RANGE + 0.6:
-		# Embestida: un pequeño impulso hacia el objetivo y el golpe.
-		var lunge := fight_target.global_position - global_position
-		lunge.y = 0.0
-		velocity += lunge.normalized() * 6.0
-		_apply_hit(fight_target, true)
+	var id := _pending_move if _pending_move != "" else _choose_move(global_position.distance_to(fight_target.global_position))
+	if id == "":
+		return
+	use_move(id, fight_target, _pending_style)
+	_pending_move = ""
+
+
+# --- Movimientos ---------------------------------------------------------------------
+
+## Movimiento que la IA ordenó por adelantado (orden del jugador al compañero).
+var _forced_move := ""
+
+
+## 4 movimientos de un salvaje: de su lista por nivel según su etapa evolutiva.
+func _wild_moves() -> Array[String]:
+	var level: Array[String] = []
+	for pair: Array in Moves.learnset(species.identifier)["level"]:
+		level.append(pair[1])
+	if level.is_empty():
+		return Moves.starting_moves(species.identifier)
+	var pool := level.slice(0, mini(level.size(), 3 + species.evolution_stage * 4))
+	pool.shuffle()
+	var result: Array[String] = []
+	for id in pool:
+		if result.size() < 4 and (Moves.is_damaging(id) or result.size() >= 2):
+			result.append(id)
+	if not result.any(func(id: String) -> bool: return Moves.is_damaging(id)):
+		result = Moves.starting_moves(species.identifier)
+	return result
+
+
+func move_ready(id: String) -> bool:
+	return float(_move_cooldowns.get(id, 0.0)) <= 0.0
+
+
+func move_cooldown_left(id: String) -> float:
+	return float(_move_cooldowns.get(id, 0.0))
+
+
+## Elige movimiento según la distancia, la vida y la ventaja de tipo.
+func _choose_move(distance: float) -> String:
+	var best := ""
+	var best_score := 0.0
+	for id in moves:
+		if not move_ready(id):
+			continue
+		var move := Moves.get_move(id)
+		var effect := Moves.effect(id)
+		var score := 0.0
+		match effect:
+			"damage":
+				if move["class"] == "physical" and distance > MELEE_RANGE + 0.8:
+					continue
+				if distance > RANGED_MAX + 2.0:
+					continue
+				var effectiveness := 1.0
+				if fight_target is PokemonActor:
+					effectiveness = TypeChart.effectiveness(int(move["type"]), (fight_target as PokemonActor).species.types)
+				score = maxf(float(move["power"]), 40.0) * effectiveness * (1.5 if species.types.has(int(move["type"])) else 1.0)
+			"heal_self", "heal_trainer":
+				score = 200.0 if hp < hp_max * 0.35 else 0.0
+			"buff":
+				score = 45.0 if GameState.play_time > _buff_until else 0.0
+			"stun":
+				score = 55.0 if fight_target is PokemonActor and (fight_target as PokemonActor)._dazed <= 0.0 else 0.0
+		score *= _rng.randf_range(0.8, 1.2)
+		if score > best_score:
+			best_score = score
+			best = id
+	return best
+
+
+## Usa un movimiento contra target (o al frente si es null) con un estilo.
+func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> void:
+	var move := Moves.get_move(id)
+	var move_rank := Moves.rank(party_entry, id) if not party_entry.is_empty() else 1
+	_move_cooldowns[id] = Moves.cooldown(id, move_rank, style)
+	_attack_cooldown = maxf(_attack_cooldown, GLOBAL_MOVE_COOLDOWN)
+	_show_move_name(move["name"] + ("" if style == Moves.Style.NORMAL else " (%s)" % Moves.STYLE_NAMES[style]))
+	if not party_entry.is_empty():
+		Moves.register_use(party_entry, id)
+	var hit := func(node: Node3D) -> bool: return _apply_move_hit(node, id, style)
+	match Moves.effect(id):
+		"damage":
+			if target != null:
+				_sprite.look_at_point(target.global_position)
+			if move["class"] == "physical":
+				var direction := (target.global_position - global_position) if target != null else _sprite.facing_world
+				direction.y = 0.0
+				velocity += direction.normalized() * 6.0
+				if target != null and global_position.distance_to(target.global_position) <= MELEE_RANGE + 0.4 * _size_of(target):
+					hit.call(target)
+					PixelBurst.spawn(get_parent(), target.global_position + Vector3.UP * 0.5, PixelBurst.Kind.DUST, 0.7)
+			else:
+				var origin := global_position + Vector3.UP * 0.6 * species.size_scale
+				var to := target.global_position + Vector3.UP * 0.6 if target != null else origin + _sprite.facing_world * RANGED_MAX
+				var targets: Array[Node3D] = []
+				if target != null:
+					targets.append(target)
+				AttackProjectile.launch(get_parent(), origin, to, int(move["type"]), self, targets, hit)
+		"heal_self":
+			_heal_to(minf(hp / hp_max + 0.35, 1.0))
+			PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.6, PixelBurst.Kind.HEAL, 1.0)
+		"heal_trainer":
+			_heal_to(minf(hp / hp_max + 0.2, 1.0))
+			if role == Role.COMPANION and player is Player:
+				(player as Player).heal(6.0)
+				PixelBurst.spawn(get_parent(), player.global_position + Vector3.UP * 0.8, PixelBurst.Kind.HEAL, 1.2)
+				GameState.notice.emit("¡%s te curó con %s!" % [species.display_name, move["name"]])
+		"buff":
+			_buff_until = GameState.play_time + 12.0
+			_flash(Color(1.8, 1.3, 0.6))
+		"stun":
+			if target is PokemonActor and global_position.distance_to(target.global_position) <= RANGED_MAX:
+				(target as PokemonActor).daze(2.5)
+				PixelBurst.spawn(get_parent(), target.global_position + Vector3.UP * 0.6, PixelBurst.Kind.SAND, 0.6)
+		_:
+			_flash(Color(1.4, 1.4, 1.8))
+
+
+func _size_of(node: Node3D) -> float:
+	return (node as PokemonActor).species.size_scale if node is PokemonActor else 1.0
+
+
+## Golpe de un movimiento: daño con estadísticas equilibradas, dominio, estilo,
+## potenciador y vínculo (críticos con vínculo 8 o más).
+func _apply_move_hit(node: Node3D, id: String, style: int) -> bool:
+	if node is PokemonActor:
+		var target := node as PokemonActor
+		var move_rank := Moves.rank(party_entry, id) if not party_entry.is_empty() else 1
+		var amount := Moves.damage(species, target.species, id, move_rank, style, _rng, party_entry.get("training", {}))
+		if GameState.play_time < _buff_until:
+			amount *= 1.3
+		if int(party_entry.get("bond", 1)) >= 8 and _rng.randf() < 0.1:
+			amount *= 1.5
+		target.receive_hit(amount, self)
+		var drain := int(Moves.get_move(id).get("drain", 0))
+		if drain > 0:
+			_heal_to(minf((hp + amount * drain / 100.0) / hp_max, 1.0))
+		return true
+	if node is Player:
+		var target_player := node as Player
+		if target_player.mode == Player.Mode.DOWNED:
+			return false
+		var power := maxf(float(Moves.get_move(id)["power"]), 40.0)
+		target_player.take_damage(clampf(damage_to_player() * power / 70.0, 1.0, 7.0) * GameState.difficulty_value("damage"))
+		contact_with_player.emit(self)
+		return true
+	return false
+
+
+## Cura sin cambiar de estado (movimientos durante la pelea).
+func _heal_to(ratio: float) -> void:
+	hp = hp_max * clampf(ratio, 0.0, 1.0)
+	_health_bar.set_ratio(hp / hp_max)
+
+
+## Aturdido un momento por un movimiento de estado.
+func daze(seconds: float) -> void:
+	if state == State.STUNNED or legendary:
+		return
+	_dazed = maxf(_dazed, seconds)
+	_windup = 0.0
+	_flash(Color(1.6, 1.6, 0.6))
+
+
+## Orden del jugador: usar el movimiento del espacio slot contra el salvaje más
+## cercano (o curarlo si es de curación). Devuelve el texto para el HUD.
+func command_move(slot: int, style: int) -> String:
+	if slot >= moves.size():
+		return ""
+	var id := moves[slot]
+	if not move_ready(id):
+		return "%s se está recuperando (%.1f s)." % [Moves.get_move(id)["name"], move_cooldown_left(id)]
+	var effect := Moves.effect(id)
+	if effect in ["heal_self", "heal_trainer", "buff"]:
+		use_move(id, null, style)
+		return ""
+	var target := _nearest_wild(14.0)
+	if target == null:
+		return "No hay ningún Pokémon salvaje cerca."
+	_forced_move = id
+	start_fight(target)
+	_attack_cooldown = 0.0
+	return ""
+
+
+## Nombre del movimiento flotando sobre él un momento.
+func _show_move_name(text: String) -> void:
+	var label := Label3D.new()
+	label.text = text
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 44
+	label.outline_size = 12
+	label.pixel_size = 0.005
+	label.no_depth_test = true
+	label.modulate = Color(1.0, 0.95, 0.6)
+	label.position.y = species.overworld_cell * world_pixel_size() + 0.9
+	add_child(label)
+	var tween := create_tween()
+	tween.tween_property(label, "position:y", label.position.y + 0.5, 1.0)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(label.queue_free)
 
 
 func _apply_hit(node: Node3D, physical: bool) -> bool:

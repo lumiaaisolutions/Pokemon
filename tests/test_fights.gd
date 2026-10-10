@@ -145,9 +145,16 @@ func _run() -> void:
 		var hp_before := nearest.hp
 		# Quieto mientras vuela el proyectil (se prueba el ataque, no la puntería).
 		nearest.set_physics_process(false)
-		Input.action_press("attack_2")
+		# El primer movimiento de daño de sus 4 (teclas 1-4).
+		var slot := 0
+		for i in companion.moves.size():
+			if Moves.is_damaging(companion.moves[i]):
+				slot = i
+				break
+		var action: String = MoveInput.ACTIONS[slot]
+		Input.action_press(action)
 		await _frames(2)
-		Input.action_release("attack_2")
+		Input.action_release(action)
 		await _frames(90)
 		_check(not is_instance_valid(nearest) or nearest.hp < hp_before, "el ataque especial controlado debe dañar al salvaje")
 		if is_instance_valid(nearest):

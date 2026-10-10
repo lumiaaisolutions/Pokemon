@@ -144,6 +144,30 @@ func _run() -> void:
 	GameState.play_time = 0.0
 	await _frames(3)
 
+	# Movimientos sin niveles.
+	var greninja := {"species": "greninja"}
+	Moves.ensure_entry(greninja)
+	_check((greninja["moves"] as Array).size() == 4 and (greninja["moves"] as Array).any(func(id: String) -> bool: return Moves.is_damaging(id)), "empieza con 4 movimientos de su lista y al menos uno de daño")
+	var first_move: String = greninja["moves"][0]
+	for i in Moves.RANK_USES[1]:
+		Moves.register_use(greninja, first_move)
+	_check(Moves.rank(greninja, first_move) == 2, "con %d usos el movimiento sube a rango 2" % Moves.RANK_USES[1])
+	_check((greninja["unlocked"] as Array).size() > 4, "usar movimientos desbloquea nuevos de su lista")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var strong := Moves.damage(_species("greninja"), _species("bulbasaur"), "water-gun", 1, Moves.Style.STRONG, rng)
+	rng.seed = 1
+	var agile := Moves.damage(_species("greninja"), _species("bulbasaur"), "water-gun", 1, Moves.Style.AGILE, rng)
+	_check(strong > agile, "el estilo Fuerte pega más que el Ágil")
+	_check(Moves.cooldown("water-gun", 1, Moves.Style.STRONG) > Moves.cooldown("water-gun", 1, Moves.Style.AGILE), "el estilo Fuerte espera más que el Ágil")
+	_check(Moves.effect("wish") == "heal_trainer" and Moves.effect("recover") == "heal_self", "Deseo cura al entrenador; Recuperación al Pokémon")
+	# Tu Pokémon te cura con un movimiento de curación.
+	var healer := _main.get("companion") as PokemonActor
+	_player.take_damage(6.0)
+	var hurt := _player.health
+	healer.use_move("wish", null)
+	_check(_player.health > hurt, "con Deseo tu compañero te cura")
+
 	# Cambiar de acompañante.
 	var first := (_main.get("companion") as PokemonActor).species
 	(_main as Node).call("swap_companion", GameState.party.size() - 1)

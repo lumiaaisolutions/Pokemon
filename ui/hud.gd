@@ -362,7 +362,14 @@ func _update_downed_panel() -> void:
 	_downed_title.text = "¡%s está desmayad%s!" % [GameState.player_name, "a" if GameState.gender == "female" else "o"]
 	_downed_bar.value = ratio * 100.0
 	_downed_info.text = "Recuperándose... %d%%  ·  %d s  ·  ¡Protege a %s con %s!" % [int(ratio * 100.0), int(ceil(seconds)), GameState.player_name, name]
-	_downed_controls.text = "%s   %s   %s" % [InputHints.label("attack_1", "Golpe"), InputHints.label("attack_2", "Ataque especial"), InputHints.label("dodge", "Esquivar")]
+	var parts := PackedStringArray()
+	if companion != null:
+		for slot in mini(companion.moves.size(), 4):
+			var id: String = companion.moves[slot]
+			var wait := companion.move_cooldown_left(id)
+			parts.append("[%s] %s%s" % [MoveInput.hint(slot), Moves.get_move(id)["name"], (" %.0fs" % ceil(wait)) if wait > 0.0 else ""])
+	parts.append(InputHints.label("dodge", "Esquivar"))
+	_downed_controls.text = "   ".join(parts) + "\nMantén %s: Fuerte · %s: Ágil" % [InputHints.hint("run"), InputHints.hint("dive")]
 
 
 # --- Ayudas de botones -------------------------------------------------------------
@@ -407,7 +414,8 @@ func _update_hints() -> void:
 				context = "walk%s" % has_companion
 				rows = [["aim", "Apuntar (toca para fijar)"], ["jump", "Saltar"], ["run", "Correr"]]
 				if has_companion:
-					rows.append(["companion", "Guardar o sacar a tu Pokémon"])
+					rows.append(["companion", "Toca: guardar o sacar · Mantén: cambiar"])
+					rows.append([null, "%s-%s: ordenar sus movimientos" % [MoveInput.hint(0), MoveInput.hint(3)]])
 				rows += [["map", "Mapa"], ["help", "Ayuda: todos los controles"]]
 		Player.Mode.SWIM:
 			context = "surf" if _player.riding != null else "swim"

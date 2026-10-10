@@ -127,6 +127,7 @@ func is_legendary_available(identifier: String) -> bool:
 ## Devuelve "equipo" o "caja".
 func add_caught(species: SpeciesData, shiny: bool, hp_ratio: float, gender: int = -1, size: float = 1.0) -> String:
 	var entry := {"species": species.identifier, "shiny": shiny, "hp_ratio": hp_ratio, "gender": gender, "size": size}
+	Moves.ensure_entry(entry)
 	# Récords de tamaño y sexos registrados.
 	var record := dex_entry(species.identifier)
 	var height := DexData.height(species.identifier) * size

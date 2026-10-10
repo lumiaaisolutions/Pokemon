@@ -101,6 +101,9 @@ func start_capture(actor: PokemonActor) -> void:
 	if held == CaptureRules.SHAKES:
 		var heals: bool = Items.get_item(ball_id).get("ball", {}).get("heals", false)
 		var location := GameState.add_caught(actor.species, actor.shiny, 1.0 if heals else actor.hp / actor.hp_max, actor.gender, actor.size_factor)
+		var caught_entry: Array = GameState.party if location == "equipo" else GameState.box
+		if not caught_entry.is_empty():
+			(caught_entry[-1] as Dictionary)["ball"] = ball_id
 		if stealth:
 			GameState.dex_count(actor.species.identifier, "behind")
 		GameState.species_caught.emit(actor.species.identifier, stealth)

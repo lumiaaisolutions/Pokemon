@@ -19,9 +19,10 @@ const SECTIONS := [
 		["throw", "", "Lanzar Pokéball"],
 	]],
 	["Tu Pokémon", [
-		["companion", "", "Guardarlo o sacarlo de su Pokéball"],
-		["attack_1", "", "Desmayado: golpe físico"],
-		["attack_2", "", "Desmayado: ataque especial"],
+		["companion", "", "Tocar: guardarlo o sacarlo · Mantener: rueda para cambiar"],
+		["@1 2 3 4", "@R1 + □ △ ○ ✕", "Usar sus 4 movimientos (ordenar o, desmayado, controlarlo)"],
+		["run", "", "Mantener al usar un movimiento: estilo Fuerte"],
+		["dive", "", "Mantener al usar un movimiento: estilo Ágil"],
 		["dodge", "", "Desmayado: esquivar"],
 	]],
 	["Agua", [

@@ -17,6 +17,8 @@ var companion: PokemonActor
 
 func _ready() -> void:
 	$Spawner.wild_contact.connect(_on_wild_contact)
+	GameState.wild_defeated.connect(_on_wild_defeated)
+	GameState.dex_changed.connect(_on_dex_changed)
 	_player.blacked_out.connect(_on_blacked_out)
 	_player.downed.connect(_on_player_downed)
 	_player.revived.connect(_on_player_revived)
@@ -57,6 +59,8 @@ var _autosave_timer := SaveSystem.AUTOSAVE_SECONDS
 func _process(delta: float) -> void:
 	GameState.play_time += delta
 	_update_wheel()
+	_update_bond(delta)
+	_command_moves()
 	_autosave_timer -= delta
 	if _autosave_timer <= 0.0 and not GameState.party.is_empty() and _player.mode == Player.Mode.WALK:
 		_autosave_timer = SaveSystem.AUTOSAVE_SECONDS
@@ -103,6 +107,8 @@ func _create_companion(species: SpeciesData, shiny: bool, at: Vector3) -> void:
 		var member: Dictionary = GameState.party[clampi(GameState.companion_index, 0, GameState.party.size() - 1)]
 		companion.gender = int(member.get("gender", -1))
 		companion.size_factor = float(member.get("size", 1.0))
+		Moves.ensure_entry(member)
+		companion.party_entry = member
 	companion.player = _player
 	companion.world = $World
 	companion.position = at
@@ -167,6 +173,59 @@ func _physics_process(_delta: float) -> void:
 		if _recalled_for_water and companion_state == CompanionState.IN_BALL and not _busy and _player.mode == Player.Mode.WALK:
 			_recalled_for_water = false
 			_send_out_companion()
+
+
+## Órdenes al compañero mientras exploras: 1-4 (R1 + □ △ ○ ✕) usan sus movimientos.
+func _command_moves() -> void:
+	if companion == null or companion_state != CompanionState.OUT or companion.controlled or _player.mode == Player.Mode.DOWNED:
+		return
+	for slot in 4:
+		if MoveInput.just_pressed(slot):
+			var message := companion.command_move(slot, MoveInput.style())
+			if message != "":
+				($Hud as Hud).show_toast(message)
+
+
+## Vínculo: sube con el tiempo que el compañero pasa fuera contigo (Lujo Ball ×2).
+const BOND_MINUTES_PER_LEVEL := 20.0
+
+
+func _update_bond(delta: float) -> void:
+	if companion == null or companion_state != CompanionState.OUT or GameState.party.is_empty():
+		return
+	var entry: Dictionary = GameState.party[GameState.companion_index]
+	var factor := 2.0 if entry.get("ball", "") == "luxury-ball" else 1.0
+	entry["bond_xp"] = float(entry.get("bond_xp", 0.0)) + delta / 60.0 * factor
+	var bond := clampi(1 + int(float(entry["bond_xp"]) / BOND_MINUTES_PER_LEVEL), 1, 10)
+	if bond > int(entry.get("bond", 1)):
+		entry["bond"] = bond
+		($Hud as Hud).show_toast("¡Tu vínculo con %s subió a %d!%s" % [companion.species.display_name, bond,
+				" Ahora aguanta un golpe fatal por pelea." if bond == 5 else (" Ahora da golpes críticos." if bond == 8 else "")])
+
+
+## Cada salvaje que debilita tu compañero le da 1 Punto de Entrenamiento por repartir.
+func _on_wild_defeated(_identifier: String) -> void:
+	if GameState.party.is_empty():
+		return
+	var entry: Dictionary = GameState.party[GameState.companion_index]
+	var used := TeamTab._total(entry.get("training", {})) + int(entry.get("training_free", 0))
+	if used < TeamTab.MAX_TOTAL:
+		entry["training_free"] = int(entry.get("training_free", 0)) + 1
+
+
+## Investigación de la especie en niveles 3, 6 y 9: desbloquea su siguiente movimiento.
+func _on_dex_changed(identifier: String) -> void:
+	for entry: Dictionary in GameState.party:
+		if entry["species"] != identifier:
+			continue
+		var level := Research.level(identifier)
+		var done := int(entry.get("research_unlocks", 0))
+		while done < 3 and level >= (done + 1) * 3:
+			done += 1
+			var learned := Moves.unlock_next(entry)
+			if learned != "":
+				($Hud as Hud).show_toast("¡La investigación desbloqueó %s para %s!" % [Moves.get_move(learned)["name"], MenuStyle.species(identifier).display_name])
+		entry["research_unlocks"] = done
 
 
 ## Botón del compañero: tocar lo guarda o lo saca; mantener (más de WHEEL_HOLD s) abre
