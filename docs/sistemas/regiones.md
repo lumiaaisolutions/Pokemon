@@ -12,13 +12,16 @@
 - Al completarla, el **profesor te da el Boleto** (barco o avión) a la siguiente.
 
 ## Viaje
-- **Puerto o aeropuerto** en cada región. Subes, hay una **animación corta** del viaje y llegas al pueblo inicial de la otra. En el puerto eliges a cuál ir entre las abiertas.
+- **Barco o avión al azar por región** (decisión 2026-10-10): al generarse, cada región sortea si tiene **muelle con barco** o **aeropuerto con avión** en su pueblo inicial, y siempre se viaja así desde ella. Hablas con la capitana o la piloto, eliges una región abierta, ves una **animación corta** (barco en el mar o avión sobre las nubes) y llegas al pueblo inicial de la otra.
 
 ## Gimnasios y Liga
 - **8 gimnasios por región** con líderes **al azar de Kanto a Teselia** (generaciones 1–5), **sin repetirse** entre regiones; cada uno con **su tipo** y equipo de ese tipo. Sprites originales de B2W2 (Torneo Mundial Pokémon, hoja "Overworld Entities").
-  - **Catálogo confirmado (2026-10-10, "Todos bien"):** 29 líderes con sprite de la hoja de BW2 (Brock, Misty, Lt. Surge, Erika, Janine, Sabrina, Blaine, Falkner, Bugsy, Whitney, Morty, Jasmine, Pryce, Clair, Roxanne, Brawly, Wattson, Norman, Winona, Juan, Roark, Gardenia, Maylene, Crasher Wake, Byron, Elesa, Steven, Cynthia, Alder) + Clay, Skyla, Marlon e Iris = 33.
-  - **Los 15 que faltan para 6×8:** se buscan **sprites de fans** en estilo DS (decisión de Fernando, 2026-10-10), con permiso por lote antes de descargar.
-- **Liga por región:** Alto Mando y Campeón al azar de las generaciones 1–5 (Lorelei, Karen, Cynthia, Alder…), con sus sprites, sin repetirse.
+  - **Catálogo confirmado (2026-10-10):** 29 líderes de la hoja de BW2 (Brock, Misty, Lt. Surge, Erika, Janine, Sabrina, Blaine, Falkner, Bugsy, Whitney, Morty, Jasmine, Pryce, Clair, Roxanne, Brawly, Wattson, Norman, Winona, Juan, Roark, Gardenia, Maylene, Crasher Wake, Byron, Elesa, Steven, Cynthia, Alder) + 15 más de la misma hoja (Clay A20, Skyla A21, Iris A23, Marlon A54, Brycen A22, Chuck A58, Flannery A60, Fantina A62, Wallace A63, Giovanni A56, Burgh A53, Drayden A59, Roxie A52, Cress A44, Chili A45) = **44**. Lámina de verificación en `~/Desktop/Pokemon_lideres_nuevos.png`.
+  - **Los 4 restantes:** Koga, Blue, Volkner y Cilan (elección de Fernando). **Koga y Blue** salen de la hoja oficial de HGSS que ya está en el proyecto (`sprites/npc_src/prof_hgss_trainers.png`, celdas 37 y 49). **Cilan y Volkner** van **provisionales** (sprite parecido de BW2 + retrato oficial) porque Spriters Resource y Bulbagarden piden verificación de Cloudflare; **pendiente:** cambiarlos cuando Fernando pase la verificación en la Mac (hojas "Overworld Entities" de BW y "NPCs (Overworld)" de DP).
+- **Reparto (2026-10-10):** por **afinidad con el bioma** del pueblo (Misty en costa o pueblo pesquero, Brock en el minero, Pryce en la nieve…); si no hay pueblo afín, al azar. El gimnasio usa el **tipo del líder**.
+- **Reto del gimnasio (2026-10-10):** el **líder** está dentro con su sprite; antes, **2 entrenadores del gimnasio** de su tipo (opcionales). El líder usa su **equipo canónico**, de 3 a 6 Pokémon según la región, con la IA lista.
+- **Liga por región (2026-10-10):** **4 del Alto Mando real** de Kanto a Teselia (18 en total; algunos repiten en otra región, nunca en la misma) y el **Campeón es un héroe no elegido** (Red, Lyra…) con su equipo icónico al máximo y mega. Los del Alto Mando sin sprite de DS van con uno provisional y su retrato oficial.
+  - **Sprites del Alto Mando (aprobados 2026-10-10, lámina `~/Desktop/Pokemon_alto_mando.png`):** Lance, Will, Bruno y Karen (HGSS), Shauntal y Caitlin (BW2), Flint (Platino). **Provisionales** (clase de BW2 + retrato oficial): Lorelei, Agatha, Sidney, Phoebe, Glacia, Drake, Aaron, Bertha, Lucian, Grimsley y Marshal.
 - Fuera de horario, los **líderes entrenan** cerca del pueblo o en un lugar de su tipo; ahí se les puede retar (amistoso).
 
 ## Dificultad
