@@ -257,7 +257,7 @@ func _challenge(hero: Dictionary) -> void:
 		GameState.notice.emit("%s: Saca a tu Pokémon y peleamos." % PlayerCharacters.find(id)["name"])
 		hero["busy"] = false
 		return
-	var badges := (GameState.world_flags.get("badges", []) as Array).size()
+	var badges := Regions.total_badges()
 	var node: Node3D = hero["node"]
 	var info := {"id": "hero:" + id, "name": PlayerCharacters.find(id)["name"], "team": team_for(id, badges),
 			"money": 1500 + 600 * badges, "item": ["rare-candy", "star-piece", "ultra-ball", "nugget"][badges % 4],

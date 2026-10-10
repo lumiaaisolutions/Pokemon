@@ -25,6 +25,10 @@ var world_seed: int = 0
 ## Banderas del mundo: medallas, cintas, descubrimientos, tesoros, guardería,
 ## regalos de vecinos, eventos, etc. (ver world/region/town_services.gd).
 var world_flags := {}
+## Regiones de la partida (ver Regions): nombre, semilla, líderes, Liga, Pokédex regional,
+## legendarios, transporte, si está abierta y lo guardado de cada una. region_index: la actual.
+var regions: Array = []
+var region_index: int = 0
 
 ## --- Historia y Rotom Móvil (ver world/rotom/activity_manager.gd) ---
 ## Elenco al azar de la partida.

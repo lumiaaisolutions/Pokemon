@@ -18,8 +18,8 @@
 | 4 | Hecha | `a554c0e` | Captura en la arena: carga de potencia, lanzamiento excelente, esquiva de Nate |
 | 5.5 | Hecha | `b68fe8d` | Evolución sin niveles, Piedra Llave en las ruinas, misiones de megapiedras, fotografía con misiones ([progresión](sistemas/progresion.md)) |
 | 5.6 | Hecha | `b68fe8d` | Entrenadores en los caminos con campo de visión, premio y revancha diaria ([entrenadores](sistemas/entrenadores.md)) |
-| Pulido del mundo | Hecho (salvo regiones) | `c13a1a9` → `e3858d9` | Plan acordado tras la prueba de Fernando ([plan](plan_pulido_mundo.md)): bugs, interfaz Pokopia, mapa con zoom, tablero de misiones, NPC de BW2 con oficio y diálogo, héroes, profesor, rival, interiores B2W2, biomas, puntos de interés, pueblos con identidad |
-| Regiones | Diseñada | — | 6 regiones generadas, líderes de Kanto a Teselia, Liga por región ([regiones](sistemas/regiones.md)) |
+| Pulido del mundo | Hecho | `c13a1a9` → `e3858d9` | Plan acordado tras la prueba de Fernando ([plan](plan_pulido_mundo.md)): bugs, interfaz Pokopia, mapa con zoom, tablero de misiones, NPC de BW2 con oficio y diálogo, héroes, profesor, rival, interiores B2W2, biomas, puntos de interés, pueblos con identidad |
+| Regiones | Hecho (Cilan y Volkner con sprite provisional) | 2026-10-10 | 6 regiones, 48 líderes con vida propia, Liga con Alto Mando y héroe Campeón, Pokédex regional, Boleto y viaje en barco o avión ([regiones](sistemas/regiones.md)) |
 | 5.8 | Pendiente | — | Pesca, hordas y migraciones, rocas rompibles |
 | 6 | Pendiente | — | Jefe y balance |
 | 7 | Pendiente | — | Pulido y entrega |

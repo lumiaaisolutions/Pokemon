@@ -70,7 +70,7 @@ func open() -> void:
 static func stock() -> Array[String]:
 	var result: Array[String] = []
 	result.assign(STOCK)
-	var badges: int = (GameState.world_flags.get("badges", []) as Array).size()
+	var badges: int = Regions.total_badges()
 	for entry: Array in BADGE_STOCK:
 		if badges >= int(entry[0]):
 			result.append(entry[1])

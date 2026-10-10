@@ -31,7 +31,9 @@ func _ready() -> void:
 	_rng.randomize()
 	if GameState.professor == "":
 		GameState.professor = PROFESSORS[_rng.randi() % PROFESSORS.size()]
+	if GameState.rival == "":
 		GameState.rival = RIVALS[_rng.randi() % RIVALS.size()]
+	if GameState.villain_team == "":
 		GameState.villain_team = TEAMS[_rng.randi() % TEAMS.size()]
 	# Partidas viejas con otro rival: pasa a uno con sprite.
 	if not RIVALS.has(GameState.rival):

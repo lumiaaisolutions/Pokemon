@@ -89,11 +89,17 @@ func _run() -> void:
 
 	# Áreas propias: dentro de su área la especie pesa mucho más.
 	var spawner := _main.get_node("Spawner") as WildSpawner
-	var areas := spawner.home_areas("pidgey")
-	_check(not areas.is_empty(), "Pidgey debe tener áreas propias")
+	# Una especie común de la Pokédex de esta región (cambia por región, ver Regions).
+	var common := ""
+	for id: String in ["pidgey", "rattata", "sentret", "zigzagoon", "bidoof", "starly", "patrat", "lillipup", "fletchling", "bunnelby", "caterpie", "weedle"]:
+		if not spawner.home_areas(id).is_empty() and not spawner.is_nomad(id):
+			common = id
+			break
+	var areas := spawner.home_areas(common)
+	_check(not areas.is_empty(), "una especie común de la región debe tener áreas propias (%s)" % common)
 	if not areas.is_empty():
 		var inside := Vector3(areas[0].x, 0.0, areas[0].y)
-		_check(spawner.home_factor("pidgey", inside) > spawner.home_factor("pidgey", inside + Vector3(500, 0, 500)), "en su área es más común que fuera")
+		_check(spawner.home_factor(common, inside) > spawner.home_factor(common, inside + Vector3(500, 0, 500)), "en su área es más común que fuera")
 
 	# Guardar y cargar.
 	GameState.money = 4321

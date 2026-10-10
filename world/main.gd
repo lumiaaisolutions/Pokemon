@@ -64,6 +64,14 @@ func _ready() -> void:
 	var professor := Professor.new()
 	professor.name = "Professor"
 	add_child(professor)
+	# Taquilla de viajes a otras regiones (barco o avión) en el pueblo inicial.
+	var terminal := TravelTerminal.new()
+	terminal.name = "TravelTerminal"
+	add_child(terminal)
+	# Líderes de gimnasio con su vida: gimnasio, entrenamiento, casa y viajes.
+	var leaders := GymLeaders.new()
+	leaders.name = "GymLeaders"
+	add_child(leaders)
 	# Héroes no elegidos: entrenadores únicos que viajan por la región.
 	var heroes := Heroes.new()
 	heroes.name = "Heroes"
@@ -92,6 +100,12 @@ func _ready() -> void:
 		GameState.respawn_point = _player.global_position
 	($CameraRig as CameraRig).snap()
 	_warm_up_shaders()
+	# Primera llegada a una región nueva (tras el viaje).
+	if Regions.index() > 0 and not GameState.world_flags.get("arrived", false):
+		GameState.world_flags["arrived"] = true
+		GameState.respawn_point = _player.global_position
+		var welcome := "¡Bienvenido a la %s! El Prof. %s te espera en su laboratorio." % [Regions.region_name(), GameState.professor]
+		get_tree().create_timer(1.5).timeout.connect(func() -> void: GameState.notice.emit(welcome))
 	if starter_ceremony and GameState.party.is_empty():
 		_start_ceremony.call_deferred()
 	else:

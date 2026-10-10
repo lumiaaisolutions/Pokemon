@@ -27,7 +27,8 @@ static func play(parent: Node, target: Node3D, trainer: Node3D) -> void:
 	var length := from.distance_to(center)
 	cylinder.height = length
 	beam.global_position = (from + center) * 0.5
-	beam.look_at(center, Vector3.UP)
+	# Rayo vertical (el entrenador megaevoluciona a su propio Pokémon): otro eje "arriba".
+	beam.look_at(center, Vector3.UP if absf((center - from).normalized().y) < 0.99 else Vector3.FORWARD)
 	beam.rotate_object_local(Vector3.RIGHT, PI * 0.5)
 	# Esfera arcoíris.
 	var sphere := MeshInstance3D.new()

@@ -388,6 +388,9 @@ func _start() -> void:
 	var typed := _seed_edit.text.strip_edges() if _seed_edit != null and is_instance_valid(_seed_edit) else ""
 	GameState.world_seed = int(typed) if typed.is_valid_int() and int(typed) > 0 else randi_range(1, 1 << 30)
 	GameState.world_flags = {}
+	# Las regiones se crean al cargar el mundo, a partir de la semilla de la partida.
+	GameState.regions = []
+	GameState.region_index = 0
 	GameState.character_id = _character["id"]
 	GameState.gender = _gender
 	GameState.player_name = _player_name()

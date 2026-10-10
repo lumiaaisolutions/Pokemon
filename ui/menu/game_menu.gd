@@ -514,7 +514,8 @@ func _trainer_card() -> Control:
 		["Dinero", "$" + _thousands(GameState.money)], ["Pokédex", "%d vistos · %d capturados" % [seen, caught]],
 		["Shinies · Legendarios", "%d · %d" % [shinies, GameState.legendary_caught.size()]],
 		["Dificultad", GameState.DIFFICULTIES[GameState.difficulty]["name"]],
-		["Medallas", "%d / 8" % (GameState.world_flags.get("badges", []) as Array).size()],
+		["Región", "%s (%d de %d abiertas)" % [Regions.region_name(), Regions.unlocked().size(), Regions.COUNT]],
+		["Medallas", "%d / 8 aquí · %d en total" % [Regions.badges(), Regions.total_badges()]],
 		["Cintas", "%d / 5" % (GameState.world_flags.get("ribbons", []) as Array).size()],
 	]
 	for line: Array in lines:

@@ -436,6 +436,15 @@ func _place_settlements(rng: RandomNumberGenerator) -> void:
 				"radius": radius, "height": maxf(h, sea_level + 1.5), "biome": biome}
 		settlement["buildings"] = _plan_buildings(settlement, rng)
 		settlements.append(settlement)
+	# 8 gimnasios por región (ver Regions): ciudades y pueblos; si faltan, en aldeas.
+	var gyms := settlements.filter(func(s: Dictionary) -> bool: return s["kind"] in ["city", "town"]).size()
+	for s: Dictionary in settlements:
+		if gyms >= 8:
+			break
+		if s["kind"] == "village":
+			s["gym"] = true
+			s["buildings"] = _plan_buildings(s, rng)
+			gyms += 1
 	if not settlements.is_empty():
 		# En la plaza del pueblo inicial (los edificios quedan a más de 10 m).
 		start = Vector2(float(settlements[0]["x"]), float(settlements[0]["z"]) + 2.0)
@@ -465,11 +474,13 @@ func _plan_buildings(settlement: Dictionary, rng: RandomNumberGenerator) -> Arra
 		"city":
 			wanted = ["center", "mart", "gym", "contest", "house", "house", "house", "house", "house", "house", "tower_small", "manhole"]
 		"town":
-			wanted = ["center", "mart", "house", "house", "house", "house"]
+			wanted = ["center", "mart", "gym", "house", "house", "house", "house"]
 			if settlements.is_empty():
 				wanted.append("lab")
 		"village":
 			wanted = ["center", "house", "house", "cabin"]
+			if settlement.get("gym", false):
+				wanted.append("gym")
 		"cabins":
 			wanted = ["cabin", "cabin", "tent", "tent"]
 	for i in wanted.size():

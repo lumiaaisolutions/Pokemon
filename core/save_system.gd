@@ -52,7 +52,7 @@ func save_slot(slot: int, main: Node) -> bool:
 		"saved_at": Time.get_datetime_string_from_system(false, true),
 		"character_id": GameState.character_id, "player_name": GameState.player_name,
 		"gender": GameState.gender, "difficulty": GameState.difficulty,
-		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "money": GameState.money,
+		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "regions": GameState.regions, "region_index": GameState.region_index, "money": GameState.money,
 		"party": GameState.party, "box": GameState.box, "companion_index": GameState.companion_index,
 		"bag": GameState.bag, "selected_ball": GameState.selected_ball,
 		"dex": GameState.dex, "legendary_caught": GameState.legendary_caught,
@@ -86,6 +86,9 @@ func load_slot(slot: int) -> bool:
 	GameState.play_time = float(data.get("play_time", 0.0))
 	GameState.world_seed = int(data.get("world_seed", 0))
 	GameState.world_flags = data.get("world_flags", {})
+	# Partidas de antes de las regiones: se crean al cargar el mundo (Regions.ensure).
+	GameState.regions = data.get("regions", [])
+	GameState.region_index = int(data.get("region_index", 0))
 	GameState.money = int(data.get("money", 3000))
 	GameState.party.assign(data.get("party", []))
 	GameState.box.assign(data.get("box", []))

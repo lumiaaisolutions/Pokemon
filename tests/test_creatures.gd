@@ -202,8 +202,17 @@ func _run() -> void:
 			break
 		await get_tree().physics_frame
 	sanctuary_pos.y = _world.surface_height_at(sanctuary_pos.x, sanctuary_pos.z)
-	var legend := legendaries.summon(mountain_index, "groudon")
-	_check(legend != null and legend.legendary, "debe poder aparecer Groudon en el santuario de la cumbre")
+	# Un legendario de la cumbre que viva en esta región (están repartidos, ver Regions).
+	var legend: PokemonActor = null
+	var legend_id := ""
+	for id: String in Regions.current()["legendaries"]:
+		var candidate := _species(id)
+		if candidate != null and candidate.habitats.has(SpeciesData.Habitat.MOUNTAIN) and not candidate.types.has(PokemonTypes.Type.FLYING):
+			legend = legendaries.summon(mountain_index, id)
+			if legend != null:
+				legend_id = id
+				break
+	_check(legend != null and legend.legendary, "debe poder aparecer un legendario de la región en el santuario de la cumbre")
 	if legend != null:
 		var contacted := [false]
 		legend.contact_with_player.connect(func(_a: PokemonActor) -> void: contacted[0] = true)
@@ -217,7 +226,7 @@ func _run() -> void:
 		var start := legend.global_position.distance_to(_player.global_position)
 		await _frames(240)
 		var end := legend.global_position.distance_to(_player.global_position)
-		print("  legendario Groudon: %.1f m -> %.1f m, contacto=%s" % [start, end, contacted[0]])
+		print("  legendario %s: %.1f m -> %.1f m, contacto=%s" % [legend_id, start, end, contacted[0]])
 		_check(end > start + 10.0, "el legendario debe escapar lejos (%.1f -> %.1f m)" % [start, end])
 		_check(not contacted[0], "un legendario nunca debe provocar combate")
 		legend.queue_free()

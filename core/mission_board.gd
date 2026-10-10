@@ -11,6 +11,7 @@ const CATEGORIES := {
 	"photo": ["Foto del día", Color(0.35, 0.55, 0.95), "Mapa"],
 	"hero": ["Héroes", Color(0.95, 0.75, 0.15), "Logros"],
 	"research": ["Investigación", Color(0.2, 0.65, 0.75), "Pokédex"],
+	"region": ["Regiones", Color(0.9, 0.3, 0.3), "Mapa"],
 }
 
 
@@ -44,6 +45,13 @@ static func collect(tree: SceneTree) -> Array:
 			var spot := heroes.location(id)
 			result.append({"category": "hero", "title": "Reta a %s" % PlayerCharacters.find(id)["name"], "progress": 0.0,
 					"detail": "Rumor: cerca de %s (8:00–20:00)" % spot.get("name", "?"), "reward": "Dinero y un objeto raro"})
+	# Región: medallas, Liga y misiones para el Boleto a la siguiente (ver Regions).
+	if not Regions.ticket_given():
+		var p := Regions.progress()
+		var parts := float(mini(int(p["badges"]), 8)) / 8.0 + (1.0 if p["champion"] else 0.0) + float(mini(int(p["missions"]), Regions.MISSIONS_NEEDED)) / Regions.MISSIONS_NEEDED
+		result.append({"category": "region", "title": "Completa la %s" % Regions.region_name(), "progress": parts / 3.0,
+				"detail": "Medallas %d/8 · Liga %s · misiones del Rotom %d/%d" % [p["badges"], "✓" if p["champion"] else "pendiente", p["missions"], Regions.MISSIONS_NEEDED],
+				"reward": "Boleto a otra región (pídeselo al Prof. %s)" % GameState.professor})
 	# Investigación: las 3 especies más cerca de completarse.
 	var research: Array = []
 	for id: String in GameState.dex:

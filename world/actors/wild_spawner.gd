@@ -98,7 +98,8 @@ func _index_species() -> void:
 		if not _by_chain.has(species.evolution_chain):
 			_by_chain[species.evolution_chain] = [] as Array[SpeciesData]
 		(_by_chain[species.evolution_chain] as Array[SpeciesData]).append(species)
-		if species.spawn_weight <= 0.0:
+		# Solo las especies de la Pokédex de esta región (ver Regions).
+		if species.spawn_weight <= 0.0 or not Regions.allows(species):
 			continue
 		for habitat in species.habitats:
 			var entry: Dictionary = _by_habitat[habitat]
@@ -162,7 +163,7 @@ func _build_home_areas() -> void:
 	rng.seed = _world.config.seed * 7919 + 17
 	var half := _world.config.size * 0.5 - 20.0
 	for species: SpeciesData in ALL_SPECIES.species:
-		if species.spawn_weight <= 0.0 or species.is_legendary or species.is_mythical:
+		if species.spawn_weight <= 0.0 or species.is_legendary or species.is_mythical or not Regions.allows(species):
 			continue
 		if rng.randf() < NOMAD_SHARE:
 			_nomads.append(species.identifier)
@@ -239,7 +240,7 @@ func _build_regional() -> void:
 				number += 1
 				_regional[species.identifier] = number
 	for species: SpeciesData in ALL_SPECIES.species:
-		if (species.is_legendary or species.is_mythical) and not _regional.has(species.identifier):
+		if (species.is_legendary or species.is_mythical) and Regions.allows(species) and not _regional.has(species.identifier):
 			number += 1
 			_regional[species.identifier] = number
 
@@ -331,8 +332,21 @@ func pick_species(habitat: SpeciesData.Habitat, water_mode: int, zone: Vector2i 
 			continue
 		if water_mode == 0 and is_water_type:
 			continue
-		return species
+		return _region_evolve(species)
 	return null
+
+
+## Dificultad por región: en las regiones siguientes los salvajes salen más evolucionados
+## (12 % más de probabilidad por región de subir una etapa en su línea).
+func _region_evolve(species: SpeciesData) -> SpeciesData:
+	var chance := Regions.index() * 0.12
+	if chance <= 0.0 or _rng.randf() >= chance:
+		return species
+	for next: SpeciesData in _by_chain.get(species.evolution_chain, []):
+		if next.evolution_stage == species.evolution_stage + 1 and next.spawn_weight > 0.0 and not next.habitats.is_empty() \
+				and species.habitats.any(func(h: int) -> bool: return next.habitats.has(h)):
+			return next
+	return species
 
 
 func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesData:
@@ -541,7 +555,7 @@ func _spawn_pack(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habi
 	var leader_species := basic
 	if species.evolution_stage > lowest_stage:
 		leader_species = species
-	elif _rng.randf() < PACK_LEADER_CHANCE:
+	elif _rng.randf() < PACK_LEADER_CHANCE + Regions.index() * 0.08:
 		var evolved := line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage > lowest_stage)
 		if not evolved.is_empty():
 			leader_species = evolved[_rng.randi() % evolved.size()]

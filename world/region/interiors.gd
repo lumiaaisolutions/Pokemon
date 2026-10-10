@@ -411,7 +411,8 @@ func _npc(root: Node3D, at: Vector3, trainer_id: String = "", pokemon: String = 
 		sprite.offset.y = 40
 	else:
 		# Aspectos de BW2 (NpcLooks); los héroes no se usan como figurantes.
-		var sheet := NpcLooks.sheet(trainer_id) if NpcLooks.GENDER.has(trainer_id) else PlayerCharacters.sheet(trainer_id)
+		var own := NpcLooks.GENDER.has(trainer_id) or trainer_id.begins_with("lider_") or trainer_id.begins_with("alto_")
+		var sheet := NpcLooks.sheet(trainer_id) if own else PlayerCharacters.sheet(trainer_id)
 		var atlas := AtlasTexture.new()
 		atlas.atlas = sheet
 		atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
@@ -479,16 +480,41 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_npc(root, Vector3(5.0, 0, back + 4.0), "doctor")
 			if professor != null:
 				_point(Vector3(5.0, 0.5, back + 5.3), "Hablar con la asistente", professor.talk_assistant.bind(services))
-		"gym", "league":
+		"gym":
 			_block(root, Vector3(size.x - 6, 0.05, size.y - 10), Vector3(0, 0.03, -1), Color(0.75, 0.75, 0.55), false)
+			# El líder de la región al fondo y 2 entrenadores del gimnasio a los lados.
+			var arena := ORIGIN + Vector3(0, 0.3, -2)
 			var leader_at := Vector3(0, 0, back + 1.0)
-			var leader_id := NpcLooks.pick(["guay_a", "guay_b", "guay_chica"], rng)
-			_npc(root, leader_at, leader_id)
-			if kind == "gym":
-				var type := structures.gym_type(settlement)
-				_point(leader_at + Vector3(0, 0.5, 1.6), "Retar al líder (tipo %s)" % MenuStyle.TYPE_NAMES[type], services.gym_challenge.bind(settlement, ORIGIN + Vector3(0, 0, -2)))
-			else:
-				_point(leader_at + Vector3(0, 0.5, 1.6), "Retar al Alto Mando y al Campeón", services.league_challenge.bind(ORIGIN + Vector3(0, 0, -2)))
+			var leader := structures.leader_of(settlement)
+			# El líder solo está de 9 a 15 h (y no el día que viaja); si no, el guía dice dónde anda.
+			if services.leader_in_gym(settlement):
+				_npc(root, leader_at, Leaders.look(leader))
+				_point(leader_at + Vector3(0, 0.5, 1.6), "Hablar con el líder %s (tipo %s)" % [Leaders.name_of(leader), Leaders.type_name(leader)],
+						services.talk_leader.bind(settlement, arena))
+			var guide_at := Vector3(-3.0, 0, size.y * 0.5 - (4.0 if _modeled else 3.0))
+			_npc(root, guide_at, "joven_c")
+			_point(guide_at + Vector3(0, 0.5, 1.2), "Hablar con el guía del gimnasio", services.ask_leader.bind(settlement), 1.8)
+			for slot in 2:
+				var look := NpcLooks.pick(["guay_a", "guay_b", "guay_chica", "karateka_a"], rng)
+				var at := Vector3(-4.5 if slot == 0 else 4.5, 0, back + size.y * 0.42)
+				_npc(root, at, look)
+				_point(at + Vector3(0, 0.5, 1.4), "Retar al entrenador del gimnasio", services.gym_trainer_challenge.bind(settlement, slot, look, arena))
+			_light(root, Vector3(0, 4.5, -8), Color(1, 1, 1), 30.0, 1.5)
+		"league":
+			_block(root, Vector3(size.x - 6, 0.05, size.y - 10), Vector3(0, 0.03, -1), Color(0.75, 0.75, 0.55), false)
+			# Alto Mando (4) en semicírculo y el Campeón (héroe no elegido) al fondo; en orden.
+			services.reset_league()
+			var arena := ORIGIN + Vector3(0, 0.3, -1)
+			var members := services.league_members()
+			for slot in members.size():
+				var id: String = members[slot]
+				var at := Vector3(0, 0, back + 0.5)
+				if slot < members.size() - 1:
+					at = Vector3(-7.5 + slot * 5.0, 0, back + 4.5 + absf(slot - 1.5) * 1.6)
+				var champion := id.begins_with("hero:")
+				_npc(root, at, id.trim_prefix("hero:") if champion else Leaders.look(id))
+				var title := ("Campeón " + String(PlayerCharacters.find(id.trim_prefix("hero:"))["name"])) if champion else ("Alto Mando " + Leaders.name_of(id))
+				_point(at + Vector3(0, 0.5, 1.5), "Hablar con %s" % title, services.league_talk.bind(slot, arena), 1.8)
 			_light(root, Vector3(0, 4.5, -8), Color(1, 1, 1), 30.0, 1.5)
 		"contest":
 			_block(root, Vector3(12, 0.8, 5), Vector3(0, 0.4, back + 2.0), Color(0.85, 0.55, 0.7))

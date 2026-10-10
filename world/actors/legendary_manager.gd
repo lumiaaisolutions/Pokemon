@@ -42,7 +42,8 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	for species: SpeciesData in ALL_SPECIES.species:
-		if not (species.is_legendary or species.is_mythical):
+		# Solo los legendarios de esta región (repartidos sin repetir, ver Regions).
+		if not (species.is_legendary or species.is_mythical) or not Regions.allows(species):
 			continue
 		for habitat in species.habitats:
 			if not _pool_by_habitat.has(habitat):

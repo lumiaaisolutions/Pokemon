@@ -44,3 +44,9 @@
 ## Compañero (rol compañero)
 - Un básico al azar te sigue con navegación (hasta que exista la selección con huevos, Fase 5): corre si te alejas, reaparece si se queda a más de 30 m, mira al salvaje más cercano y te espera en la orilla si nadas.
 - Te defiende y hace guardia si te desmayas (ver [peleas.md](peleas.md)).
+
+## Comunes y raros (pedido de Fernando, 2026-10-10 · por hacer)
+Fernando notó que la misma especie solo se repite en las manadas: los sueltos salen todos distintos y al azar.
+- **Decisión:** cada zona tiene **3–5 especies comunes** que se ven varias veces sueltas, algunas poco comunes y **raras que cuesta encontrar** (muchos Pidgey, pocos Eevee).
+- **Rareza por la especie** (igual en todas las regiones): básicos comunes salen mucho; evolucionados, pseudolegendarios y especies raras (Eevee, Dratini, Larvitar) salen poco.
+- Las especies de cada región siguen siendo al azar por partida (Pokédex regional, ver [regiones](regiones.md)); no hay especies fijas por región.

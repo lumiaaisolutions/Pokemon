@@ -340,7 +340,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
 		var model_title: String = BUILDING_NAMES[kind]
 		if kind == "gym":
-			model_title = "Gimnasio de %s (tipo %s)" % [settlement["name"], MenuStyle.TYPE_NAMES[_gym_type(settlement)]]
+			model_title = gym_title(settlement)
 		if kind in ["mart", "gym", "contest", "lab"]:
 			_sign(root, model_title, Vector3(0, size.y + 0.8, size.z * 0.5))
 		_decorate(root, kind, size, settlement, building)
@@ -372,7 +372,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		_box(root, Vector3(w * 0.9, 0.7, 0.3), Vector3(0, wall_h - 0.6, d * 0.5 + 0.15), Color(0.22, 0.42, 0.85))
 	var title: String = BUILDING_NAMES[kind]
 	if kind == "gym":
-		title = "Gimnasio de %s (tipo %s)" % [settlement["name"], MenuStyle.TYPE_NAMES[_gym_type(settlement)]]
+		title = gym_title(settlement)
 	if kind in ["center", "mart", "gym", "contest", "lab"]:
 		_sign(root, title, Vector3(0, wall_h + 1.0 if kind != "center" else wall_h + 3.0, d * 0.5 + 0.4))
 	var prompt := "Entrar: %s" % title
@@ -456,12 +456,31 @@ func _decor_sprite(root: Node3D, texture: Texture2D, at: Vector3) -> void:
 
 
 ## Tipo del gimnasio de una ciudad (fijo por semilla y nombre).
+## Líderes de esta región por pueblo (Regions.assign_leaders, por afinidad con el tema).
+var _leaders := {}
+
+
+## Líder del gimnasio del pueblo ("" si no tiene gimnasio).
+func leader_of(settlement: Dictionary) -> String:
+	if _leaders.is_empty():
+		var towns := world.layout.settlements.filter(func(s: Dictionary) -> bool:
+			return (s["buildings"] as Array).any(func(b: Dictionary) -> bool: return b["kind"] == "gym"))
+		_leaders = Regions.assign_leaders(towns)
+	return String(_leaders.get(settlement.get("name", ""), ""))
+
+
+## Tipo del gimnasio: el del líder (Leaders.MIXED si su equipo es mixto).
 func _gym_type(settlement: Dictionary) -> int:
-	return absi(hash(String(settlement["name"]) + str(world.layout.seed))) % 18
+	return int(Leaders.info(leader_of(settlement)).get("type", Leaders.MIXED))
 
 
 func gym_type(settlement: Dictionary) -> int:
 	return _gym_type(settlement)
+
+
+func gym_title(settlement: Dictionary) -> String:
+	var id := leader_of(settlement)
+	return "Gimnasio de %s (%s · tipo %s)" % [settlement["name"], Leaders.name_of(id), Leaders.type_name(id)]
 
 
 # --- Lugares especiales ---------------------------------------------------------------

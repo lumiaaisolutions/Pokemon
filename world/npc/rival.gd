@@ -28,7 +28,7 @@ func _ready() -> void:
 
 
 func _badges() -> int:
-	return (GameState.world_flags.get("badges", []) as Array).size()
+	return Regions.total_badges()
 
 
 ## Equipo de hoy: su inicial al frente y el resto de B2W2, creciendo con tus medallas.

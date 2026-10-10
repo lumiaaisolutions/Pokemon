@@ -67,3 +67,11 @@ Fernando probó las fases 3–5.6 y pidió muchos cambios; desde aquí **todo se
 - **Interfaz estilo Pokopia** en todo el juego, avisos en tarjetas, caja de diálogo, mapa con zoom, tablero de misiones, leyenda plegable.
 - **Gente:** NPC con clases de BW2, oficios, conversación con Retar, retos al verte, campamentos animados; héroes no elegidos con IA lista; profesor con viajes y asistente (sprites de Platino, HGSS y Zender1752); rival Hugh.
 - **Lugares:** interiores con modelos de B2W2 (4 lotes de descargas aprobados), kit por bioma, pantanos reconocibles, pasto menudo y flores, puntos de interés, pueblos con tema y monumento.
+
+## 2026-10-10 (noche) — Viaje por regiones
+Último punto del plan de pulido. Detalles en [regiones](sistemas/regiones.md).
+- **Catálogo con Fernando:** 46 líderes con sprite oficial de DS (44 de BW2 y 2 de HGSS, aprobados en láminas), Cilan y Volkner provisionales (Spriters Resource y Bulbagarden piden verificación de Cloudflare); Alto Mando: 7 con sprite de DS y 11 provisionales.
+- **Decisiones durante el trabajo:** Liga de 4 del Alto Mando + héroe Campeón; reparto por afinidad con el bioma; gimnasio con líder y 2 entrenadores; barco o avión al azar por región, con taquilla en el pueblo inicial; misiones = 11 de los 21 puntos de Concursos, Investigación y Academia; **los líderes tienen su vida** (gimnasio 9–15 h, entrenamiento 15–20 h, casa, viaje semanal, combate amistoso; medalla solo en el gimnasio).
+- **Hallazgo:** cada región solo tenía 3 gimnasios (solo las ciudades); ahora son 8 (ciudades y pueblos).
+- Los retos de gimnasio y Liga dejaron de ser rondas de salvajes y son combates de verdad contra entrenadores.
+- Prueba nueva `test_regions`.

@@ -214,6 +214,7 @@ func talk_professor() -> void:
 	if not _flags().get("fly_license", false) and (badges().size() >= 3 or done >= 5):
 		_flags()["fly_license"] = true
 		GameState.notice.emit("Prof. %s: ¡Licencia de Vuelo! Monta a un volador grande y salta para despegar." % GameState.professor)
+	_region_ticket()
 	# Revive fósiles.
 	for fossil: String in FOSSILS:
 		if GameState.item_count(fossil) > 0:
@@ -249,41 +250,229 @@ func _team_of_type(type: int, count: int, tier: float) -> Array[SpeciesData]:
 	return team
 
 
-func gym_challenge(settlement: Dictionary, arena: Vector3) -> void:
-	if not _trial.is_empty():
+func _dialog() -> DialogBox:
+	return get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+
+
+## Boleto a otra región: al completar esta (8 medallas, Liga y 11 misiones del Rotom).
+func _region_ticket() -> void:
+	var prof := "Prof. %s" % GameState.professor
+	var vehicle := "barco" if TravelTerminal.boat() else "avión"
+	var booth := "el muelle" if TravelTerminal.boat() else "el aeropuerto"
+	if Regions.ticket_given():
+		if not Regions.unlocked().size() <= 1:
+			GameState.notice.emit("%s: Tu Boleto sigue vigente: ve a %s de %s para viajar." % [prof, booth, _world_start_name()])
 		return
+	var p := Regions.progress()
+	if p["complete"]:
+		var opened := Regions.give_ticket()
+		AudioBus.play_jingle("me_badge")
+		if opened >= 0:
+			GameState.add_news("¡%s completó la %s y recibió el Boleto a la %s!" % [GameState.player_name, Regions.region_name(), Regions.region_name(opened)])
+			GameState.notice.emit("%s: ¡Completaste la %s! Toma este Boleto de %s a la %s. Ve a %s de %s." % [prof, Regions.region_name(), vehicle, Regions.region_name(opened), booth, _world_start_name()])
+		else:
+			GameState.notice.emit("%s: ¡Completaste la %s! Ya abriste todas las regiones: puedes viajar a cualquiera desde %s." % [prof, Regions.region_name(), booth])
+	elif p["badges"] > 0 or p["champion"]:
+		GameState.notice.emit("%s: Para el Boleto a otra región te falta: medallas %d/8 · Liga %s · misiones del Rotom %d/%d." % [prof, p["badges"],
+				"✓" if p["champion"] else "pendiente", p["missions"], Regions.MISSIONS_NEEDED])
+
+
+func _world_start_name() -> String:
+	var settlements: Array = structures.world.layout.settlements
+	return String(settlements[0]["name"]) if not settlements.is_empty() else "el pueblo inicial"
+
+
+func _battle() -> BattleManager:
+	return main().get_node_or_null("Battle") as BattleManager
+
+
+## Combate de reto (gimnasio o Liga) con la IA lista; on_win al vencer a todo su equipo.
+func _challenge(info: Dictionary, on_win: Callable, on_lose: Callable = Callable()) -> bool:
+	var battle := _battle()
+	if battle == null or not battle.ready_to_fight():
+		GameState.notice.emit("%s: Saca a tu Pokémon y peleamos." % info["name"])
+		return false
+	info["on_end"] = func(result: String) -> void:
+		if result == "trainer_win":
+			on_win.call()
+		elif on_lose.is_valid():
+			on_lose.call()
+	return battle.start_trainer(info)
+
+
+# Gimnasios (acordado con Fernando el 2026-10-10): el líder de la región en el pueblo, con
+# su sprite y su equipo canónico (de 3 a 6 según la región), y 2 entrenadores opcionales.
+
+## Hablar con el líder: si ya tienes su medalla, te saluda; si no, ofrece el reto.
+func talk_leader(settlement: Dictionary, arena: Vector3) -> void:
+	var id := structures.leader_of(settlement)
+	var city: String = settlement.get("name", "")
+	var speaker := "Líder " + Leaders.name_of(id)
+	var dialog := _dialog()
+	if dialog == null:
+		gym_challenge(settlement, arena)
+		return
+	if badges().has(city):
+		dialog.open(speaker, ["¡Ya tienes la medalla de %s! Sigue entrenando: la Liga te espera." % city], Leaders.portrait(id))
+		return
+	var lines := ["Bienvenido al Gimnasio de %s. Soy %s y uso Pokémon de tipo %s." % [city, Leaders.name_of(id), Leaders.type_name(id)],
+			"Llevas %d medallas en esta región. ¿Estás listo?" % badges().size()]
+	dialog.open(speaker, lines, Leaders.portrait(id), ["¡Te reto!", "Todavía no"], func(choice: int) -> void:
+		if choice == 0:
+			gym_challenge(settlement, arena))
+
+
+func _leaders() -> GymLeaders:
+	return main().get_node_or_null("GymLeaders") as GymLeaders
+
+
+## ¿Está el líder en el gimnasio? (de 9 a 15 h y si no salió de viaje).
+func leader_in_gym(settlement: Dictionary) -> bool:
+	var leaders := _leaders()
+	return leaders == null or leaders.in_gym(settlement)
+
+
+## El guía del gimnasio: dónde anda el líder (y lo marca en el mapa).
+func ask_leader(settlement: Dictionary) -> void:
+	var id := structures.leader_of(settlement)
+	var leaders := _leaders()
+	var text := "El líder %s te espera al fondo. ¡Usa Pokémon fuertes contra el tipo %s!" % [Leaders.name_of(id), Leaders.type_name(id)]
+	if leaders != null and not leaders.in_gym(settlement):
+		text = leaders.mark_on_map(id)
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open("Guía del gimnasio", [text], NpcLooks.portrait("joven_c"))
+	else:
+		GameState.notice.emit("Guía del gimnasio: " + text)
+
+
+func gym_challenge(settlement: Dictionary, arena: Vector3) -> void:
 	var city: String = settlement.get("name", "")
 	if badges().has(city):
 		GameState.notice.emit("Líder: ya tienes la medalla de %s. ¡Sigue tu camino!" % city)
 		return
-	var type := structures.gym_type(settlement)
-	var team := _team_of_type(type, 3, 0.25 + badges().size() * 0.09)
-	_start_trial("Gimnasio de %s" % city, team, arena, func() -> void:
-		badges().append(city)
-		AudioBus.play_jingle("me_badge")
-		GameState.path_progress["gimnasios"] = mini(badges().size(), 8)
-		GameState.add_money(BADGE_MONEY * badges().size(), "Medalla de %s" % city)
-		Achievements.add("badges")
-		GameState.add_news("¡%s ganó la medalla del Gimnasio de %s! (%d/8)" % [GameState.player_name, city, badges().size()])
-		GameState.notice.emit("¡Ganaste la medalla de %s! Medallas: %d/8" % [city, badges().size()]))
-
-
-func league_challenge(arena: Vector3) -> void:
-	if not _trial.is_empty():
+	if not leader_in_gym(settlement):
+		GameState.notice.emit("El líder no está en el gimnasio. Pregúntale al guía dónde anda.")
 		return
-	if badges().size() < 8:
+	var id := structures.leader_of(settlement)
+	var region := Regions.index()
+	var team := Leaders.gym_team(id, region, badges().size())
+	var info := {"id": "gym:" + id, "name": "Líder " + Leaders.name_of(id), "team": team,
+			"money": BADGE_MONEY * (badges().size() + 1) * (region + 1), "item": "rare-candy",
+			"smart": true, "heals": 1 + region / 2, "mega": Leaders.mega_for(team, region), "at": arena}
+	_challenge(info, func() -> void: _win_badge(settlement, id))
+
+
+func _win_badge(settlement: Dictionary, id: String) -> void:
+	var city: String = settlement.get("name", "")
+	if badges().has(city):
+		return
+	badges().append(city)
+	AudioBus.play_jingle("me_badge")
+	GameState.path_progress["gimnasios"] = mini(badges().size(), 8)
+	Achievements.add("badges")
+	GameState.add_news("¡%s ganó la medalla del Gimnasio de %s! (%d/8)" % [GameState.player_name, city, badges().size()])
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open("Líder " + Leaders.name_of(id), ["¡Qué combate! Te ganaste la medalla de %s. Llevas %d de 8." % [city, badges().size()]], Leaders.portrait(id))
+	else:
+		GameState.notice.emit("¡Ganaste la medalla de %s! Medallas: %d/8" % [city, badges().size()])
+
+
+## Entrenadores del gimnasio (0 o 1): 2–3 Pokémon del tipo del líder; se vencen una vez.
+func gym_trainer_challenge(settlement: Dictionary, slot: int, look: String, arena: Vector3) -> void:
+	var key := "gym_trainer:%s:%d" % [settlement.get("name", ""), slot]
+	if _flags().get(key, false):
+		GameState.notice.emit("Entrenador del gimnasio: ¡ya me venciste! El líder te espera al fondo.")
+		return
+	var id := structures.leader_of(settlement)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key) ^ int(Regions.current()["seed"])
+	var class_name_ := "Entrenadora Guay" if NpcLooks.gender(look) == "female" else "Entrenador Guay"
+	var info := {"id": key, "name": "%s del gimnasio" % class_name_, "team": Leaders.gym_trainer_team(id, Regions.index(), rng),
+			"money": 400 + Regions.index() * 250, "item": "", "at": arena}
+	_challenge(info, func() -> void: _flags()[key] = true)
+
+
+# Liga (acordado con Fernando el 2026-10-10): 4 del Alto Mando real y un héroe no elegido
+# como Campeón, en orden y sin salir; si pierdes o sales, vuelves a empezar.
+
+func league_members() -> Array:
+	var region := Regions.current()
+	var members: Array = (region["elite"] as Array).duplicate()
+	members.append("hero:" + String(region["champion"]))
+	return members
+
+
+## Cuántos venciste en este intento (se reinicia al salir o perder).
+func league_step() -> int:
+	return int(_flags().get("league_run", 0))
+
+
+func reset_league() -> void:
+	_flags()["league_run"] = 0
+
+
+func league_talk(slot: int, arena: Vector3) -> void:
+	var members := league_members()
+	var id: String = members[slot]
+	var champion := id.begins_with("hero:")
+	var hero := id.trim_prefix("hero:")
+	var speaker: String = ("Campeón " + String(PlayerCharacters.find(hero)["name"])) if champion else ("Alto Mando " + Leaders.name_of(id))
+	var portrait: Texture2D = Leaders.portrait(hero) if champion else Leaders.portrait(id)
+	var dialog := _dialog()
+	if badges().size() < Regions.GYMS:
 		GameState.notice.emit("Guardia: necesitas las 8 medallas para retar a la Liga (tienes %d)." % badges().size())
 		return
-	var team: Array[SpeciesData] = []
-	for i in 4:
-		team.append_array(_team_of_type(_rng.randi() % 18, 2, 0.85))
-	team.append_array(_team_of_type(_rng.randi() % 18, 3, 0.97))
-	_start_trial("Liga Pokémon", team, arena, func() -> void:
-		_flags()["champion"] = true
-		Achievements.add("champion")
-		GameState.add_money(20000, "Campeón de la Liga")
-		GameState.add_news("¡%s es el nuevo Campeón de la Liga Pokémon!" % GameState.player_name)
-		GameState.notice.emit("¡Eres el Campeón de la Liga Pokémon!"))
+	if slot < league_step():
+		if dialog != null:
+			dialog.open(speaker, ["Ya me venciste. ¡Sigue adelante!"], portrait)
+		return
+	if slot > league_step():
+		var next: String = members[league_step()]
+		GameState.notice.emit("Primero vence a %s." % (Leaders.name_of(next) if not next.begins_with("hero:") else "los del Alto Mando"))
+		return
+	var lines := ["Soy %s, del Alto Mando. Mi especialidad es el tipo %s." % [Leaders.name_of(id), Leaders.type_name(id)]] if not champion \
+			else ["Así que llegaste hasta aquí... Soy el Campeón de %s." % Regions.region_name(), "Mi equipo es el más fuerte de la región. ¡Demuéstrame lo que vales!"]
+	if dialog == null:
+		league_challenge(slot, arena)
+		return
+	dialog.open(speaker, lines, portrait, ["¡Combate!", "Espera"], func(choice: int) -> void:
+		if choice == 0:
+			league_challenge(slot, arena))
+
+
+func league_challenge(slot: int, arena: Vector3) -> void:
+	var members := league_members()
+	if slot != league_step() or slot >= members.size():
+		return
+	var id: String = members[slot]
+	var region := Regions.index()
+	var info := {}
+	if id.begins_with("hero:"):
+		var hero := id.trim_prefix("hero:")
+		info = {"id": "champion:" + hero, "name": "Campeón " + PlayerCharacters.find(hero)["name"], "team": Heroes.team_for(hero, 99),
+				"money": 20000 * (region + 1), "item": "master-ball", "smart": true, "heals": 3, "mega": Heroes.TEAMS[hero]["mega"], "at": arena}
+	else:
+		var team := Leaders.elite_team(id)
+		info = {"id": "elite:" + id, "name": "Alto Mando " + Leaders.name_of(id), "team": team, "money": 5000 * (region + 1),
+				"item": "", "smart": true, "heals": 2 + region / 2, "mega": Leaders.mega_for(team, region), "at": arena}
+	_challenge(info, func() -> void: _league_win(slot), reset_league)
+
+
+func _league_win(slot: int) -> void:
+	_flags()["league_run"] = slot + 1
+	if slot + 1 < league_members().size():
+		GameState.notice.emit("¡Venciste a %d de %d! Sigue al siguiente." % [slot + 1, league_members().size()])
+		return
+	reset_league()
+	_flags()["champion"] = true
+	Achievements.add("champion")
+	GameState.add_news("¡%s es el nuevo Campeón de la %s!" % [GameState.player_name, Regions.region_name()])
+	var p := Regions.progress()
+	var hint := "Ya puedes pedirle el Boleto al Prof. %s." % GameState.professor if p["complete"] \
+			else "Para el Boleto a otra región te faltan misiones del Rotom (%d/%d)." % [p["missions"], Regions.MISSIONS_NEEDED]
+	GameState.notice.emit("¡Eres el Campeón de la %s! %s" % [Regions.region_name(), hint])
 
 
 ## Reto por rondas: sale un Pokémon del entrenador a la vez y ataca; al debilitarlo

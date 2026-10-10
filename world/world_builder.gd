@@ -100,6 +100,8 @@ var _last_focus := Vector2(INF, INF)
 
 func _ready() -> void:
 	add_to_group(WORLD_GROUP)
+	# Regiones de la partida (la primera usa la semilla de la partida).
+	Regions.ensure()
 	var world_seed: int = GameState.world_seed if GameState.world_seed != 0 else config.seed
 	config.seed = world_seed
 	layout = RegionLayout.new(world_seed, config.size)

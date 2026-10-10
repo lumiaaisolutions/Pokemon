@@ -118,7 +118,7 @@ func _run() -> void:
 		var other := _world.structures.place_by_id(int(cave["exit"]))
 		_check(Vector2(_player.global_position.x - float(other["x"]), _player.global_position.z - float(other["z"])).length() < 12.0, "al salir debe quedar en la cueva pareja")
 
-	# Gimnasio: el líder saca Pokémon de su tipo, no se capturan; al vencerlos, medalla.
+	# Gimnasio: guía, 2 entrenadores y el líder de la región.
 	var gym_city: Dictionary = {}
 	for settlement: Dictionary in _world.layout.settlements:
 		if (settlement["buildings"] as Array).any(func(b: Dictionary) -> bool: return b["kind"] == "gym"):
@@ -131,18 +131,9 @@ func _run() -> void:
 		await _frames(5)
 		_services.enter_interior("gym", gym_city, gym)
 		await _wait_interior(true)
-		_check(_has_point("Retar al líder"), "el gimnasio tiene líder")
-		_services.gym_challenge(gym_city, Interiors.ORIGIN + Vector3(0, 0.3, -2))
-		var type := _world.structures.gym_type(gym_city)
-		for round in 3:
-			var trainer: PokemonActor = await _trainer_actor()
-			_check(trainer != null and trainer.species.types.has(type), "ronda %d: el líder saca un Pokémon de su tipo" % (round + 1))
-			if trainer == null:
-				break
-			trainer.hp = 0.0
-			trainer.receive_hit(999.0, _player)
-			await _frames(120)
-		_check(_services.badges().has(gym_city["name"]) and int(GameState.path_progress.get("gimnasios", 0)) == 1, "al vencer al líder se gana la medalla")
+		# El combate por la medalla (contra el líder, de 9 a 15 h) se prueba en test_regions.
+		_check(_has_point("Hablar con el guía") and _has_point("Retar al entrenador del gimnasio"), "el gimnasio tiene guía y entrenadores")
+		_check(_world.structures.leader_of(gym_city) != "", "el gimnasio tiene líder de la región")
 		interiors.exit_to(interiors.current["return"])
 		await _wait_interior(false)
 
@@ -252,6 +243,9 @@ func _run() -> void:
 	_check(after > berries and GameState.item_count("oran-berry") == after, "cada fila del huerto se cosecha una vez al día")
 	GameState.bag.erase("bicycle")
 	GameState.add_item("helix-fossil", 1)
+	# La medalla ya no sale del gimnasio en esta prueba (el combate se prueba en test_regions).
+	if _services.badges().is_empty():
+		_services.badges().append(String(_world.layout.settlements[0]["name"]))
 	_services.talk_professor()
 	_check(GameState.item_count("bicycle") == 1, "el profesor regala la bicicleta")
 	_check(GameState.world_flags.get("ride_license", false), "con una medalla el profesor da la Licencia de Montura")
