@@ -46,3 +46,21 @@ Sale un Pokémon del entrenador a la vez y ataca; al debilitarlo sale el siguien
 ## Tienda y MT
 - 18 MT, una por tipo (`tm-<tipo>`): enseñan a tu compañero el movimiento más potente de ese tipo de su lista oficial (MT/tutor, o de nivel) que aún no tenga.
 - Fósiles: Hélix, Domo, Raíz, Garra, Cráneo, Coraza, Tapa y Pluma → el profesor los revive.
+
+
+## Identidad de cada pueblo (2026-10-10)
+Código: `world/region/town_identity.gd`. Acordado con Fernando: tema por bioma y tamaño.
+| Tema | Dónde | Monumento | Objetos |
+|---|---|---|---|
+| Comercial | Ciudades | Fuente monumental con Pokéball y rocío | Faroles |
+| Agrícola | Pradera, flores, sabana | Molino de B2W2 (a 0.6) | Surcos de cultivo, pacas de heno |
+| Pesquero | Costa | Ancla gigante con boyas | Barcas volteadas, barriles |
+| Minero | Montaña, cañón | Vagoneta con piedras brillantes sobre rieles | Rocas, cajas |
+| Leñador | Bosques, selva, pantanos | Tótem de madera | Pilas de troncos |
+| Oasis | Desierto, mesetas, volcán | Pozo con palmeras | Puestos con toldos de colores |
+| Alpino | Tundra | Hoguera con humo y luz | Nieve, trineos |
+
+- Plaza: monumento al centro (en el pueblo inicial, 13 m a un lado, porque ahí apareces) con un aro de **macetones de piedra** con arbustos de flores de B2W2 y bancas.
+- Los objetos del tema van entre los edificios, sin tapar puertas ni caminos.
+- El cartel del lugar dice el tema: "Pueblo Raíz · pueblo agrícola".
+- **Reflejos de la DS:** algunos modelos (el molino) traen bajo el nivel 0 una copia reflejada para el agua; ahora se apoyan en y = 0 y el reflejo queda enterrado (antes el molino flotaba sobre su reflejo).

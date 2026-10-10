@@ -50,6 +50,8 @@ func build(builder: WorldBuilder) -> void:
 	for settlement: Dictionary in world.layout.settlements:
 		for building: Dictionary in settlement["buildings"]:
 			buildings.add_child(_building(settlement, building))
+		# Identidad del pueblo: monumento, plaza y objetos de su tema.
+		TownIdentity.decorate(self, buildings, settlement)
 	var landmarks := Node3D.new()
 	landmarks.name = "Landmarks"
 	add_child(landmarks)

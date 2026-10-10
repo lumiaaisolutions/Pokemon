@@ -232,7 +232,9 @@ func _update_location(delta: float) -> void:
 	var where := _world.location_name(_player.global_position.x, _player.global_position.z)
 	if where != _location_name:
 		_location_name = where
-		_location.text = where
+		var settlement := _world.settlement_at(_player.global_position.x, _player.global_position.z, 0.0)
+		var theme := String(settlement.get("theme", ""))
+		_location.text = where + ("  ·  " + TownIdentity.NAMES[theme] if TownIdentity.NAMES.has(theme) and where == settlement.get("name", "") else "")
 		_location_show = 3.5
 
 

@@ -31,6 +31,7 @@ const MODELS := {
 	"sign": ["sign1", "sign2", "sign3", "sign4"],
 	"bench": ["bench"],
 	"stump": ["stump"],
+	"windmill": ["windmill"],
 }
 
 static var _scenes := {}
@@ -61,6 +62,10 @@ static func instance(kind: String, variant: int) -> Dictionary:
 	var first := true
 	for mesh_node in node.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mesh_node as MeshInstance3D
+		# Reflejo de la DS: copia del modelo con escala negativa (para el agua). Se oculta.
+		if _local_transform(mesh, node).basis.determinant() < 0.0:
+			mesh.visible = false
+			continue
 		_fix_materials(mesh)
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		mesh.visibility_range_end = 520.0
@@ -72,7 +77,13 @@ static func instance(kind: String, variant: int) -> Dictionary:
 	var holder := Node3D.new()
 	holder.name = "Model_" + name
 	holder.add_child(node)
-	node.position = Vector3(-center.x, -box.position.y, -center.z) * SCALE
+	# Algunos modelos de la DS traen su reflejo (para el agua) bajo el nivel 0: el suelo
+	# real es y = 0 y el reflejo queda enterrado bajo el terreno.
+	var base_y := box.position.y
+	if box.position.y < -box.size.y * 0.25 and box.end.y > box.size.y * 0.25:
+		base_y = 0.0
+		box = AABB(Vector3(box.position.x, 0.0, box.position.z), Vector3(box.size.x, box.end.y, box.size.z))
+	node.position = Vector3(-center.x, -base_y, -center.z) * SCALE
 	var size := box.size * SCALE
 	# Núcleo sólido: los modelos de la DS no tienen las caras que nunca se veían (la parte
 	# de atrás); por dentro va una caja del color de sus paredes para tapar los huecos.
@@ -94,7 +105,7 @@ static func instance(kind: String, variant: int) -> Dictionary:
 
 
 ## Tipos que son decoración (sin núcleo).
-const DECOR_KINDS := ["lamp", "fence", "sign", "bench", "stump"]
+const DECOR_KINDS := ["lamp", "fence", "sign", "bench", "stump", "windmill"]
 static var _wall_colors := {}
 
 
