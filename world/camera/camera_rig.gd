@@ -8,7 +8,8 @@ extends Node3D
 @export_group("Ángulos")
 ## Inclinación hacia abajo en grados: negativo mira hacia arriba (cielo), 80 casi cenital.
 @export_range(-30.0, 89.0) var pitch_min_deg: float = -20.0
-@export_range(-30.0, 89.0) var pitch_max_deg: float = 80.0
+## 70°: más arriba los sprites se verían de canto (para ver todo desde arriba está el mapa).
+@export_range(-30.0, 89.0) var pitch_max_deg: float = 70.0
 @export var mouse_sensitivity: float = 0.15
 ## Grados por segundo con el stick derecho o las flechas.
 @export var stick_speed_deg: float = 150.0

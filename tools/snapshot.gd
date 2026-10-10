@@ -23,6 +23,43 @@ func _ready() -> void:
 		scene.call("_show_step", int(args[4]))
 	for i in frames:
 		await get_tree().process_frame
+	# "arriba": cámara en su inclinación máxima (vista desde arriba).
+	if args.size() > 5 and args[5] == "arriba":
+		var rig := scene.get_node_or_null("CameraRig") as CameraRig
+		if rig != null:
+			rig.set("_pitch_deg", rig.pitch_max_deg)
+			rig.set("_zoom", rig.zoom_max)
+			for i in 40:
+				await get_tree().process_frame
+	# "borde": lleva al jugador cerca del borde oeste del mundo, mirando hacia afuera.
+	if args.size() > 5 and args[5] == "borde":
+		var player := scene.get_node("Player") as Player
+		var world := scene.get_node("World") as WorldBuilder
+		var x := -world.config.size * 0.5 + 12.0
+		player.global_position = Vector3(x, world.surface_height_at(x, 20.0) + 1.0, 20.0)
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_yaw_deg", -90.0)
+		rig.set("_pitch_deg", 12.0)
+		for i in 120:
+			await get_tree().process_frame
+	# "cima": en la cima del borde norte, mirando hacia afuera.
+	if args.size() > 5 and args[5] == "cima":
+		var player := scene.get_node("Player") as Player
+		var world := scene.get_node("World") as WorldBuilder
+		var z := -world.config.size * 0.5 + 10.0
+		player.global_position = Vector3(-90.0, world.surface_height_at(-90.0, z) + 1.0, z)
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_yaw_deg", 0.0)
+		rig.set("_pitch_deg", 20.0)
+		for i in 120:
+			await get_tree().process_frame
+	# "ayuda": abre la pantalla de Ayuda.
+	if args.size() > 5 and args[5] == "ayuda":
+		var help := scene.get_node("Hud").get("_help") as HelpOverlay
+		help.toggle()
+		print("ayuda visible=%s tam=%s hijos=%d" % [help.visible, help.size, help.get_child_count()])
+		for i in 10:
+			await get_tree().process_frame
 	# "desmayo": tumba al jugador para ver el estado de desmayo.
 	if args.size() > 5 and args[5] == "desmayo":
 		var player := scene.get_node_or_null("Player") as Player

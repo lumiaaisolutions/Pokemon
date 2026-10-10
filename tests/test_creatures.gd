@@ -49,6 +49,15 @@ func _run() -> void:
 
 	# Aparición por hábitat: 60 intentos repartidos por el mundo.
 	_spawner.set_process(false)
+	# Clima: en la nieve no hay Fuego, Planta ni Bicho; el Hielo no vive en zonas templadas.
+	var world := _main.get_node("World") as WorldBuilder
+	var snow := Vector3(0, world.config.snow_height + 1.0, 0)
+	var warm := Vector3(0, 0.0, 0)
+	var torchic := load("res://creatures/data/species/torchic.tres") as SpeciesData
+	var snorunt := load("res://creatures/data/species/snorunt.tres") as SpeciesData
+	_check(not _spawner.climate_ok(torchic, snow), "Torchic (Fuego) no debe aparecer en la nieve")
+	_check(_spawner.climate_ok(snorunt, snow), "Snorunt (Hielo) sí vive en la nieve")
+	_check(not _spawner.climate_ok(snorunt, warm), "Snorunt no debe aparecer en la pradera")
 	(_main.get_node("Legendaries") as LegendaryManager).set_process(false)
 	(_main.get_node("Ambushes") as Node).set_process(false)
 	_clear_wild()
@@ -87,7 +96,9 @@ func _run() -> void:
 	(_main.companion as Node3D).global_position = Vector3(0, -50, 0)
 	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
 	await _frames(20)
-	await _check_temperament("absol", 7.0, "agresivo", func(start: float, end: float, contact: bool) -> bool: return contact)
+	# Agresivo: te alcanza (contacto) o ya llegó a distancia de golpe (el ataque sale
+	# tras una espera al azar de 1.4 a 2.4 s).
+	await _check_temperament("absol", 7.0, "agresivo", func(start: float, end: float, contact: bool) -> bool: return contact or end <= PokemonActor.MELEE_RANGE + 0.8)
 	await _check_temperament("pidgeot", 6.0, "tímido", func(start: float, end: float, contact: bool) -> bool: return end > start + 4.0)
 	await _check_temperament("ampharos", 7.0, "curioso", func(start: float, end: float, contact: bool) -> bool: return end < start - 2.0 and end > PokemonActor.CONTACT_RADIUS)
 	await _check_temperament("venusaur", 7.0, "deambula", func(start: float, end: float, contact: bool) -> bool: return not contact and end > 3.0)
@@ -102,7 +113,11 @@ func _run() -> void:
 	_check(leash >= 12.0 and leash <= 35.0, "el área de persecución debe estar entre 12 y 35 m (%.1f)" % leash)
 	_player.global_position = chaser.chase_origin + Vector3(0, 0, -(leash + 6.0))
 	_player.global_position.y = _world.surface_height_at(_player.global_position.x, _player.global_position.z) + 0.5
-	await _frames(10)
+	# Si estaba a punto de atacar, primero termina el golpe y luego revisa el área.
+	for i in 90:
+		await get_tree().physics_frame
+		if chaser.state == PokemonActor.State.RETURN:
+			break
 	_check(chaser.state == PokemonActor.State.RETURN, "fuera del área debe rendirse y regresar (estado %d)" % chaser.state)
 	_clear_wild()
 	await _frames(2)

@@ -15,6 +15,9 @@ const DIFFICULTIES: Array[Dictionary] = [
 	{"name": "Difícil", "description": "Los salvajes pegan fuerte, pierdes más dinero y tardas más en recuperarte.", "damage": 1.4, "money_loss": 0.2, "recovery": 1.25},
 ]
 
+## Tarjetas de tutorial ya vistas en esta partida: id -> true.
+var tips_seen := {}
+
 ## Avisos de captura (el HUD los muestra).
 signal pokemon_caught(display_name: String, shiny: bool, location: String)
 signal capture_failed(display_name: String)

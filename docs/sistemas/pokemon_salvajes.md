@@ -17,6 +17,8 @@
 - **Shiny:** 2 %, con la paleta variocolor y un destello de estrellas cada 2.5 s.
 - **Manadas (30 %):** de 3 a 6 de una línea evolutiva, solo con especies que viven en ese hábitat. Casi todos básicos; en el 25 % de las manadas hay un líder evolucionado. Siguen al líder en formación y huyen, persiguen o se esconden juntos. Están separadas 60 m, salvo un 5 % de manadas rivales a 15 m.
 
+- **Clima** (`WildSpawner.climate_ok`): cerca o arriba de la línea de nieve no aparecen Pokémon de tipo Fuego, Planta ni Bicho (salvo que también sean de Hielo), y los de Hielo solo aparecen en la nieve o el mar. Se reintenta la especie hasta 8 veces. Corrige, por ejemplo, un Torchic junto a la nieve.
+
 ## IA (`PokemonActor`, rol salvaje)
 | Temperamento | Comportamiento |
 |---|---|

@@ -21,6 +21,14 @@ extends Resource
 @export var health_max: float = 20.0
 ## Al desmayarse, segundos que tarda en llenarse la vida mientras el compañero lo protege.
 @export var downed_duration: float = 120.0
+## Descanso: sin recibir daño durante health_regen_delay s, recupera health_regen por segundo.
+@export var health_regen_delay: float = 10.0
+@export var health_regen: float = 0.25
+## En el agua se hunde a esta velocidad si no mantiene "jump" (m/s).
+@export var sink_speed: float = 0.8
+## Surfeando sobre un compañero de tipo Agua: velocidad (factor) y altura del asiento (m).
+@export var surf_speed_factor: float = 1.6
+@export var surf_seat_height: float = 0.55
 
 @export_group("Agua")
 ## Profundidad desde la que nada en vez de caminar.

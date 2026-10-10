@@ -49,6 +49,19 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(10)
 
+	# Mira fija: un toque la fija, otro toque la suelta.
+	var lock_aim := _player.get_node("ThrowAim") as ThrowAim
+	Input.action_press("aim")
+	await _frames(3)
+	Input.action_release("aim")
+	await _frames(3)
+	_check(lock_aim.is_aiming() and lock_aim.locked, "un toque de apuntar debe fijar la mira")
+	Input.action_press("aim")
+	await _frames(3)
+	Input.action_release("aim")
+	await _frames(3)
+	_check(not lock_aim.is_aiming(), "otro toque debe soltar la mira")
+
 	# Apuntar: la cámara pasa al hombro y aparece el arco.
 	var rig := _main.get_node("CameraRig") as CameraRig
 	var arm := rig.get_node("Pitch/SpringArm") as SpringArm3D

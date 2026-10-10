@@ -30,6 +30,12 @@ func _run() -> void:
 	(_main.get_node("Spawner") as Node).set_process(false)
 	(_main.get_node("Legendaries") as Node).set_process(false)
 	(_main.get_node("Ambushes") as Node).set_process(false)
+	# El compañero al azar queda en su Pokéball: si fuera de tipo Agua, el jugador
+	# surfearía sobre él y no se probaría el nado.
+	var companion := _main.get("companion") as PokemonActor
+	companion.visible = false
+	companion.process_mode = Node.PROCESS_MODE_DISABLED
+	_main.set("companion_state", 1)
 	await _frames(30)
 	_check(_player.is_on_floor(), "el jugador debe empezar sobre el suelo")
 	_check(absf(_player.global_position.y - _world.surface_height_at(0, 0)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
@@ -169,16 +175,22 @@ func _run() -> void:
 	var fall_damage := health_before - _player.health
 	_check(fall_damage > 4.5 and fall_damage < 7.5, "una caída de 10 m debe quitar unos 6 de vida (quitó %.1f)" % fall_damage)
 
-	# Nadar: al entrar al lago nada con la cabeza fuera y no gasta aire.
+	# Nadar: al entrar al lago, manteniendo "jump" flota con la cabeza fuera y no
+	# gasta aire; sin mantenerlo se hunde poco a poco.
 	_player.heal(100.0)
 	var lake := _world.config.lake_center
 	_player.global_position = Vector3(lake.x, _world.water_level_at(lake.x, lake.y) - 1.0, lake.y)
 	_player.velocity = Vector3.ZERO
+	Input.action_press("jump")
 	await _frames(60)
 	_check(_player.mode == Player.Mode.SWIM, "en el lago debe nadar (modo %d)" % _player.mode)
 	_check(_player.air >= _player.config.air_max - 0.01, "nadando en la superficie no debe gastar aire")
 	var level := _world.water_level_at(_player.global_position.x, _player.global_position.z)
 	_check(_player.global_position.y + 1.5 > level, "nadando debe tener la cabeza fuera del agua")
+	var floating_y := _player.global_position.y
+	Input.action_release("jump")
+	await _frames(60)
+	_check(_player.global_position.y < floating_y - 0.4, "sin mantener flotar debe hundirse poco a poco")
 
 	# Bucear sin parar: se acaba el aire y pierde vida.
 	Input.action_press("dive")
@@ -186,8 +198,20 @@ func _run() -> void:
 	_check(_player.air <= 0.0, "buceando más de %.0f s se acaba el aire" % _player.config.air_max)
 	_check(_player.health < _player.config.health_max, "sin aire debe perder vida")
 	Input.action_release("dive")
+	Input.action_press("jump")
 	await _frames(240)
-	_check(_player.mode == Player.Mode.SWIM, "al soltar bucear debe volver a la superficie")
+	_check(_player.mode == Player.Mode.SWIM, "manteniendo flotar debe volver a la superficie")
+	Input.action_release("jump")
+
+	# Descanso: tras unos segundos sin daño, la vida sube sola.
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.velocity = Vector3.ZERO
+	await _frames(30)
+	_player.heal(100.0)
+	_player.take_damage(4.0)
+	var hurt_health := _player.health
+	await _frames(int((_player.config.health_regen_delay + 3.0) * 60))
+	_check(_player.health > hurt_health, "tras %.0f s sin daño debe recuperar vida" % _player.config.health_regen_delay)
 
 	# Desmayo en tierra: estrellitas, recuperación y se levanta.
 	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
@@ -236,7 +260,9 @@ func _props_grounded() -> bool:
 				var instance := child as MultiMeshInstance3D
 				var multimesh := instance.multimesh
 				var quad := multimesh.mesh as QuadMesh
-				if not _bottom_row_opaque((quad.material as StandardMaterial3D).albedo_texture):
+				var material := quad.material
+				var texture: Texture2D = (material as ShaderMaterial).get_shader_parameter("sprite_texture") if material is ShaderMaterial else (material as StandardMaterial3D).albedo_texture
+				if not _bottom_row_opaque(texture):
 					printerr("sprite con fila inferior transparente: %s" % instance.name)
 					ok = false
 				for i in multimesh.instance_count:

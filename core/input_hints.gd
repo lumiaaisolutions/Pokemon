@@ -8,7 +8,7 @@ const PAD_NAMES := {
 	JOY_BUTTON_A: "✕", JOY_BUTTON_B: "○", JOY_BUTTON_X: "□", JOY_BUTTON_Y: "△",
 	JOY_BUTTON_LEFT_SHOULDER: "L1", JOY_BUTTON_RIGHT_SHOULDER: "R1",
 	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
-	JOY_BUTTON_BACK: "Share", JOY_BUTTON_START: "Options",
+	JOY_BUTTON_BACK: "Share", JOY_BUTTON_START: "Options", JOY_BUTTON_TOUCHPAD: "Touchpad",
 	JOY_BUTTON_DPAD_UP: "↑", JOY_BUTTON_DPAD_DOWN: "↓", JOY_BUTTON_DPAD_LEFT: "←", JOY_BUTTON_DPAD_RIGHT: "→",
 }
 const MOUSE_NAMES := {
@@ -34,12 +34,14 @@ func _input(event: InputEvent) -> void:
 
 
 ## Nombre corto del botón de action en el dispositivo actual (p. ej. "Q" o "△").
-func hint(action: StringName) -> String:
+## pad: -1 = el último usado, 0 = teclado y mouse, 1 = mando.
+func hint(action: StringName, pad: int = -1) -> String:
 	if not InputMap.has_action(action):
 		return "?"
+	var use_pad := gamepad if pad < 0 else pad == 1
 	var keyboard := ""
 	for event in InputMap.action_get_events(action):
-		if gamepad:
+		if use_pad:
 			if event is InputEventJoypadButton:
 				return PAD_NAMES.get((event as InputEventJoypadButton).button_index, "Botón")
 			if event is InputEventJoypadMotion:

@@ -45,7 +45,12 @@ var _downed_bar: ProgressBar
 var _downed_info: Label
 var _downed_controls: Label
 var _downed_tint: ColorRect
-var _hints: Label
+var _legend: VBoxContainer
+var _legend_context := ""
+var _tip: PanelContainer
+var _tip_queue: Array = []
+var _help: HelpOverlay
+const TIP_SECONDS := 7.0
 var _air_label: Label
 var _time: float = 0.0
 
@@ -74,6 +79,7 @@ func _ready() -> void:
 	_build_companion_card()
 	_build_downed_panel()
 	_build_hints()
+	_player.notice.connect(show_toast)
 
 
 func _process(delta: float) -> void:
@@ -97,7 +103,7 @@ func _process(delta: float) -> void:
 	_air_label.visible = _bubbles_box.visible
 	for i in BUBBLES:
 		(_bubbles_box.get_child(i) as TextureRect).visible = air_ratio > float(i) / BUBBLES
-	_reticle.visible = _player.mode == Player.Mode.WALK and Input.is_action_pressed("aim")
+	_reticle.visible = (_player.get_node("ThrowAim") as ThrowAim).is_aiming()
 	_balls.text = "Pokéballs × %d" % GameState.pokeballs
 	_update_companion_card()
 	_update_downed_panel()
@@ -339,33 +345,123 @@ func _update_downed_panel() -> void:
 # --- Ayudas de botones -------------------------------------------------------------
 
 func _build_hints() -> void:
-	_hints = _small_label("", 18)
-	_hints.anchor_left = 1.0
-	_hints.anchor_right = 1.0
-	_hints.anchor_top = 1.0
-	_hints.anchor_bottom = 1.0
-	_hints.offset_left = -720
-	_hints.offset_right = -24
-	_hints.offset_top = -110
-	_hints.offset_bottom = -64
-	_hints.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hints.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	add_child(_hints)
+	# Leyenda: filas [ícono] acción, abajo a la derecha, según el contexto.
+	_legend = VBoxContainer.new()
+	_legend.anchor_left = 1.0
+	_legend.anchor_right = 1.0
+	_legend.anchor_top = 1.0
+	_legend.anchor_bottom = 1.0
+	_legend.offset_left = -420
+	_legend.offset_right = -24
+	_legend.offset_top = -380
+	_legend.offset_bottom = -70
+	_legend.alignment = BoxContainer.ALIGNMENT_END
+	_legend.add_theme_constant_override("separation", 6)
+	_legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_legend)
+	_tip = PanelContainer.new()
+	_tip.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.85, 0.3)))
+	_tip.position = Vector2(24, 24)
+	_tip.custom_minimum_size = Vector2(430, 0)
+	_tip.visible = false
+	add_child(_tip)
+	_help = HelpOverlay.new()
+	add_child(_help)
 
 
 func _update_hints() -> void:
+	var rows: Array = []
+	var aim := _player.get_node("ThrowAim") as ThrowAim
+	var context := ""
 	match _player.mode:
 		Player.Mode.WALK:
-			if Input.is_action_pressed("aim"):
-				_hints.text = "%s   ·   mueve la cámara para subir o bajar la mira" % InputHints.label("throw", "Lanzar Pokéball")
+			if aim.is_aiming():
+				context = "aim%s" % aim.locked
+				rows = [["throw", "Lanzar Pokéball"], ["aim", "Dejar de apuntar" if aim.locked else "Suelta para dejar de apuntar"], [null, "Mueve la cámara para subir o bajar la mira"]]
 			else:
-				_hints.text = "%s   %s   %s" % [InputHints.label("aim", "Apuntar (mantener)"), InputHints.label("jump", "Saltar"), InputHints.label("map", "Mapa")]
+				context = "walk"
+				rows = [["aim", "Apuntar (toca para fijar)"], ["jump", "Saltar"], ["run", "Correr"], ["companion", "Guardar o sacar a tu Pokémon"], ["map", "Mapa"], ["help", "Ayuda: todos los controles"]]
 		Player.Mode.SWIM:
-			_hints.text = "%s" % InputHints.label("dive", "Bucear (mantener)")
+			context = "surf" if _player.riding != null else "swim"
+			rows = [[null, "Surfeando sobre tu Pokémon"], ["help", "Ayuda"]] if _player.riding != null \
+					else [["jump", "Mantener: flotar"], ["dive", "Bucear"], ["help", "Ayuda"]]
 		Player.Mode.DIVE:
-			_hints.text = "%s   %s" % [InputHints.label("jump", "Subir"), "suelta " + InputHints.hint("dive") + " para flotar"]
-		_:
-			_hints.text = ""
+			context = "dive"
+			rows = [["jump", "Mantener: subir"], [null, "Suelta para hundirte"], ["help", "Ayuda"]]
+	context += str(InputHints.gamepad)
+	if context == _legend_context:
+		return
+	_legend_context = context
+	for child in _legend.get_children():
+		child.queue_free()
+	for entry: Array in rows:
+		if entry[0] == null:
+			var note := _small_label(entry[1], 17)
+			note.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+			note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			_legend.add_child(note)
+		else:
+			var row := InputGlyph.row(entry[0], entry[1], 19)
+			row.alignment = BoxContainer.ALIGNMENT_END
+			_legend.add_child(row)
+	_update_tips()
+
+
+## Tarjetas de tutorial: la primera vez que algo es posible, una tarjeta muestra qué
+## botón pulsar (una sola vez por partida; se guardan en GameState.tips_seen).
+func show_tip(id: String, title: String, rows: Array) -> void:
+	if GameState.tips_seen.get(id, false):
+		return
+	GameState.tips_seen[id] = true
+	_tip_queue.append([title, rows])
+	if not _tip.visible:
+		_next_tip()
+
+
+func _next_tip() -> void:
+	if _tip_queue.is_empty():
+		_tip.visible = false
+		return
+	var data: Array = _tip_queue.pop_front()
+	for child in _tip.get_children():
+		child.queue_free()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	_tip.add_child(box)
+	var title := _small_label(data[0], 24)
+	title.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+	box.add_child(title)
+	for entry: Array in data[1]:
+		var glyph: Variant = entry[0]
+		if glyph == null:
+			var note := _small_label(entry[1], 17)
+			note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			note.custom_minimum_size.x = 400
+			box.add_child(note)
+			continue
+		if glyph is String and String(glyph).begins_with("@"):
+			glyph = InputGlyph.text(String(glyph).substr(1), not InputHints.gamepad)
+		box.add_child(InputGlyph.row(glyph, entry[1], 19))
+	_tip.visible = true
+	_tip.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(_tip, "modulate:a", 1.0, 0.3)
+	tween.tween_interval(TIP_SECONDS)
+	tween.tween_property(_tip, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(_next_tip)
+
+
+func _update_tips() -> void:
+	if _player.mode == Player.Mode.WALK:
+		show_tip("moverse", "¡Bienvenido! Así te mueves", [["@" + ("Stick izq." if InputHints.gamepad else "WASD"), "Caminar"], ["@" + ("Stick der." if InputHints.gamepad else "Mouse"), "Mover la cámara"], ["run", "Correr"], ["jump", "Saltar"], ["help", "Ver todos los controles"]])
+	if _player.mode == Player.Mode.SWIM or _player.mode == Player.Mode.DIVE:
+		if _player.riding != null:
+			show_tip("surf", "¡Surfeas sobre tu Pokémon!", [[null, "Tu compañero de tipo Agua te lleva por el agua."]])
+		else:
+			show_tip("nadar", "Nadar y bucear", [["jump", "Mantener para flotar o subir"], ["dive", "Bucear más rápido"], [null, "Si no mantienes, te hundes poco a poco. Cuida tu aire."]])
+	var aim := _player.get_node("ThrowAim") as ThrowAim
+	if aim.is_aiming():
+		show_tip("lanzar", "Lanzar una Pokéball", [["throw", "Lanzar"], ["aim", "Toca para fijar o soltar la mira"], [null, "Mueve la cámara para lanzar lejos o hacia arriba."]])
 
 
 # --- Utilidades --------------------------------------------------------------------

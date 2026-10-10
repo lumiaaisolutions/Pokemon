@@ -56,6 +56,9 @@ const AMBUSH_WINDUP := 0.5
 const DROP_SPEED := 14.0
 ## Cuánto se adelanta hacia la cámara el sprite de un Pokémon posado en un árbol.
 const PERCH_FRONT_OFFSET := 1.2
+## Altura de la rama de la que cuelga un Bicho (fracción del árbol) y largo del hilo.
+const PERCH_BRANCH_HEIGHT := 0.72
+const THREAD_LENGTH := 0.7
 const AMBUSH_HIT_RADIUS := 1.6
 ## Cada cuánto busca pelea con otros salvajes (rivalidades), en segundos.
 const RIVAL_SCAN_INTERVAL := 1.5
@@ -82,6 +85,8 @@ const REPATH_DISTANCE := 1.5
 @export var swimming := false
 ## Lo controla el jugador (mientras Nate está desmayado y lo protege).
 var controlled := false
+## El jugador surfea sobre él (compañero de tipo Agua).
+var ridden_by: Node3D
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
 @export var legendary := false
@@ -208,6 +213,9 @@ func contact_radius() -> float:
 
 func _physics_process(delta: float) -> void:
 	_state_time += delta
+	if ridden_by != null:
+		_process_ridden(delta)
+		return
 	_update_occlusion()
 	contact_cooldown = maxf(contact_cooldown - delta, 0.0)
 	_ignore_player = maxf(_ignore_player - delta, 0.0)
@@ -548,6 +556,34 @@ func _update_occlusion() -> void:
 		_sprite.set_faded(blocking)
 
 
+# --- Montura en el agua ----------------------------------------------------------------
+
+## ¿Puede llevar al jugador en el agua? (compañero de tipo Agua)
+func can_surf() -> bool:
+	return species.types.has(PokemonTypes.Type.WATER)
+
+
+## Empieza o deja de llevar al jugador: sin colisiones ni IA mientras lo lleva.
+func set_ridden(rider: Node3D) -> void:
+	ridden_by = rider
+	collision_layer = 0 if rider != null else 4
+	collision_mask = 0 if rider != null else 3
+	($BlobShadow as Decal).visible = rider == null
+	_health_bar.visible = rider == null
+	if rider == null:
+		_enter(State.FOLLOW)
+
+
+## Va bajo el jugador, en la superficie, mirando hacia donde avanza.
+func _process_ridden(delta: float) -> void:
+	var level := world.water_level_at(ridden_by.global_position.x, ridden_by.global_position.z) if world != null else ridden_by.global_position.y
+	var moving := Vector3((ridden_by as CharacterBody3D).velocity.x, 0.0, (ridden_by as CharacterBody3D).velocity.z)
+	global_position = Vector3(ridden_by.global_position.x, level - species.overworld_cell * world_pixel_size() * 0.35, ridden_by.global_position.z)
+	velocity = Vector3.ZERO
+	_sprite.animate(moving, delta, moving.length() > walk_speed())
+	_rival_scan = RIVAL_SCAN_INTERVAL
+
+
 # --- Control directo (Nate desmayado) -------------------------------------------
 
 ## Distancia máxima a Nate mientras lo protege.
@@ -682,11 +718,18 @@ func perch_on(tree: Node3D, as_bird: bool) -> void:
 	($BlobShadow as Decal).visible = false
 	var sprite := tree.get_node("Sprite") as Sprite3D
 	var tree_height := sprite.texture.get_height() * sprite.pixel_size
-	global_position = tree.global_position + Vector3(0.0, tree_height * (0.92 if as_bird else 0.6), 0.0)
+	# Ave: posada arriba de la copa. Bicho: colgado de una rama bajo la copa, con el
+	# hilo de seda de su cabeza a la rama.
+	var head := species.overworld_cell * world_pixel_size() * 0.85
+	var branch_y := tree_height * PERCH_BRANCH_HEIGHT
+	if as_bird:
+		global_position = tree.global_position + Vector3(0.0, tree_height * 0.92, 0.0)
+	else:
+		global_position = tree.global_position + Vector3(0.0, maxf(branch_y - THREAD_LENGTH - head, 1.2), 0.0)
 	if not as_bird:
-		# Hilo de seda desde la rama.
+		var thread_length := branch_y - (global_position.y - tree.global_position.y) - head
 		var line := BoxMesh.new()
-		line.size = Vector3(0.03, tree_height * 0.25, 0.03)
+		line.size = Vector3(0.03, maxf(thread_length, 0.2), 0.03)
 		var material := StandardMaterial3D.new()
 		material.albedo_color = Color(0.95, 0.95, 0.95, 0.8)
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -694,7 +737,7 @@ func perch_on(tree: Node3D, as_bird: bool) -> void:
 		line.material = material
 		_thread = MeshInstance3D.new()
 		_thread.mesh = line
-		_thread.position.y = species.overworld_cell * world_pixel_size() + tree_height * 0.125
+		_thread.position.y = head + maxf(thread_length, 0.2) * 0.5
 		add_child(_thread)
 	_exclaim = _make_exclamation()
 	add_child(_exclaim)

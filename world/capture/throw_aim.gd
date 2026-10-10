@@ -2,6 +2,8 @@ class_name ThrowAim
 extends Node3D
 ## Apuntar y lanzar Pokéballs desde el jugador: con "aim" la cámara pasa al hombro y
 ## se dibuja el arco de la trayectoria; con "throw" se lanza la ball (física real).
+## Tocar "aim" fija la mira (se suelta tocándolo otra vez); mantenerlo apunta mientras
+## se sostiene.
 
 const THROW_SPEED := 17.0
 const THROW_LIFT := 3.0
@@ -32,8 +34,32 @@ func _ready() -> void:
 		_dots.append(dot)
 
 
+## Toque más corto que esto = fijar o soltar la mira.
+const TAP_TIME := 0.25
+
+## Mira fijada con un toque.
+var locked := false
+var _press_time: float = 0.0
+var _was_locked := false
+
+
 func is_aiming() -> bool:
-	return _player.mode == Player.Mode.WALK and Input.is_action_pressed("aim")
+	return _player.mode == Player.Mode.WALK and (locked or Input.is_action_pressed("aim"))
+
+
+func _update_lock(delta: float) -> void:
+	if _player.mode != Player.Mode.WALK:
+		locked = false
+		return
+	if Input.is_action_just_pressed("aim"):
+		_press_time = 0.0
+		_was_locked = locked
+		locked = false
+	elif Input.is_action_pressed("aim"):
+		_press_time += delta
+	elif Input.is_action_just_released("aim"):
+		# Toque: alterna la mira fija. Mantener y soltar: deja de apuntar.
+		locked = _press_time < TAP_TIME and not _was_locked
 
 
 ## Punto de salida y velocidad inicial del lanzamiento según la cámara.
@@ -62,10 +88,11 @@ func throw_ball() -> PokeballProjectile:
 	return ball
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _rig == null:
 		_rig = get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
 		_world = get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
+	_update_lock(delta)
 	var aiming := is_aiming()
 	if _rig != null:
 		_rig.aiming = aiming

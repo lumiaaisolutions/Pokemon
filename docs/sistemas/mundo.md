@@ -14,6 +14,9 @@
 - Río (curva Catmull-Rom) de la montaña al mar: cruza el bosque, pasa por el lago y desemboca en la costa.
 - Caminos de tierra (`WorldConfig.paths`) que unen el inicio con el lago, el bosque y el pantano, la montaña y la costa.
 
+## Límite del mundo
+- Fuera del área jugable (`_build_frontier`), una franja de 420 m: **cordillera infranqueable** al norte, este y oeste, que sube empinada desde el borde (55 a 125 m, con roca y nieve por altura, con el mismo shader del terreno), y **mar abierto** hasta el horizonte al sur de la costa. Es solo visual: los muros invisibles del borde siguen deteniendo al jugador, y en el mar una corriente lo regresa.
+
 ## Agua (nunca flota)
 - Cada cuerpo de agua tiene **cauce y ribera**. El nivel sale del terreno más bajo a su alrededor (río encajado, nunca colgado), la superficie termina dentro de la ribera (borde enterrado) y tierra adentro nunca baja del nivel del mar.
 - Los tramos del río dentro del lago o del mar no se dibujan (sin doble capa transparente).

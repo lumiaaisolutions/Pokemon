@@ -13,6 +13,8 @@ signal downed
 signal revived
 ## Desmayo definitivo (p. ej. su compañero cayó, o se ahogó): pantalla negra y reaparición.
 signal blacked_out
+## Aviso breve para el HUD (p. ej. la corriente que lo regresa en el mar abierto).
+signal notice(text: String)
 
 enum Mode { WALK, SWIM, DIVE, DOWNED }
 
@@ -44,11 +46,17 @@ var _lying: Node3D
 var _lying_sprite: Sprite3D
 var _heal_sparkle: float = 0.0
 var _downed_time: float = 0.0
+## Compañero de tipo Agua sobre el que surfea (lo asigna la escena principal).
+var riding: PokemonActor
+const HURT_COLOR := Color(1.0, 0.3, 0.3)
+var _since_damage: float = 0.0
+var _hurt_tween: Tween
 ## Hoja overworld del personaje elegido.
 var sheet: Texture2D
 var _swim_time: float = 0.0
 var _swim_bob: float = 0.0
 var _splash_timer: float = 0.0
+var _swim_shader_on := false
 
 
 func _ready() -> void:
@@ -79,11 +87,13 @@ func _physics_process(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := _camera_relative(input)
 	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
-	var aiming := Input.is_action_pressed("aim") and not swimming
+	var aiming := ($ThrowAim as ThrowAim).is_aiming() and not swimming
 	var wants_run := Input.is_action_pressed("run") and input.length() > 0.1 and not swimming and not aiming
 	var running := wants_run and not exhausted and stamina > 0.0
-	_update_stamina(running, swimming and input.length() > 0.1, delta)
+	_update_stamina(running, swimming and riding == null and input.length() > 0.1, delta)
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
+	if swimming and riding != null:
+		target_speed = config.swim_speed * config.surf_speed_factor
 	if swimming and stamina <= 0.0:
 		target_speed *= config.swim_exhausted_speed_factor
 	if aiming:
@@ -99,6 +109,7 @@ func _physics_process(delta: float) -> void:
 
 	if swimming:
 		velocity.y = _swim_vertical(delta)
+		_apply_sea_current(delta)
 	elif is_on_floor():
 		velocity.y = 0.0
 		if Input.is_action_just_pressed("jump"):
@@ -109,6 +120,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_update_fall(swimming)
 	_update_air(delta)
+	_update_regen(delta)
 	_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
 	_update_swim_visuals(horizontal, delta)
 	if aiming:
@@ -120,23 +132,45 @@ func _physics_process(delta: float) -> void:
 
 ## Nado: se mece en la superficie, bracea más lento, deja ondas y salpicaduras al
 ## avanzar y burbujas al bucear (no hay sprite de nado en B2W2).
+## Nado generado (los personajes no traen sprites de nado): en la superficie solo se
+## ve de la cintura para arriba, con brazadas (cuadros de caminar lentos) y balanceo;
+## buceando se inclina como nadando de pecho, con burbujas. Surfeando va sentado sobre
+## su compañero (se ocultan las piernas).
 func _update_swim_visuals(horizontal: Vector3, delta: float) -> void:
 	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
 	if not swimming:
-		if _swim_bob != 0.0:
+		if _swim_bob != 0.0 or _swim_shader_on:
 			_swim_bob = 0.0
+			_swim_shader_on = false
 			_sprite.place_on_ground()
+			_sprite.set_instance_shader_parameter("cut_bottom", -1000.0)
+			_sprite.set_instance_shader_parameter("extra_tilt", 0.0)
 		_sprite.walk_fps = config.walk_fps
 		return
-	_sprite.walk_fps = config.walk_fps * 0.55
+	_swim_shader_on = true
+	var level := _world.water_level_at(global_position.x, global_position.z)
 	_swim_time += delta
-	_swim_bob = sin(_swim_time * 3.0) * 0.07
 	_sprite.place_on_ground()
-	_sprite.position.y += _swim_bob
+	if riding != null:
+		_swim_bob = sin(_swim_time * 2.0) * 0.04
+		_sprite.position.y += config.surf_seat_height + _swim_bob
+		_sprite.set_instance_shader_parameter("cut_bottom", 0.45)
+		_sprite.set_instance_shader_parameter("extra_tilt", 0.0)
+	else:
+		_sprite.walk_fps = config.walk_fps * 0.55
+		_swim_bob = sin(_swim_time * 3.0) * 0.07
+		_sprite.position.y += _swim_bob
+		if mode == Mode.SWIM:
+			# Lo que queda bajo la superficie no se dibuja.
+			_sprite.set_instance_shader_parameter("cut_bottom", level - global_position.y - _swim_bob)
+			_sprite.set_instance_shader_parameter("extra_tilt", 0.0)
+		else:
+			_sprite.set_instance_shader_parameter("cut_bottom", -1000.0)
+			var moving := horizontal.length() > 0.3
+			_sprite.set_instance_shader_parameter("extra_tilt", 1.1 if moving else 0.35)
 	_splash_timer -= delta
 	if _splash_timer > 0.0:
 		return
-	var level := _world.water_level_at(global_position.x, global_position.z)
 	if mode == Mode.DIVE:
 		_splash_timer = 0.5
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 1.4, PixelBurst.Kind.BUBBLES, 0.6)
@@ -156,8 +190,29 @@ func take_damage(amount: float) -> void:
 		return
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health)
+	_hurt_flash()
+	_since_damage = 0.0
 	if health <= 0.0:
 		_go_down()
+
+
+## Descanso: tras un rato sin daño (y con aire), la vida sube poco a poco.
+func _update_regen(delta: float) -> void:
+	_since_damage += delta
+	if _since_damage < config.health_regen_delay or health >= config.health_max or air < config.air_max:
+		return
+	heal(config.health_regen * delta)
+
+
+## Se pinta de rojo y parpadea un momento al recibir daño (como en Minecraft).
+func _hurt_flash() -> void:
+	if _hurt_tween != null and _hurt_tween.is_valid():
+		_hurt_tween.kill()
+	_sprite.modulate = HURT_COLOR
+	_hurt_tween = create_tween()
+	_hurt_tween.tween_property(_sprite, "modulate", Color.WHITE, 0.12).set_delay(0.12)
+	_hurt_tween.tween_property(_sprite, "modulate", HURT_COLOR, 0.06)
+	_hurt_tween.tween_property(_sprite, "modulate", Color.WHITE, 0.18)
 
 
 func heal(amount: float) -> void:
@@ -297,20 +352,51 @@ func _update_water_mode() -> void:
 		mode = Mode.WALK
 
 
-## Movimiento vertical en el agua: flota con la cabeza fuera; con "dive" baja y con
-## "jump" (o al soltar "dive") sube a la superficie. No se hunde solo.
+## Metros antes del borde del mundo donde empieza la corriente del mar abierto.
+const CURRENT_MARGIN := 30.0
+const CURRENT_STRENGTH := 9.0
+var _current_notice: float = 0.0
+
+
+## Mar abierto: cerca del borde, una corriente lo regresa hacia la costa.
+func _apply_sea_current(delta: float) -> void:
+	_current_notice = maxf(_current_notice - delta, 0.0)
+	if _world == null:
+		return
+	var half := _world.config.size * 0.5 - CURRENT_MARGIN
+	var push := Vector3.ZERO
+	if global_position.z > half:
+		push.z = -1.0
+	if absf(global_position.x) > half:
+		push.x = -signf(global_position.x)
+	if push == Vector3.ZERO:
+		return
+	velocity += push.normalized() * CURRENT_STRENGTH * delta * 10.0
+	if _current_notice <= 0.0:
+		_current_notice = 6.0
+		notice.emit("La corriente es muy fuerte... no puedes ir más lejos.")
+
+
+## Movimiento vertical en el agua: se hunde poco a poco solo; mantener "jump" lo
+## mantiene a flote o lo sube, y "dive" lo baja más rápido. Surfeando no se hunde.
 func _swim_vertical(delta: float) -> float:
 	var level := _world.water_level_at(global_position.x, global_position.z)
 	var surface_y := level - SWIM_SURFACE_DEPTH
 	var floor_y := _world.surface_height_at(global_position.x, global_position.z) + 0.2
+	if riding != null:
+		mode = Mode.SWIM
+		return (level - 0.15 - global_position.y) / maxf(delta, 0.001)
 	if Input.is_action_pressed("dive"):
 		mode = Mode.DIVE
 		return -config.dive_speed if global_position.y > floor_y else 0.0
-	if global_position.y < surface_y - 0.05:
-		# Bajo la superficie: sube (más rápido si salta).
-		return config.dive_speed * (1.6 if Input.is_action_pressed("jump") else 1.0)
-	mode = Mode.SWIM
-	return (surface_y - global_position.y) / maxf(delta, 0.001)
+	if Input.is_action_pressed("jump"):
+		if global_position.y < surface_y - 0.05:
+			return config.dive_speed * 1.6
+		mode = Mode.SWIM
+		return (surface_y - global_position.y) / maxf(delta, 0.001)
+	# Sin mantener a flote: se hunde despacio (bucea cuando la cabeza queda bajo el agua).
+	mode = Mode.SWIM if global_position.y > surface_y - 0.6 else Mode.DIVE
+	return -config.sink_speed if global_position.y > floor_y else 0.0
 
 
 ## Aire: se gasta con la cabeza bajo el agua y se recupera al salir; sin aire, daño.

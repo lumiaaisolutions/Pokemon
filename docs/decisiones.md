@@ -49,3 +49,11 @@ Todas tomadas por Fernando el 2026-10-09, salvo las marcadas como *(Claude)*.
 - **Botón del compañero** (Q / △) para guardarlo o sacarlo.
 - **Personajes**: 10 protagonistas de cada generación (5 y 5), con nombre y dificultad. Fernando prefirió a los protagonistas, aunque no comparten el estilo B2W2; se usan los sprites más cercanos (Gen 4 y fan de estilo DS).
 - **Menú con pestañas** y todo su contenido, ver [plan](sistemas/menu_y_personaje.md).
+
+## 2026-10-09 — Tras elegir personaje (segunda prueba)
+- Inicial con 5 huevos que eclosionan juntos; eliges uno y le lanzas la Pokéball (tutorial).
+- Historia, mapa y caminos aleatorios y sin orden; el mapa usa semilla; profesor y rival al azar; Rotom Móvil con plazos y consecuencias; día de 24 min. Ver [historia y mundo](sistemas/historia_y_mundo_aleatorio.md).
+- Límite del mundo: mar y cordillera. Vista desde arriba: los sprites se inclinan hacia la cámara y la cámara llega a 70°.
+- Apuntar: tocar para fijar o mantener para sostener. Agua: te hundes solo y Espacio te mantiene a flote; surf sobre tu compañero si es de tipo Agua.
+- Guía en pantalla: leyenda con íconos, tarjetas de tutorial y botón de Ayuda.
+- Movimientos y crecimiento sin niveles: lista oficial desbloqueable, 4 movimientos, dominio y estilos, Puntos de Entrenamiento con tope, vínculo y estadísticas comprimidas. Ver [movimientos](sistemas/movimientos_y_crecimiento.md).

@@ -78,6 +78,7 @@ func _ready() -> void:
 	_build_forest_edge()
 	_build_riparian()
 	_build_swamp()
+	_build_frontier()
 	_build_walls()
 
 
@@ -503,6 +504,7 @@ func _build_terrain() -> void:
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.material_override = material
+	_terrain_material = material
 	body.add_child(instance)
 	var shape := CollisionShape3D.new()
 	shape.shape = mesh.create_trimesh_shape()
@@ -1007,7 +1009,9 @@ func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, r
 	var sprite := _billboard(texture, config.pixel_size * scale_factor)
 	sprite.name = "Sprite"
 	sprite.modulate = tint
-	sprite.position.y = height * 0.5
+	SpriteMaterials.apply(sprite)
+	sprite.material_override = SpriteMaterials.for_texture(texture, tint)
+	sprite.modulate = Color.WHITE
 	sprite.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
 	body.add_child(sprite)
 	var shape := CylinderShape3D.new()
@@ -1061,17 +1065,9 @@ func _billboard(texture: Texture2D, pixel_size: float) -> Sprite3D:
 	return sprite
 
 
-func _sprite_material(texture: Texture2D, tint: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = texture
-	material.albedo_color = tint
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	material.alpha_scissor_threshold = 0.5
-	material.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return material
+func _sprite_material(texture: Texture2D, tint: Color) -> ShaderMaterial:
+	# De pie e inclinado al mirar desde arriba, igual que los árboles y los actores.
+	return SpriteMaterials.for_texture(texture, tint)
 
 
 ## Punto horizontal al azar dentro del mundo, fuera del radio libre del inicio (y = 0).
@@ -1083,6 +1079,82 @@ func _random_xz(rng: RandomNumberGenerator, clear_radius: float) -> Vector3:
 		if Vector2(x, z).length() >= clear_radius:
 			return Vector3(x, 0.0, z)
 	return Vector3(half, 0.0, half)
+
+
+## Ancho de la franja exterior (cordillera y mar abierto) y tamaño de su celda (m).
+const FRONTIER_WIDTH := 420.0
+const FRONTIER_CELL := 8.0
+var _terrain_material: ShaderMaterial
+
+
+## Límite del mundo sin bordes visibles: fuera del área jugable, una cordillera
+## infranqueable al norte, este y oeste (sube empinada desde el borde; roca y nieve por
+## altura con el mismo shader del terreno) y mar abierto hasta el horizonte al sur.
+## Solo es visual: los muros invisibles del borde siguen deteniendo al jugador.
+func _build_frontier() -> void:
+	var half := config.size * 0.5
+	var outer := half + FRONTIER_WIDTH
+	var cells := int(ceil(outer * 2.0 / FRONTIER_CELL))
+	var verts := cells + 1
+	var heights := PackedFloat32Array()
+	heights.resize(verts * verts)
+	for iz in verts:
+		for ix in verts:
+			heights[iz * verts + ix] = frontier_height_at(ix * FRONTIER_CELL - outer, iz * FRONTIER_CELL - outer)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var inner := half - FRONTIER_CELL
+	for iz in cells:
+		for ix in cells:
+			var x0 := ix * FRONTIER_CELL - outer
+			var z0 := iz * FRONTIER_CELL - outer
+			var x1 := x0 + FRONTIER_CELL
+			var z1 := z0 + FRONTIER_CELL
+			# Sin celdas dentro del área jugable (las cubre el terreno).
+			if x0 >= -inner and x1 <= inner and z0 >= -inner and z1 <= inner:
+				continue
+			var p00 := Vector3(x0, heights[iz * verts + ix], z0)
+			var p10 := Vector3(x1, heights[iz * verts + ix + 1], z0)
+			var p01 := Vector3(x0, heights[(iz + 1) * verts + ix], z1)
+			var p11 := Vector3(x1, heights[(iz + 1) * verts + ix + 1], z1)
+			for v: Vector3 in [p00, p10, p11, p00, p11, p01]:
+				st.add_vertex(v)
+	st.index()
+	st.generate_normals()
+	var frontier := MeshInstance3D.new()
+	frontier.name = "Frontier"
+	frontier.mesh = st.commit()
+	frontier.material_override = _terrain_material
+	frontier.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(frontier)
+	# Mar abierto: un plano grande al sur, más allá de la costa.
+	var sea := MeshInstance3D.new()
+	sea.name = "OpenSea"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(outer * 2.0, FRONTIER_WIDTH + 40.0)
+	sea.mesh = plane
+	sea.position = Vector3(0.0, config.sea_level, half + FRONTIER_WIDTH * 0.5 - 20.0)
+	sea.material_override = _water_material(config.water_texture)
+	add_child(sea)
+
+
+## Altura de la franja exterior: bajo el terreno dentro del área (para no dejar
+## rendijas), cordillera afuera y fondo marino al sur de la costa.
+func frontier_height_at(x: float, z: float) -> float:
+	var half := config.size * 0.5
+	var inside_x := clampf(x, -half, half)
+	var inside_z := clampf(z, -half, half)
+	var d := Vector2(x - inside_x, z - inside_z).length()
+	var edge := height_at(inside_x, inside_z)
+	if d <= 0.0:
+		return edge - 1.5
+	var ridge := 1.0 - absf(_ridge_noise.get_noise_2d(x * 0.6, z * 0.6))
+	var peaks := 55.0 + ridge * ridge * 70.0 + _height_noise.get_noise_2d(x * 0.5, z * 0.5) * 12.0
+	var mountain := edge + peaks * (1.0 - exp(-d / 28.0))
+	var seabed := config.sea_level - 6.0 - d * 0.05
+	# Al sur de la costa todo es mar; la cordillera baja hasta la playa.
+	var sea_factor := smoothstep(config.shore_z, config.shore_z + 60.0, z)
+	return lerpf(mountain, seabed, sea_factor)
 
 
 func _build_walls() -> void:

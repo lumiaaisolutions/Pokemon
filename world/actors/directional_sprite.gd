@@ -47,19 +47,13 @@ func setup(sheet: Texture2D, columns: int, rows: int, size_per_pixel: float, fee
 func place_on_ground() -> void:
 	if texture == null:
 		return
-	var cell_height := texture.get_height() / float(vframes)
-	position.y = (cell_height * 0.5 - foot_offset_px) * pixel_size
+	# Pies en el origen; el shader lo mantiene de pie y lo inclina al mirar desde arriba.
+	SpriteMaterials.apply(self, foot_offset_px)
 
 
-## Semitransparente (p. ej. cuando tapa al jugador). Con alpha cut no hay mezcla,
-## así que al desvanecerse cambia a transparencia normal.
+## Semitransparente (p. ej. cuando tapa al jugador): el shader lo dibuja con tramado.
 func set_faded(faded: bool, alpha: float = 0.3) -> void:
-	if faded:
-		alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
-		modulate.a = alpha
-	else:
-		alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-		modulate.a = 1.0
+	modulate.a = alpha if faded else 1.0
 
 
 ## Avanza la animación. horizontal es la velocidad horizontal del actor.

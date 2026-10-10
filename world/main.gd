@@ -38,8 +38,34 @@ var companion_state: CompanionState = CompanionState.OUT
 var _busy := false
 
 
+## Agua: si el compañero es de tipo Agua, el jugador surfea sobre él; si no, el
+## compañero vuelve a su Pokéball mientras el jugador nada y sale al volver a tierra.
+var _recalled_for_water := false
+
+
+func _physics_process(_delta: float) -> void:
+	var in_water := _player.mode == Player.Mode.SWIM or _player.mode == Player.Mode.DIVE
+	if in_water and companion_state == CompanionState.OUT and not _busy and not companion.controlled:
+		if companion.can_surf():
+			if _player.riding == null:
+				_player.riding = companion
+				companion.set_ridden(_player)
+				($Hud as Hud).show_toast("¡Surfeas sobre %s!" % companion.species.display_name)
+		elif _player.riding == null:
+			_recalled_for_water = true
+			_recall_companion()
+	elif not in_water:
+		if _player.riding != null:
+			_player.riding = null
+			companion.set_ridden(null)
+			companion.global_position = _player.global_position + _side_offset()
+		if _recalled_for_water and companion_state == CompanionState.IN_BALL and not _busy and _player.mode == Player.Mode.WALK:
+			_recalled_for_water = false
+			_send_out_companion()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("companion") and not _busy and _player.mode != Player.Mode.DOWNED:
+	if event.is_action_pressed("companion") and not _busy and _player.mode == Player.Mode.WALK:
 		if companion_state == CompanionState.OUT:
 			_recall_companion()
 		elif companion_state == CompanionState.IN_BALL:

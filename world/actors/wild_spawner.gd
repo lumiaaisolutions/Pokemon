@@ -218,13 +218,35 @@ func spawn_one() -> PokemonActor:
 				water_mode = 1
 		var habitat := _world.habitat_at(point.x, point.z)
 		var species := pick_species(habitat, water_mode, zone)
-		if species == null:
+		# Clima: en la nieve no hay Fuego, Planta ni Bicho; el Hielo vive en la nieve o el mar.
+		for retry in CLIMATE_RETRIES:
+			if species == null or climate_ok(species, point):
+				break
+			species = pick_species(habitat, water_mode)
+		if species == null or not climate_ok(species, point):
 			continue
 		if water_mode != 2 and _rng.randf() < PACK_CHANCE and _pack_allowed(point):
 			return _spawn_pack(species, point, habitat)
 		return spawn_species(species, point, _rng.randf() < SHINY_CHANCE, water_mode == 2)
 	return null
 
+
+
+const CLIMATE_RETRIES := 8
+## Metros bajo la línea de nieve donde ya hace frío.
+const COLD_MARGIN := 4.0
+
+
+## ¿Puede vivir species en point según el clima (frío de la nieve)?
+func climate_ok(species: SpeciesData, point: Vector3) -> bool:
+	var cold := point.y >= _world.config.snow_height - COLD_MARGIN
+	var types := species.types
+	if cold:
+		return not (types.has(PokemonTypes.Type.FIRE) or types.has(PokemonTypes.Type.GRASS) or types.has(PokemonTypes.Type.BUG)) \
+				or types.has(PokemonTypes.Type.ICE)
+	if types.has(PokemonTypes.Type.ICE):
+		return _world.habitat_at(point.x, point.z) == SpeciesData.Habitat.SEA
+	return true
 
 
 ## Punto transitable más cercano según la navegación (fuera de árboles y rocas).
