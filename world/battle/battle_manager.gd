@@ -57,6 +57,7 @@ var _aim_attack := 0.0
 ## Combate contra un entrenador (Fase 5.6): {id, name, team: Array[SpeciesData], index,
 ## money, item, at, on_end: Callable}. Vacío en combates contra salvajes.
 var trainer: Dictionary = {}
+var _dodge_cooldown := 0.0
 
 
 func _ready() -> void:
@@ -114,7 +115,10 @@ func start_trainer(info: Dictionary) -> bool:
 		trainer = {}
 		return false
 	GameState.notice.emit("¡%s quiere pelear! (%d Pokémon)" % [info["name"], (info["team"] as Array).size()])
-	return _begin(first)
+	var ok := _begin(first)
+	if ok:
+		_trainer_mega(first)
+	return ok
 
 
 func _trainer_pokemon(index: int) -> PokemonActor:
@@ -128,6 +132,62 @@ func _trainer_pokemon(index: int) -> PokemonActor:
 	return actor
 
 
+## Rival listo (héroes): se cura con pociones, esquiva cuando preparas un ataque.
+func _smart_opponent(delta: float) -> void:
+	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
+	if opponent.state == PokemonActor.State.STUNNED:
+		return
+	if int(trainer.get("heals", 0)) > 0 and opponent.hp / opponent.hp_max < 0.3 and opponent.hp > 0.0:
+		trainer["heals"] = int(trainer["heals"]) - 1
+		opponent.heal_amount(0.5)
+		GameState.notice.emit("%s usó una Hiperpoción en %s." % [trainer["name"], opponent.species.display_name])
+	var c := companion()
+	if c != null and _dodge_cooldown <= 0.0 and c.winding_up() and c.global_position.distance_to(opponent.global_position) < 9.0:
+		_dodge_cooldown = 2.5
+		var away := opponent.global_position - c.global_position
+		opponent.ai_dodge(Vector3(-away.z, 0, away.x) * (1.0 if _rng.randf() < 0.5 else -1.0))
+
+
+## Rival listo: el siguiente que saca es el que mejor le va contra tu Pokémon.
+func _pick_smart_next() -> void:
+	var c := companion()
+	var team: Array = trainer["team"]
+	var start := int(trainer["index"])
+	if c == null or start >= team.size():
+		return
+	var best := start
+	var best_score := -1.0
+	for i in range(start, team.size()):
+		var species: SpeciesData = team[i]
+		var score := 0.0
+		for t in species.types:
+			score = maxf(score, TypeChart.effectiveness(t, c.species.types))
+		if score > best_score:
+			best_score = score
+			best = i
+	if best != start:
+		var chosen: SpeciesData = team[best]
+		team[best] = team[start]
+		team[start] = chosen
+
+
+## Su mega (si la tiene): megaevoluciona al salir.
+func _trainer_mega(actor: PokemonActor) -> void:
+	var mega_id := String(trainer.get("mega", ""))
+	if mega_id == "" or trainer.get("mega_used", false):
+		return
+	var mega := MegaCatalog.load_catalog().find(mega_id)
+	if mega == null or mega.base_species != actor.species.identifier:
+		return
+	trainer["mega_used"] = true
+	actor.set_physics_process(false)
+	await MegaEffect.play(_main, actor, actor)
+	if is_instance_valid(actor):
+		actor.apply_mega(mega)
+		actor.set_physics_process(true)
+		GameState.notice.emit("¡El %s de %s megaevolucionó!" % [mega.base_species.capitalize(), trainer["name"]])
+
+
 ## El Pokémon del entrenador cayó: sale el siguiente.
 func _next_trainer_pokemon() -> void:
 	var old := opponent
@@ -136,6 +196,8 @@ func _next_trainer_pokemon() -> void:
 	var at := old.global_position
 	old.queue_free()
 	trainer["at"] = at
+	if trainer.get("smart", false):
+		_pick_smart_next()
 	var next := _trainer_pokemon(int(trainer["index"]))
 	if next == null:
 		_win()
@@ -148,6 +210,7 @@ func _next_trainer_pokemon() -> void:
 		next.start_fight(c)
 	GameState.notice.emit("%s saca a %s (%d/%d)" % [trainer["name"], next.species.display_name, int(trainer["index"]) + 1, (trainer["team"] as Array).size()])
 	_ui.setup(self)
+	_trainer_mega(next)
 
 
 func _begin(wild: PokemonActor) -> bool:
@@ -196,6 +259,8 @@ func _process(delta: float) -> void:
 	if opponent == null or not is_instance_valid(opponent) or opponent.is_queued_for_deletion():
 		_end("capture")
 		return
+	if not trainer.is_empty() and trainer.get("smart", false):
+		_smart_opponent(delta)
 	if opponent.state == PokemonActor.State.STUNNED:
 		if not trainer.is_empty() and int(trainer["index"]) + 1 < (trainer["team"] as Array).size():
 			_next_trainer_pokemon()

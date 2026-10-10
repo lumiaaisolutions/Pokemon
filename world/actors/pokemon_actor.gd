@@ -869,6 +869,33 @@ func lose_track(seconds: float) -> void:
 		_enter(State.RETURN if role == Role.WILD else State.FOLLOW)
 
 
+## IA lista (rivales fuertes): salto de lado, breve e invulnerable.
+func ai_dodge(direction: Vector3) -> void:
+	if _dash_time > 0.0 or state == State.STUNNED:
+		return
+	_dash_time = 0.35
+	_sprite.modulate.a = 0.55
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.2, PixelBurst.Kind.DUST, 0.5)
+	var target := global_position + direction.normalized() * 2.6
+	var tween := create_tween()
+	tween.tween_property(self, "global_position", Vector3(target.x, global_position.y, target.z), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func() -> void:
+		_dash_time = 0.0
+		_sprite.modulate.a = 1.0)
+
+
+## Cura una parte de su vida sin salir de la pelea (pociones del rival).
+func heal_amount(ratio: float) -> void:
+	hp = minf(hp + hp_max * ratio, hp_max)
+	_health_bar.set_ratio(hp / hp_max)
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.5, PixelBurst.Kind.HEAL, 0.6)
+
+
+## ¿Está preparando un ataque? (para que el rival listo esquive).
+func winding_up() -> bool:
+	return _windup > 0.0
+
+
 ## Olvida peleas y persecuciones (al entrar o salir de un interior): el compañero vuelve
 ## a seguir a Nate y un salvaje regresa a su zona.
 func calm() -> void:

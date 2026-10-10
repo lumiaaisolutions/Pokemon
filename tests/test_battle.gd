@@ -265,7 +265,41 @@ func _run() -> void:
 			_battle.finish("flee")
 		await _frames(10)
 
-	# 11. Perder la racha al desmayarte.
+	# 11. Héroes: equipo que crece con las medallas, IA lista y reto.
+	var heroes := _main.get_node("Heroes") as Heroes
+	var expected := PlayerCharacters.LIST.size() - (1 if PlayerCharacters.LIST.any(func(e: Dictionary) -> bool: return e["id"] == GameState.character_id) else 0)
+	_check(heroes.roster().size() == expected and not heroes.roster().has(GameState.character_id), "los héroes son todos menos tu personaje (%d)" % heroes.roster().size())
+	var hero_id: String = heroes.roster()[0]
+	var early := Heroes.team_for(hero_id, 0)
+	var late := Heroes.team_for(hero_id, 8)
+	_check(early.size() == 2 and late.size() == 6, "el equipo crece de 2 a 6 con las medallas")
+	_check(early[0].evolution_stage <= late[0].evolution_stage, "sin medallas usan formas menos evolucionadas")
+	_check(not heroes.rumored_today().is_empty(), "el Rotom tiene rumores de héroes hoy")
+	var spot := heroes.location(hero_id)
+	GameState.play_time = (12.0 - GameState.START_HOUR) * 60.0 + GameState.game_day() * GameState.DAY_SECONDS
+	_player.global_position = Vector3(float(spot["x"]), _world.surface_height_at(float(spot["x"]), float(spot["z"])) + 10.0, float(spot["z"]) + 12.0)
+	_world.ensure_area(_player.global_position)
+	await _frames(60)
+	var found: Dictionary = {}
+	for h: Dictionary in heroes.active_heroes():
+		if h["id"] == hero_id:
+			found = h
+	_check(not found.is_empty(), "el héroe aparece en su lugar del día")
+	if not found.is_empty():
+		_main.companion.global_position = _player.global_position + Vector3(1, 0, 0)
+		await _frames(30)
+		heroes._challenge(found)
+		await _frames(5)
+		_check(_battle.active and _battle.trainer.get("smart", false), "el héroe reta con IA lista")
+		if _battle.active:
+			var foe := _battle.opponent
+			foe.hp = foe.hp_max * 0.2
+			await _frames(5)
+			_check(foe.hp > foe.hp_max * 0.2, "el héroe usa pociones cuando su Pokémon está bajo")
+			_battle.finish("flee")
+		await _frames(10)
+
+	# 12. Perder la racha al desmayarte.
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 

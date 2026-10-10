@@ -52,6 +52,10 @@ func _ready() -> void:
 	npcs.world_path = NodePath("../World")
 	npcs.player_path = NodePath("../Player")
 	add_child(npcs)
+	# Héroes no elegidos: entrenadores únicos que viajan por la región.
+	var heroes := Heroes.new()
+	heroes.name = "Heroes"
+	add_child(heroes)
 	# Entrenadores en los caminos (Fase 5.6).
 	var trainers := RouteTrainers.new()
 	trainers.name = "RouteTrainers"

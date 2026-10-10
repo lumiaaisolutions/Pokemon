@@ -346,6 +346,14 @@ func _markers() -> Array:
 		result.append({"uv": data.world_to_uv(point), "kind": "town", "title": settlement["name"],
 				"text": "%s · %s" % [kinds.get(settlement["kind"], "Pueblo"), ", ".join(services) if not services.is_empty() else "sin servicios"],
 				"color": UiKit.RED if settlement["kind"] == "city" else Color(0.98, 0.95, 0.9), "min_zoom": 1.0})
+	# Héroes con rumor hoy (el Rotom dice dónde se vieron).
+	var heroes := get_parent().get_node_or_null("Heroes") as Heroes
+	if heroes != null:
+		for id: String in heroes.rumored_today():
+			var spot := heroes.location(id)
+			if not spot.is_empty():
+				result.append({"uv": data.world_to_uv(Vector3(float(spot["x"]), 0, float(spot["z"]))), "kind": "hero", "title": "★ " + String(PlayerCharacters.find(id)["name"]),
+						"text": "Rumor de hoy: anda por %s (8:00–20:00)" % spot["name"], "color": Color(1.0, 0.8, 0.2), "min_zoom": 1.0})
 	for place: Dictionary in _world.layout.places:
 		var point := Vector3(float(place["x"]), 0, float(place["z"]))
 		if not data.is_revealed(point):
@@ -378,6 +386,11 @@ func _draw_full_markers() -> void:
 				_full_markers.draw_circle(at, 9.0, Color(0.1, 0.1, 0.14))
 				_full_markers.draw_circle(at, 7.0, color)
 				_label(font, at + Vector2(-4, 6), "?", 15)
+			"hero":
+				_full_markers.draw_circle(at, 11.0, Color(0.1, 0.1, 0.14))
+				_full_markers.draw_circle(at, 9.0, color)
+				_full_markers.draw_string(font, at + Vector2(-6, 6), "★", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.25, 0.15, 0.05))
+				_label(font, at + Vector2(14, 6), String(marker["title"]), 16)
 			"place":
 				_full_markers.draw_circle(at, 7.0, Color(0.1, 0.1, 0.14))
 				_full_markers.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -6), at + Vector2(6, 0), at + Vector2(0, 6), at + Vector2(-6, 0)]), color)
