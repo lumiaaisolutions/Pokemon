@@ -8,8 +8,8 @@
 
 ## Inicial (Fase 5)
 - Al empezar, **5 huevos al azar** de cualquier básico (`basic_pool.tres`: 423, sin legendarios, singulares, Ultraentes ni paradojas), sin repetir. Cada huevo lleva el patrón de color de su Pokémon.
-- El seleccionado se mece; al confirmar se agrieta y **eclosiona** con partículas. Después Nate **le lanza una Pokéball** para hacerlo su inicial.
-- La pantalla está en el laboratorio del profesor, en el pueblo inicial (capa 2.6).
+- **Hecho (2026-10-09), decidido así por Fernando:** los 5 eclosionan a la vez frente al jugador y eliges lanzándole una Pokéball al que quieras (captura segura); los demás se van y no se vuelven a ver. Detalle en [historia y mundo](historia_y_mundo_aleatorio.md).
+- Cuando exista el pueblo inicial (capa 2.6), la ceremonia pasará al laboratorio del profesor.
 - Mientras tanto, el compañero es un básico al azar.
 
 ## Misiones (Fase 5.5)
