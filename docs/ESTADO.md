@@ -11,8 +11,8 @@
 | 2.5 | Hecha (probada) | `cadf095` | 3 biomas con agua, aparición por hábitat, shiny, persecución con stamina |
 | 2.8 / 2.8+ / 2.8++ | Hechas | ver `git log` | Mundo vivo, peleas, emboscadas, captura, mapa; correcciones de las pruebas de Fernando |
 | 2.9 | Hecha | `bbd3553` y anteriores | Personaje (10), nombre y dificultad; menú, mochila, Pokédex, caja, guardado, opciones; inicial con huevos; Rotom; día y noche; movimientos sin niveles |
-| Mundo grande (+ 2.6 y 5.7) | Hecha | `57ee187` y el siguiente | 4 × 4 km por zonas con semilla, 17 biomas, pueblos, ~80 lugares, interiores y mazmorras, clima y estaciones, eventos, bicicleta, montura y vuelo, opciones completas ([mundo grande](sistemas/mundo_grande.md)) |
-| 2.7 | Hecha | el siguiente | Habitantes con rutina por hora y clima, horarios de tiendas ([habitantes](sistemas/habitantes.md)); día/noche y clima ya estaban |
+| Mundo grande (+ 2.6 y 5.7) | Hecha | `57ee187`, `e81a792` | 4 × 4 km por zonas con semilla, 17 biomas, pueblos, ~80 lugares, interiores y mazmorras, clima y estaciones, eventos, bicicleta, montura y vuelo, opciones completas ([mundo grande](sistemas/mundo_grande.md)) |
+| 2.7 | Hecha | `e81a792` | Habitantes con rutina por hora y clima, horarios de tiendas ([habitantes](sistemas/habitantes.md)); día/noche y clima ya estaban |
 | 3 | Pendiente | — | Combate en tiempo real (el combate en el mundo ya existe; falta el modo de combate formal y la megaevolución) |
 | 4 | Pendiente | — | Captura en combate |
 | 5.5 | Pendiente | — | Misiones, Piedra Llave, megapiedras, desbloqueos |
