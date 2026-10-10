@@ -20,7 +20,12 @@ const SPAWN_DISTANCE := 260.0
 const DESPAWN_DISTANCE := 320.0
 const WALK_SPEED := 2.2
 const TALK_RADIUS := 2.2
-const PER_KIND := {"city": 9, "town": 6, "village": 4, "cabins": 2}
+## Menos gente y con oficio (acordado con Fernando el 2026-10-10).
+const PER_KIND := {"city": 6, "town": 4, "village": 3, "cabins": 1}
+## Distancia mínima entre habitantes (no se amontonan).
+const PERSONAL_SPACE := 1.4
+## Cuánto pasea cada oficio alrededor de su lugar (0 = se queda en su sitio).
+const WANDER := {"niño": 3.0, "vecino": 2.0, "coordinador": 1.5, "abuela": 0.0, "vendedor": 0.0, "enfermera": 0.0, "investigador": 1.0, "entrenador": 2.5}
 ## Nombres por género (el del sprite): antes una sola lista daba "Mari" a un chico.
 const MALE_NAMES := ["Beto", "Fito", "Hugo", "Joel", "Leo", "Nico", "Paco", "Quique", "Santi", "Uri", "Yayo", "Dani", "Iván", "Toño", "Raúl", "Memo"]
 const FEMALE_NAMES := ["Ana", "Carla", "Elena", "Gaby", "Inés", "Karla", "Mari", "Olga", "Rosa", "Tere", "Vale", "Wendy", "Ximena", "Zoe", "Lupita", "Sofi"]
@@ -115,10 +120,13 @@ func _populate(index: int, settlement: Dictionary) -> Array:
 			"name": name_for(NpcLooks.gender(look), rng),
 			"role": role,
 			"town": settlement["name"],
+			"town_index": index,
 			"home": _door(settlement, home) if not home.is_empty() else plaza + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)),
 			"work": _door(settlement, work) if not work.is_empty() else Vector2.INF,
 			"plaza": plaza,
-			"spot": plaza + Vector2(rng.randf_range(-7.0, 7.0), rng.randf_range(-7.0, 7.0)),
+			# Su lugar propio en la plaza: repartidos en círculo para no juntarse.
+			"post": Vector2.ZERO,
+			"spot": plaza + Vector2.from_angle(TAU * i / float(PER_KIND.get(settlement["kind"], 3)) + rng.randf_range(-0.2, 0.2)) * rng.randf_range(6.0, 9.0),
 			"wake": rng.randf_range(7.0, 9.0),
 			"sleep": rng.randf_range(20.0, 22.5),
 			"route": [] as Array[Vector2],
@@ -185,6 +193,9 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 	var goal := goal_for(npc, hour, stormy)
 	if goal != npc["goal"]:
 		npc["goal"] = goal
+		if not npc.has("post_set"):
+			npc["post"] = npc["spot"]
+			npc["post_set"] = true
 		var target: Vector2 = {"home": npc["home"], "plaza": npc["spot"], "work": npc["work"]}[goal]
 		var here := Vector2(node.global_position.x, node.global_position.z)
 		var route: Array[Vector2] = []
@@ -209,12 +220,22 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 			node.global_position.x += step.x
 			node.global_position.z += step.y
 	elif goal == "plaza" and node.visible:
-		# Pasea un poco por la plaza.
+		# Pasea solo alrededor de su lugar, según su oficio (la abuela se queda quieta).
+		var wander := float(WANDER.get(npc["role"], 2.0))
 		npc["wait"] = float(npc["wait"]) - delta
-		if float(npc["wait"]) <= 0.0:
-			npc["wait"] = _rng.randf_range(4.0, 10.0)
-			npc["spot"] = (npc["plaza"] as Vector2) + Vector2(_rng.randf_range(-7.0, 7.0), _rng.randf_range(-7.0, 7.0))
+		if wander > 0.0 and float(npc["wait"]) <= 0.0:
+			npc["wait"] = _rng.randf_range(5.0, 12.0)
+			npc["spot"] = (npc["post"] as Vector2) + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(0.0, wander)
 			npc["route"] = [npc["spot"]] as Array[Vector2]
+	# Espacio personal: se apartan de los demás habitantes cercanos.
+	if node.visible:
+		for other: Dictionary in _towns.get(npc.get("town_index", -1), []):
+			if other == npc or not (other["node"] as Node3D).visible:
+				continue
+			var away := node.global_position - (other["node"] as Node3D).global_position
+			away.y = 0.0
+			if away.length() < PERSONAL_SPACE and away.length() > 0.01:
+				node.global_position += away.normalized() * (PERSONAL_SPACE - away.length()) * 0.5
 	node.global_position.y = _stand_y(node)
 	if velocity == Vector3.ZERO and node.visible and _player.global_position.distance_to(node.global_position) < 4.0:
 		sprite.look_at_point(_player.global_position)
@@ -226,7 +247,6 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 	point["radius"] = TALK_RADIUS if node.visible else 0.0
 
 
-## Pokémon pequeño de un habitante (sprite de 4 direcciones que lo sigue).
 ## Altura donde se para: en el suelo, o nadando (hundido hasta medio cuerpo, con
 ## ondas) si el agua es profunda.
 func _stand_y(node: Node3D) -> float:
@@ -293,6 +313,7 @@ static func _ring_texture() -> Texture2D:
 	return _ring
 
 
+## Pokémon pequeño de un habitante (sprite de 4 direcciones que lo sigue).
 func _make_pet(rng: RandomNumberGenerator) -> Node3D:
 	var species: SpeciesData = null
 	for attempt in 20:
