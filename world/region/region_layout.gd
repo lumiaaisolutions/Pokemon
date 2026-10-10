@@ -14,11 +14,12 @@ const BIOME_NAMES := ["Pradera", "Bosque", "Montaña", "Costa", "Desierto", "Ca�
 	"Volcán", "Campo de flores", "Bosque de hongos", "Bosque oscuro", "Pantano", "Pantano tóxico", "Mesetas", "Mar"]
 ## Familia de textura del suelo de cada bioma: 0 pasto, 1 bosque, 2 roca, 3 arena, 4 pantano.
 const FAMILY := [0, 1, 2, 3, 3, 2, 0, 1, 2, 2, 0, 1, 1, 4, 4, 2, 3]
-## Tinte del suelo por bioma.
+## Tinte del suelo por bioma (pantano: verde oliva oscuro; pantano tóxico: morado
+## apagado, para que se note el bioma, pedido de Fernando el 2026-10-10).
 const TINT := [Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(1.08, 0.98, 0.78),
 	Color(1.15, 0.72, 0.55), Color(1.12, 1.0, 0.62), Color(0.78, 1.0, 0.75), Color(0.92, 0.97, 1.08),
 	Color(0.55, 0.5, 0.5), Color(1.05, 1.0, 0.95), Color(0.92, 0.82, 1.05), Color(0.62, 0.7, 0.7),
-	Color(1, 1, 1), Color(0.85, 0.7, 1.0), Color(1.1, 0.78, 0.6), Color(1, 1, 1)]
+	Color(0.72, 0.78, 0.55), Color(0.72, 0.55, 0.85), Color(1.1, 0.78, 0.6), Color(1, 1, 1)]
 ## Hábitat de Pokémon de cada bioma (los de SpeciesData).
 const HABITAT := [SpeciesData.Habitat.MEADOW, SpeciesData.Habitat.FOREST, SpeciesData.Habitat.MOUNTAIN, SpeciesData.Habitat.SEA,
 	SpeciesData.Habitat.MOUNTAIN, SpeciesData.Habitat.MOUNTAIN, SpeciesData.Habitat.MEADOW, SpeciesData.Habitat.FOREST,

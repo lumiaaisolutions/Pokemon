@@ -66,7 +66,7 @@ Orden elegido: **bugs → NPC → interiores → biomas** (el mapa entra con los
 Ver [regiones](sistemas/regiones.md): 6 regiones generadas al desbloquearse, 8 líderes al azar de Kanto a Teselia por región, Liga por región, completar con 8 medallas + Liga + 50 % de misiones, viaje en barco o avión, dificultad que sube, Pokédex regional y legendarios repartidos, profesor por región.
 
 ## Orden de trabajo actual
-1. ~~Profesor, asistente y rival~~ (**hecho**, ver [personajes](sistemas/personajes_importantes.md); los líderes por tipo van con las regiones) → 2. ~~Héroes no elegidos~~ (**hecho**, ver [héroes](sistemas/heroes.md)) → 3. ~~Tablero de misiones~~ (**hecho**) → 4. ~~Interiores~~ (**hecho**, ver [edificios](sistemas/edificios_b2w2.md)) → 5. Biomas → 6. Pueblos con identidad → 7. Regiones.
+1. ~~Profesor, asistente y rival~~ (**hecho**, ver [personajes](sistemas/personajes_importantes.md); los líderes por tipo van con las regiones) → 2. ~~Héroes no elegidos~~ (**hecho**, ver [héroes](sistemas/heroes.md)) → 3. ~~Tablero de misiones~~ (**hecho**) → 4. ~~Interiores~~ (**hecho**, ver [edificios](sistemas/edificios_b2w2.md)) → 5. Biomas (**kit hecho**; faltan puntos de interés) → 6. Pueblos con identidad → 7. Regiones.
 
 ### Nota sobre los líderes (2026-10-10)
 En la hoja de BW2 reconozco con certeza a Brock, Misty, Lt. Surge, Whitney, Brawly, Roark, Crasher Wake, Clair, Flint, Steven y a los de BW2 (Clay, Skyla, Marlon, Iris, Elesa, Lenora, Cheren). El resto se nombrará con un **catálogo que Fernando confirme** antes de las regiones.

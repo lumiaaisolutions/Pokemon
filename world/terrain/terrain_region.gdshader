@@ -18,7 +18,7 @@ uniform sampler2D mountain_grass_light : source_color, filter_nearest, repeat_en
 uniform sampler2D mountain_slope : source_color, filter_nearest, repeat_enable;
 uniform sampler2D beach_sand : source_color, filter_nearest, repeat_enable;
 uniform sampler2D swamp_ground : source_color, filter_nearest, repeat_enable;
-uniform vec3 swamp_tint = vec3(0.55, 0.62, 0.42);
+uniform vec3 swamp_tint = vec3(1.0, 1.0, 1.0);
 // Pavimento de las ciudades (piedra gris).
 uniform vec3 paving_color = vec3(0.72, 0.7, 0.68);
 uniform sampler2D patch_noise : filter_linear, repeat_enable;

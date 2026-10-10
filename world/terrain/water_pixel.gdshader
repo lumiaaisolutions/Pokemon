@@ -10,6 +10,8 @@ uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform float px_per_meter = 17.5;
 uniform vec2 flow = vec2(0.6, 0.25);
 uniform float alpha = 0.88;
+// Tinte del agua (blanco = sin cambio; morado para el pantano tóxico).
+uniform vec3 tint : source_color = vec3(1.0);
 uniform vec3 foam_color : source_color = vec3(0.92, 0.97, 1.0);
 uniform float foam_depth = 0.35;
 
@@ -37,5 +39,6 @@ void fragment() {
 		ALBEDO = foam_color;
 		ALPHA = 0.95;
 	}
+	ALBEDO *= tint;
 	ALBEDO *= time_tint.rgb;
 }

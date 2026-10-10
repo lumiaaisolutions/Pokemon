@@ -43,3 +43,11 @@ Cordillera exterior (norte, este y oeste) y mar abierto al sur, con colisión pr
 ## Rendimiento
 - Zona cercana: ~60 ms de cálculo en un hilo; instanciar ~3 ms. Caminar y volar no traban el cuadro.
 - Calidad (Opciones): baja/media/alta cambia la escala de render, sombras, MSAA y la distancia de dibujo (4, 5 o 6 zonas).
+
+
+## Kit por bioma (2026-10-10)
+Fernando vio zonas vacías ("aquí dice Pantano y no veo nada de pantano").
+- **Bug encontrado:** la decoración de todas las zonas nunca se guardaba (`(dic[k] as PackedVector3Array).append(...)` modifica una copia en GDScript). Ahora se reasigna: aparecieron todas las flores, matas y adornos que ya estaban planeados.
+- **Kit de objetos por bioma** (`WorldBuilder.BIOME_KITS`, sprites en `PropArt`): pradera (flores rosas y blancas, rocas, cercas viejas, troncos), campo de flores, sabana (arbustos secos, huesos), bosque y selva (troncos con musgo, rocas con musgo, hongos), bosque oscuro y de hongos (hongos venenosos), montaña, mesetas y cañón, desierto, tundra (nieve, cristales de hielo), volcán (rocas de lava), costa (conchas, madera de deriva), **pantano** (juncos, espadañas, troncos, hongos) y **pantano tóxico** (hongos venenosos, espadañas, huesos).
+- **Pantanos:** suelo propio de lodo con charquitos (`art/world/b2w2/swamp_ground.png`); verde oliva oscuro en el pantano y morado apagado en el tóxico; **nenúfares** (algunos con flor) en las charcas; charcas **moradas que burbujean** en el tóxico; **neblina baja** sobre las charcas. La decoración puede ir en la orilla y en agua muy baja.
+- Pendiente del mismo punto: **puntos de interés** cada cierta distancia (campamento abandonado, pozo, ruinas pequeñas, árbol grande con bayas, cueva chica, mirador).

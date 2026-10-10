@@ -79,6 +79,7 @@ var _styles := {}
 var _terrain_material: ShaderMaterial
 var _water_fresh: ShaderMaterial
 var _water_swamp: ShaderMaterial
+var _water_toxic: ShaderMaterial
 var _grass_materials: Array[ShaderMaterial] = []
 var _grass_quads := {}
 var _shadow_texture: GradientTexture2D
@@ -692,11 +693,15 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 		var z := z0 + rng.randf() * CHUNK
 		var roll := rng.randf()
 		var pick := rng.randi()
-		var style: Dictionary = _styles[layout.biome_at(x, z)]
+		var biome_here := layout.biome_at(x, z)
+		var style: Dictionary = _styles[biome_here]
 		var textures: Array = style["decor"]
 		if textures.is_empty() or roll >= float(style["decor_density"]) / DECOR_TRIES:
 			continue
-		if _water_level_pure(x, z, ponds) - _local_height(heights, key, x, z) > -0.2:
+		# En los pantanos el suelo está casi al nivel del agua: ahí la decoración (juncos,
+		# troncos, hongos) puede ir en la orilla y en agua muy baja.
+		var swampy := biome_here in [RegionLayout.Biome.SWAMP, RegionLayout.Biome.TOXIC_SWAMP]
+		if _water_level_pure(x, z, ponds) - _local_height(heights, key, x, z) > (0.25 if swampy else -0.2):
 			continue
 		if layout.road_info(x, z).x < RegionLayout.ROAD_WIDTH or _in_settlement(x, z, -8.0):
 			continue
@@ -705,7 +710,10 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 		if not decor.has(group):
 			decor[group] = PackedVector3Array()
 		var width := texture.get_size().x * config.pixel_size
-		(decor[group] as PackedVector3Array).append(Vector3(x, _local_base(heights, key, x, z, width * 0.5) - config.decor_sink, z))
+		# PackedVector3Array se copia por valor: hay que volver a guardarlo.
+		var points: PackedVector3Array = decor[group]
+		points.append(Vector3(x, _local_base(heights, key, x, z, width * 0.5) - config.decor_sink, z))
+		decor[group] = points
 	# Arrecife: corales en el fondo del mar.
 	for i in 40:
 		var x := x0 + rng.randf() * CHUNK
@@ -720,7 +728,10 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 		var group := [texture, Color.WHITE]
 		if not decor.has(group):
 			decor[group] = PackedVector3Array()
-		(decor[group] as PackedVector3Array).append(Vector3(x, _local_height(heights, key, x, z) - 0.05, z))
+		# PackedVector3Array se copia por valor: hay que volver a guardarlo.
+		var points: PackedVector3Array = decor[group]
+		points.append(Vector3(x, _local_height(heights, key, x, z) - 0.05, z))
+		decor[group] = points
 	var patches: Array = []
 	for i in GRASS_TRIES:
 		var roll := rng.randf()
@@ -772,7 +783,10 @@ func _plan_far_trees(key: Vector2i, grid: PackedFloat32Array, m: int, cell: floa
 		var group := [trees[pick % trees.size()], style["tint"]]
 		if not by_texture.has(group):
 			by_texture[group] = PackedVector3Array()
-		(by_texture[group] as PackedVector3Array).append(Vector3(x, h - 0.3, z))
+		# PackedVector3Array se copia por valor: hay que volver a guardarlo.
+		var points: PackedVector3Array = by_texture[group]
+		points.append(Vector3(x, h - 0.3, z))
+		by_texture[group] = points
 	return by_texture
 
 
@@ -1153,7 +1167,36 @@ func _build_styles() -> void:
 				style.merge({"trees": dead, "tree_density": 10.0, "decor": forest.decor_textures, "decor_density": 30.0, "tint": Color(0.85, 0.7, 1.0)}, true)
 			RegionLayout.Biome.BEACH:
 				style.merge({"trees": [palm], "tree_density": 4.0, "big": 0.0, "rocks": mountain.rock_textures, "rock_density": 2.0}, true)
+		# Kit del bioma (acordado con Fernando el 2026-10-10): objetos propios de cada zona
+		# que se suman a la decoración, para que nada se vea vacío.
+		var kit: Array = BIOME_KITS.get(biome, []).map(func(kind: String) -> Texture2D: return PropArt.texture(kind))
+		if not kit.is_empty():
+			style["decor"] = (style["decor"] as Array) + kit + kit
+			style["decor_density"] = float(style["decor_density"]) + float(KIT_DENSITY.get(biome, 40.0))
 		_styles[biome] = style
+
+
+## Objetos de cada bioma (PropArt) y cuántos más por zona.
+const BIOME_KITS := {
+	RegionLayout.Biome.MEADOW: ["flowers_pink", "flowers_white", "boulder", "old_fence", "log"],
+	RegionLayout.Biome.FLOWERS: ["flowers_pink", "flowers_blue", "flowers_white"],
+	RegionLayout.Biome.SAVANNA: ["dry_bush", "boulder", "bones"],
+	RegionLayout.Biome.FOREST: ["mossy_log", "mossy_rock", "brown_mushroom", "log"],
+	RegionLayout.Biome.JUNGLE: ["mossy_log", "flowers_pink", "brown_mushroom"],
+	RegionLayout.Biome.DARK_FOREST: ["mossy_log", "toxic_mushroom", "mossy_rock"],
+	RegionLayout.Biome.MUSHROOM: ["brown_mushroom", "toxic_mushroom", "mossy_log"],
+	RegionLayout.Biome.MOUNTAIN: ["boulder", "mossy_rock", "dry_bush"],
+	RegionLayout.Biome.MESA: ["boulder", "bones", "dry_bush"],
+	RegionLayout.Biome.CANYON: ["boulder", "bones", "dry_bush"],
+	RegionLayout.Biome.DESERT: ["bones", "dry_bush", "boulder"],
+	RegionLayout.Biome.TUNDRA: ["snow_pile", "ice_crystal", "boulder"],
+	RegionLayout.Biome.VOLCANO: ["lava_rock", "bones", "dry_bush"],
+	RegionLayout.Biome.SWAMP: ["reeds", "cattails", "mossy_log", "brown_mushroom"],
+	RegionLayout.Biome.TOXIC_SWAMP: ["toxic_mushroom", "cattails", "bones", "mossy_log"],
+	RegionLayout.Biome.BEACH: ["shell", "shell_blue", "driftwood"],
+}
+const KIT_DENSITY := {RegionLayout.Biome.SWAMP: 140.0, RegionLayout.Biome.TOXIC_SWAMP: 140.0, RegionLayout.Biome.MEADOW: 50.0,
+		RegionLayout.Biome.BEACH: 60.0, RegionLayout.Biome.DESERT: 30.0, RegionLayout.Biome.TUNDRA: 50.0, RegionLayout.Biome.VOLCANO: 40.0}
 
 
 # --- Agua ----------------------------------------------------------------------------------
@@ -1278,8 +1321,103 @@ func _build_waterfalls(parent: Node3D, river: Dictionary) -> void:
 
 
 func _build_ponds(root: Node3D, key: Vector2i) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key) ^ (layout.seed + 77)
 	for pond: Vector4 in _ponds_of(key):
-		root.add_child(_water_disc("Pond", Vector2(pond.x, pond.y), pond.z + POND_BANK * RegionLayout.WATER_EDGE, pond.w, _water_swamp, 20))
+		var toxic := layout.biome_at(pond.x, pond.y) == RegionLayout.Biome.TOXIC_SWAMP
+		var radius := pond.z + POND_BANK * RegionLayout.WATER_EDGE
+		root.add_child(_water_disc("Pond", Vector2(pond.x, pond.y), radius, pond.w, _water_toxic if toxic else _water_swamp, 20))
+		if toxic:
+			# Pantano tóxico: charca morada que burbujea.
+			root.add_child(_bubbles(Vector3(pond.x, pond.w + 0.05, pond.y), pond.z))
+		else:
+			# Pantano: nenúfares flotando (algunos con flor).
+			for i in rng.randi_range(3, 7):
+				var angle := rng.randf() * TAU
+				var r := sqrt(rng.randf()) * pond.z * 0.85
+				var pad := Sprite3D.new()
+				pad.texture = PropArt.texture("lily_flower" if rng.randf() < 0.3 else "lily_pad")
+				pad.pixel_size = config.pixel_size * 1.4
+				pad.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				pad.rotation_degrees = Vector3(-90, rng.randf() * 360.0, 0)
+				pad.position = Vector3(pond.x + cos(angle) * r, pond.w + 0.03, pond.y + sin(angle) * r)
+				pad.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+				root.add_child(pad)
+		# Neblina baja sobre las charcas de los pantanos.
+		root.add_child(_mist(Vector3(pond.x, pond.w + 0.4, pond.y), pond.z + 3.0, Color(0.75, 0.6, 0.9, 0.25) if toxic else Color(0.85, 0.92, 0.85, 0.2)))
+
+
+## Burbujas moradas que suben y revientan (pantano tóxico).
+func _bubbles(at: Vector3, radius: float) -> CPUParticles3D:
+	var particles := CPUParticles3D.new()
+	particles.position = at
+	particles.amount = 10
+	particles.lifetime = 1.6
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = radius * 0.7
+	particles.direction = Vector3.UP
+	particles.initial_velocity_min = 0.2
+	particles.initial_velocity_max = 0.5
+	particles.gravity = Vector3.ZERO
+	particles.scale_amount_min = 0.6
+	particles.scale_amount_max = 1.4
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.25, 0.25)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(0.75, 0.4, 0.95, 0.8)
+	quad.material = material
+	particles.mesh = quad
+	particles.visibility_range_end = 90.0
+	return particles
+
+
+static var _blob: Texture2D
+
+
+## Mancha suave (degradado radial) para la neblina.
+static func _soft_blob() -> Texture2D:
+	if _blob == null:
+		var image := Image.create_empty(64, 32, false, Image.FORMAT_RGBA8)
+		for y in 32:
+			for x in 64:
+				var d := Vector2((x - 31.5) / 32.0, (y - 15.5) / 16.0).length()
+				image.set_pixel(x, y, Color(1, 1, 1, clampf(1.0 - d, 0.0, 1.0) * 0.8))
+		_blob = ImageTexture.create_from_image(image)
+	return _blob
+
+
+## Neblina baja (manchas translúcidas que flotan despacio).
+func _mist(at: Vector3, radius: float, color: Color) -> CPUParticles3D:
+	var particles := CPUParticles3D.new()
+	particles.position = at
+	particles.amount = 6
+	particles.lifetime = 6.0
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = Vector3(radius, 0.2, radius)
+	particles.direction = Vector3(1, 0, 0)
+	particles.spread = 180.0
+	particles.initial_velocity_min = 0.1
+	particles.initial_velocity_max = 0.3
+	particles.gravity = Vector3.ZERO
+	var quad := QuadMesh.new()
+	quad.size = Vector2(4.0, 1.4)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = color
+	material.albedo_texture = _soft_blob()
+	quad.material = material
+	particles.mesh = quad
+	var fade := Gradient.new()
+	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	fade.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	particles.color_ramp = fade
+	particles.visibility_range_end = 80.0
+	return particles
 
 
 # --- Materiales y utilidades ------------------------------------------------------------
@@ -1308,6 +1446,9 @@ func _build_materials() -> void:
 	_terrain_material.set_shader_parameter("px_per_meter", 1.0 / config.pixel_size)
 	_water_fresh = _water_material(config.water_texture)
 	_water_swamp = _water_material(config.swamp_water_texture)
+	# Pantano tóxico: la misma agua teñida de morado.
+	_water_toxic = _water_material(config.swamp_water_texture)
+	_water_toxic.set_shader_parameter("tint", Color(0.75, 0.45, 0.95))
 
 
 func _noise_texture(noise_seed: int, frequency: float) -> NoiseTexture2D:

@@ -26,7 +26,7 @@ uniform vec3 mountain_tint = vec3(1.0);
 // Costa y pantano
 uniform sampler2D beach_sand : source_color, filter_nearest, repeat_enable;
 uniform sampler2D swamp_ground : source_color, filter_nearest, repeat_enable;
-uniform vec3 swamp_tint = vec3(0.55, 0.62, 0.42);
+uniform vec3 swamp_tint = vec3(1.0, 1.0, 1.0);
 
 // Mapas del mundo (1 texel por celda): biome_map RGBA = pradera, bosque, montaña,
 // costa; extra_map R = pantano, G = orilla de agua dulce.
