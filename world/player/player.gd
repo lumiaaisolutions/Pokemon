@@ -260,10 +260,7 @@ func _process_downed(delta: float) -> void:
 	# Respira (sube y baja un poco) y suelta destellos de curación.
 	if _lying_sprite != null:
 		_lying_sprite.scale = Vector3.ONE * (1.0 + 0.03 * sin(_downed_time * 3.0))
-	_heal_sparkle -= delta
-	if _heal_sparkle <= 0.0:
-		_heal_sparkle = 0.7
-		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.HEAL, 0.6)
+	# Solo las estrellitas sobre la cabeza (sin nubes de curación mientras está en el suelo).
 	if health >= config.health_max:
 		_get_up()
 

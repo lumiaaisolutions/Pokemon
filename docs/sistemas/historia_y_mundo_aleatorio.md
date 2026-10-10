@@ -45,6 +45,6 @@
 
 ### Cómo funciona la ceremonia (hecha)
 - Al empezar una partida nueva (equipo vacío), 5 huevos aparecen en arco frente a la cámara, con manchas del color del tipo de su Pokémon. Se sacuden cada vez más fuerte (2.5 s) y eclosionan uno por uno con un destello.
-- Salen 5 básicos distintos al azar (2 % de shiny cada uno), quietos y mirando al jugador, con su nombre encima. Mientras, no aparecen salvajes.
+- Salen 5 básicos distintos al azar (1 % de shiny cada uno), quietos y mirando al jugador, con su nombre encima. Mientras, no aparecen salvajes.
 - Una tarjeta explica apuntar y lanzar. El primero que recibe una Pokéball se captura siempre y entra al equipo; queda como compañero donde cayó la ball, y los demás se van con una nube de hojas.
 - Las pruebas apagan la ceremonia (`starter_ceremony = false` en `world/main.gd`) y usan un compañero al azar; la ceremonia tiene su propia prueba (`tests/test_starter`).

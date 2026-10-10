@@ -16,6 +16,8 @@ const MAX_GRASS_ACTORS := 16
 ## rocas y muros: bloquean al jugador pero no acortan el brazo de la cámara).
 const LAYER_TERRAIN := 1
 const LAYER_OBSTACLES := 2
+## Cordillera del borde: solo la ve el brazo de la cámara (la navegación no la hornea).
+const LAYER_FRONTIER := 16
 ## Capa visual de los sprites: las sombras de contacto (Decal) solo se proyectan
 ## sobre la capa 1 (terreno), nunca sobre los sprites.
 const VISUAL_LAYER_SPRITES := 2
@@ -1121,12 +1123,22 @@ func _build_frontier() -> void:
 				st.add_vertex(v)
 	st.index()
 	st.generate_normals()
+	var mesh := st.commit()
+	# Con colisión en su propia capa: el brazo de la cámara se detiene en la ladera
+	# en vez de atravesarla (dentro de la montaña solo se veía blanco). No está en la
+	# capa del terreno para que la navegación no la incluya.
+	var body := StaticBody3D.new()
+	body.name = "Frontier"
+	body.collision_layer = LAYER_FRONTIER
 	var frontier := MeshInstance3D.new()
-	frontier.name = "Frontier"
-	frontier.mesh = st.commit()
+	frontier.mesh = mesh
 	frontier.material_override = _terrain_material
 	frontier.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(frontier)
+	body.add_child(frontier)
+	var shape := CollisionShape3D.new()
+	shape.shape = mesh.create_trimesh_shape()
+	body.add_child(shape)
+	add_child(body)
 	# Mar abierto: un plano grande al sur, más allá de la costa.
 	var sea := MeshInstance3D.new()
 	sea.name = "OpenSea"

@@ -242,6 +242,28 @@ func _run() -> void:
 	_check(blacked[0], "desmayarse en el agua debe ser desmayo definitivo")
 	_check(_player.global_position.distance_to(GameState.respawn_point) < 3.0, "tras el desmayo debe reaparecer en el punto de inicio")
 
+	# Surf: con un compañero de tipo Agua, al entrar al lago el jugador va sobre él,
+	# no se hunde aunque no mantenga flotar, y al salir el compañero vuelve a seguirlo.
+	await _frames(200)
+	var old := _main.get("companion") as PokemonActor
+	old.queue_free()
+	_main.call("_create_companion", load("res://creatures/data/species/squirtle.tres"), false, _player.global_position + Vector3(1.5, 0.3, 0.0))
+	var squirtle := _main.get("companion") as PokemonActor
+	await _frames(10)
+	var lake2 := _world.config.lake_center
+	_player.global_position = Vector3(lake2.x, _world.water_level_at(lake2.x, lake2.y) - 0.5, lake2.y)
+	_player.velocity = Vector3.ZERO
+	await _frames(90)
+	_check(_player.riding == squirtle and squirtle.ridden_by == _player, "con un compañero de tipo Agua debe surfear sobre él")
+	var surf_level := _world.water_level_at(_player.global_position.x, _player.global_position.z)
+	_check(_player.global_position.y > surf_level - 0.5, "surfeando no debe hundirse (y=%.2f, agua=%.2f)" % [_player.global_position.y, surf_level])
+	_check(squirtle.global_position.distance_to(_player.global_position) < 1.5, "el compañero va debajo del jugador")
+	_check(_player.air >= _player.config.air_max - 0.01, "surfeando no gasta aire")
+	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.velocity = Vector3.ZERO
+	await _frames(30)
+	_check(_player.riding == null and squirtle.ridden_by == null, "al volver a tierra deja de surfear")
+
 
 func _props_grounded() -> bool:
 	var ok := true

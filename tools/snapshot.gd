@@ -53,6 +53,32 @@ func _ready() -> void:
 		rig.set("_pitch_deg", 20.0)
 		for i in 120:
 			await get_tree().process_frame
+	# "surf": compañero de tipo Agua y el jugador en el lago.
+	if args.size() > 5 and args[5] == "surf":
+		var player := scene.get_node("Player") as Player
+		var world := scene.get_node("World") as WorldBuilder
+		var old := scene.get("companion") as PokemonActor
+		if old != null:
+			old.queue_free()
+		scene.call("_create_companion", load("res://creatures/data/species/lapras.tres"), false, player.global_position + Vector3(1.5, 0.3, 0.0))
+		var lake := world.config.lake_center
+		player.global_position = Vector3(lake.x, world.water_level_at(lake.x, lake.y) - 0.5, lake.y)
+		for i in 120:
+			await get_tree().process_frame
+	# "barra": un salvaje herido frente al jugador (para ver su recuadro de vida).
+	if args.size() > 5 and args[5] == "barra":
+		var player := scene.get_node("Player") as Player
+		var spawner := scene.get_node("Spawner") as WildSpawner
+		spawner.set_process(false)
+		var world := scene.get_node("World") as WorldBuilder
+		var p := player.global_position + Vector3(1.5, 0.0, -6.0)
+		p.y = world.surface_height_at(p.x, p.z)
+		var wild := spawner.spawn_species(load("res://creatures/data/species/nidoran-f.tres"), p, false, false)
+		wild.set_physics_process(false)
+		wild.hp = wild.hp_max * 0.4
+		(wild.get_node("HealthBar") as HealthBar3D).set_ratio(0.4)
+		for i in 30:
+			await get_tree().process_frame
 	# "ayuda": abre la pantalla de Ayuda.
 	if args.size() > 5 and args[5] == "ayuda":
 		var help := scene.get_node("Hud").get("_help") as HelpOverlay

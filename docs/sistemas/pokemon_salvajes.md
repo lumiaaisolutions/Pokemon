@@ -14,7 +14,7 @@
 ## Aparición (`WildSpawner`)
 - En **cualquier lugar transitable** (ajustado a la navegación: nunca dentro de árboles, rocas ni agua), en la orilla o dentro del agua, entre 15 y 70 m del jugador; se retiran a más de 100 m.
 - **Zonas de 40 × 40 m** con cupo de grupos según el hábitat (pradera 3, bosque 4, montaña 2, agua dulce 2, mar 2, pantano 3) y 2 especies características por zona (35 % de las apariciones de esa zona).
-- **Shiny:** 2 %, con la paleta variocolor y un destello de estrellas cada 2.5 s.
+- **Shiny:** 1 % (antes 2 %, bajado a pedido de Fernando), con la paleta variocolor y un destello de estrellas cada 2.5 s.
 - **Manadas (30 %):** de 3 a 6 de una línea evolutiva, solo con especies que viven en ese hábitat. Casi todos básicos; en el 25 % de las manadas hay un líder evolucionado. Siguen al líder en formación y huyen, persiguen o se esconden juntos. Están separadas 60 m, salvo un 5 % de manadas rivales a 15 m.
 
 - **Clima** (`WildSpawner.climate_ok`): cerca o arriba de la línea de nieve no aparecen Pokémon de tipo Fuego, Planta ni Bicho (salvo que también sean de Hielo), y los de Hielo solo aparecen en la nieve o el mar. Se reintenta la especie hasta 8 veces. Corrige, por ejemplo, un Torchic junto a la nieve.

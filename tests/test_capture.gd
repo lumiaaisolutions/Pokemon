@@ -113,6 +113,29 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(5)
 
+	# Curioso sin compañero fuera: al escapar te ataca a ti.
+	var tropius := await _escape(_species("tropius"), 7.0)
+	_check(is_instance_valid(tropius) and tropius.state == PokemonActor.State.FIGHT and tropius.fight_target == _player, "el curioso debe atacarte si tu Pokémon no está fuera")
+	_clear_wild()
+	await _frames(5)
+	# Con el compañero fuera y cerca: pelea con él.
+	var companion := _main.companion as PokemonActor
+	companion.process_mode = Node.PROCESS_MODE_INHERIT
+	companion.global_position = _ground(4.0) + Vector3(2.0, 0.3, 0.0)
+	await _frames(5)
+	var tropius2 := await _escape(_species("tropius"), 7.0)
+	_check(is_instance_valid(tropius2) and tropius2.fight_target == companion, "con tu Pokémon fuera, debe pelear con él")
+	companion.process_mode = Node.PROCESS_MODE_DISABLED
+	_clear_wild()
+	await _frames(5)
+	# Tímido: huye.
+	var shy := await _escape(_species("pidgey"), 6.0)
+	var start := shy.global_position.distance_to(_player.global_position) if is_instance_valid(shy) else 0.0
+	await _frames(120)
+	_check(is_instance_valid(shy) and shy.global_position.distance_to(_player.global_position) > start + 2.0, "el tímido debe huir tras escapar")
+	_clear_wild()
+	await _frames(5)
+
 	# Legendario: al capturarlo queda marcado y no reaparece sin la tirada.
 	var legend := _spawner.spawn_species(_species("raikou"), _ground(8.0), false, false, true)
 	await _frames(5)
@@ -130,6 +153,17 @@ func _run() -> void:
 	_check(get_tree().paused and (map_ui.get_node("Full") as Control).visible, "el mapa completo debe abrirse y pausar el juego")
 	map_ui.toggle_full_map()
 	_check(not get_tree().paused, "al cerrar el mapa el juego sigue")
+
+
+## Aparece species a distance m, se le lanza una ball que falla y devuelve al salvaje.
+func _escape(species: SpeciesData, distance: float) -> PokemonActor:
+	var actor := _spawner.spawn_species(species, _ground(distance), false, false)
+	actor.set_physics_process(false)
+	await _frames(5)
+	actor.set_physics_process(true)
+	_throw_at(actor, 0)
+	await _frames(int((PokeballProjectile.SHAKE_TIME + 1.5) * 60))
+	return actor
 
 
 ## Lanza una ball directo al Pokémon con resultado forzado (1 captura, 0 falla).

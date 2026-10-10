@@ -88,7 +88,7 @@ func _run() -> void:
 	_check(is_equal_approx((joltik.get_node("Sprite") as Sprite3D).pixel_size, PokemonActor.PIXEL_SIZE), "Joltik debe dibujarse ×1")
 	_check((joltik.get_node("Sprite") as Sprite3D).texture == _species("joltik").overworld_sheet_shiny, "un shiny debe usar su hoja variocolor")
 	_check(joltik.has_node("ShinySparkles"), "un shiny debe tener destello")
-	_check(is_equal_approx(WildSpawner.SHINY_CHANCE, 0.02), "la probabilidad de shiny debe ser 2 %")
+	_check(is_equal_approx(WildSpawner.SHINY_CHANCE, 0.01), "la probabilidad de shiny debe ser 1 %")
 	_clear_wild()
 	await _frames(2)
 

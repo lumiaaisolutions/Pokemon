@@ -57,3 +57,14 @@ Todas tomadas por Fernando el 2026-10-09, salvo las marcadas como *(Claude)*.
 - Apuntar: tocar para fijar o mantener para sostener. Agua: te hundes solo y Espacio te mantiene a flote; surf sobre tu compañero si es de tipo Agua.
 - Guía en pantalla: leyenda con íconos, tarjetas de tutorial y botón de Ayuda.
 - Movimientos y crecimiento sin niveles: lista oficial desbloqueable, 4 movimientos, dominio y estilos, Puntos de Entrenamiento con tope, vínculo y estadísticas comprimidas. Ver [movimientos](sistemas/movimientos_y_crecimiento.md).
+
+## 2026-10-09 — Tercera ronda de comentarios
+- Al escapar de la Pokéball: los tranquilos y tímidos huyen; los demás pelean con tu compañero si está fuera y cerca, o contigo si no.
+- Un Pokémon atacado se defiende, incluso si estaba posado en un árbol (baja a pelear).
+- De espaldas sube la captura también si huye, se esconde o regresa a casa.
+- Shiny: **1 %** (antes 2 %). El shiny tiene estrellitas constantes y un destello cada 2.5 s.
+- Desmayado: solo las estrellitas (sin nubes de curación).
+- Guardar y sacar con Q: Pokéball en la mano, rayo rojo como en el anime y lanzamiento en arco.
+- Recuadro de vida de los salvajes al estilo B2W2: nombre, etiqueta "PS" y barra de color.
+- Pokéballs: cruceta ↑↓ (teclado R / F) para cambiar de tipo; ícono, nombre, cantidad y efecto en el HUD; aviso si no quedan.
+- Mundo grande de 4 × 4 km por zonas, con muchos biomas, estructuras, interiores mixtos, monturas, vuelo libre y bicicleta. Ver [mundo grande](sistemas/mundo_grande.md).

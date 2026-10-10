@@ -77,6 +77,9 @@ const COMPANION_WATCH_RADIUS := 8.0
 const SPARKLE_INTERVAL := 2.5
 ## Distancia que debe moverse el destino para recalcular el camino.
 const REPATH_DISTANCE := 1.5
+const COMPANION_GROUP := &"companion"
+## Al escapar de la Pokéball pelea con el compañero si está a menos de esto.
+const ESCAPE_COMPANION_RADIUS := 15.0
 
 @export var species: SpeciesData
 @export var role: Role = Role.WILD
@@ -152,6 +155,8 @@ var _question: Sprite3D
 
 func _ready() -> void:
 	add_to_group(WorldBuilder.GRASS_PUSHERS_GROUP)
+	if role == Role.COMPANION:
+		add_to_group(COMPANION_GROUP)
 	_rng.randomize()
 	_sprite.walk_fps = 5.0
 	_sprite.run_fps = 9.0
@@ -184,7 +189,7 @@ func _ready() -> void:
 		add_child(_question)
 	hp_max = 20.0 + species.hp * 0.6
 	hp = hp_max
-	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.25)
+	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.3, species.display_name + (" ✦" if shiny else ""))
 	add_child(_health_bar)
 	_rival_scan = _rng.randf() * RIVAL_SCAN_INTERVAL
 	_enter(State.FOLLOW if role == Role.COMPANION else State.IDLE)
@@ -898,6 +903,11 @@ func start_fight(target: Node3D) -> void:
 func receive_hit(damage: float, from: Node3D) -> void:
 	if state == State.STUNNED or is_dashing():
 		return
+	# Posado en un árbol: al recibir un golpe baja de un salto a pelear.
+	if perched and from != null:
+		_drop_target = Vector3(from.global_position.x, world.surface_height_at(from.global_position.x, from.global_position.z) if world != null else from.global_position.y, from.global_position.z) \
+				+ (global_position - from.global_position).normalized() * 1.5 * Vector3(1, 0, 1)
+		_land()
 	hp = maxf(hp - damage, 0.0)
 	_health_bar.set_ratio(hp / hp_max)
 	_flash(Color(1, 0.4, 0.4))
@@ -1302,11 +1312,22 @@ func _make_sparkles() -> CPUParticles3D:
 	var particles := CPUParticles3D.new()
 	particles.name = "ShinySparkles"
 	particles.mesh = quad
-	particles.emitting = false
-	particles.one_shot = true
-	particles.amount = 6
-	particles.lifetime = 0.7
-	particles.explosiveness = 0.9
+	# Siempre encendidas: estrellitas que aparecen y se apagan alrededor.
+	particles.emitting = true
+	particles.one_shot = false
+	particles.amount = 5
+	particles.lifetime = 1.1
+	particles.explosiveness = 0.0
+	var fade := Gradient.new()
+	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 0.8, 1), Color(1, 1, 1, 0)])
+	fade.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	particles.color_ramp = fade
+	material.vertex_color_use_as_albedo = true
+	var pop := Curve.new()
+	pop.add_point(Vector2(0.0, 0.3))
+	pop.add_point(Vector2(0.4, 1.2))
+	pop.add_point(Vector2(1.0, 0.2))
+	particles.scale_amount_curve = pop
 	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 0.6 * species.size_scale
 	particles.gravity = Vector3.ZERO
@@ -1322,8 +1343,10 @@ func _update_sparkles(delta: float) -> void:
 		return
 	_sparkle_time += delta
 	if _sparkle_time >= SPARKLE_INTERVAL:
+		# Destello de todo el sprite, como al aparecer un shiny en los juegos.
 		_sparkle_time = 0.0
-		_sparkles.restart()
+		if state != State.STUNNED and not _faded:
+			_flash(Color(1.8, 1.8, 1.5))
 
 
 # --- Captura --------------------------------------------------------------------
@@ -1351,11 +1374,25 @@ func escape_from_ball(thrower: Node3D) -> void:
 		_fly_start = global_position
 		_enter(State.FLY if can_fly() else State.ESCAPE)
 		return
+	# Según su naturaleza: los tranquilos y tímidos huyen; los demás se enojan y pelean
+	# con el compañero del jugador si está fuera y cerca, o con el jugador si no.
 	match species.temperament:
-		SpeciesData.Temperament.AGGRESSIVE, SpeciesData.Temperament.TERRITORIAL:
-			start_fight(thrower)
-		_:
+		SpeciesData.Temperament.WANDER, SpeciesData.Temperament.SHY:
 			_enter(State.FLEE)
+			_tell_pack(State.FLEE)
+		_:
+			start_fight(_fight_after_escape(thrower))
+
+
+## Con quién pelea al escapar de la Pokéball: el compañero si está fuera y cerca.
+func _fight_after_escape(thrower: Node3D) -> Node3D:
+	for node in get_tree().get_nodes_in_group(COMPANION_GROUP):
+		var companion := node as PokemonActor
+		if companion.is_visible_in_tree() and companion.process_mode != Node.PROCESS_MODE_DISABLED \
+				and companion.ridden_by == null and companion.state != State.STUNNED \
+				and companion.global_position.distance_to(global_position) <= ESCAPE_COMPANION_RADIUS:
+			return companion
+	return thrower
 
 
 ## Hacia dónde mira en el mundo (para el sigilo de la captura).

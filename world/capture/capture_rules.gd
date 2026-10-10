@@ -39,7 +39,10 @@ static func shake_probability(capture_probability: float) -> float:
 ## ¿Lo tomas por sorpresa? Si no te ha visto: está tranquilo y Nate está fuera de su
 ## campo de visión (por la espalda o a un lado lejos).
 static func is_stealthy(actor: PokemonActor, thrower: Node3D) -> bool:
-	if actor.state != PokemonActor.State.IDLE and actor.state != PokemonActor.State.WANDER and actor.state != PokemonActor.State.PERCHED:
+	# De espaldas cuenta mientras no te está enfrentando (quieto, paseando, posado,
+	# huyendo, escondiéndose o regresando a casa).
+	if not actor.state in [PokemonActor.State.IDLE, PokemonActor.State.WANDER, PokemonActor.State.PERCHED,
+			PokemonActor.State.FLEE, PokemonActor.State.HIDE, PokemonActor.State.RETURN]:
 		return false
 	var to_thrower := thrower.global_position - actor.global_position
 	to_thrower.y = 0.0

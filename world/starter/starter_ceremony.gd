@@ -13,7 +13,7 @@ const STARTER_POOL := preload("res://creatures/data/basic_pool.tres")
 const EGGS := 5
 const ARC_RADIUS := 6.5
 const ARC_DEGREES := 100.0
-const SHINY_CHANCE := 0.02
+const SHINY_CHANCE := 0.01
 
 var player: Player
 var world: WorldBuilder

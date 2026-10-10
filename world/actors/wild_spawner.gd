@@ -16,7 +16,7 @@ signal wild_contact(actor: PokemonActor)
 const WILD_GROUP := &"wild_pokemon"
 const ACTOR_SCENE := preload("res://world/actors/pokemon_actor.tscn")
 const ALL_SPECIES := preload("res://creatures/data/all_species.tres")
-const SHINY_CHANCE := 0.02
+const SHINY_CHANCE := 0.01
 const ZONE_SIZE := 40.0
 ## Grupos (un solitario o una manada) que caben en cada zona según su hábitat.
 const ZONE_QUOTA := {
