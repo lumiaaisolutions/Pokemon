@@ -12,6 +12,8 @@
 | `derived_sprites.py` | Sprites derivados (árbol muerto) |
 | `make_back_sprite.py` | Espalda generada de entrenadores (ya no se usa en Nate) |
 | `build_evolutions.py` | Genera `creatures/data/evolutions.json` (métodos de evolución de PokeAPI) |
+| `fix_dae.py` | Deja los .dae de The Models Resource listos para Godot (separa instancias y renombra texturas) |
+| `build_npc_sheets.py` | Hojas de los NPC de BW2 (`art/npcs/`) desde "Overworld Entities" |
 | `run_tests.sh` | Corre todas las pruebas con límite de tiempo por prueba |
 | `protagonist_sheets.py` | Las 10 hojas de personajes jugables al formato de Nate (`--debug` guarda hojas numeradas) |
 | `build_dex_info.py` | Datos de la Pokédex (categoría, descripción, altura, peso, sexo), sprites de frente Gen 5 y gritos de PokeAPI |

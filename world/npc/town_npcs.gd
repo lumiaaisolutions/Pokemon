@@ -369,15 +369,23 @@ func _update_travelers() -> void:
 			_travelers.erase(traveler)
 	if _travelers.size() >= TRAVELERS or p.x > WorldBuilder.INTERIOR_X or _world.layout.roads.is_empty():
 		return
-	for attempt in 12:
-		var r := _rng.randi() % _world.layout.roads.size()
+	# Puntos de camino a 50–150 m del jugador y fuera de los pueblos (antes se probaban
+	# 12 puntos al azar de toda la región y casi nunca caía uno cerca).
+	var candidates: Array = []
+	var here := Vector2(p.x, p.z)
+	for r in _world.layout.roads.size():
 		var road: PackedVector2Array = _world.layout.roads[r]
-		var i := _rng.randi() % road.size()
-		var at := road[i]
-		var distance := at.distance_to(Vector2(p.x, p.z))
-		if distance < 50.0 or distance > 150.0 or not _world.settlement_at(at.x, at.y, 30.0).is_empty():
+		for i in road.size():
+			var distance := road[i].distance_to(here)
+			if distance >= 50.0 and distance <= 150.0:
+				candidates.append([r, i])
+	candidates.shuffle()
+	for candidate: Array in candidates.slice(0, 12):
+		var road: PackedVector2Array = _world.layout.roads[candidate[0]]
+		var at := road[candidate[1]]
+		if not _world.settlement_at(at.x, at.y, 30.0).is_empty():
 			continue
-		_travelers.append(_make_traveler(r, i, at))
+		_travelers.append(_make_traveler(candidate[0], candidate[1], at))
 		return
 
 

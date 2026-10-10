@@ -188,6 +188,9 @@ func _material(color: Color, emission: float = 0.0) -> StandardMaterial3D:
 
 
 func _block(parent: Node3D, size: Vector3, center: Vector3, color: Color, solid: bool = true, emission: float = 0.0, layer: int = WorldBuilder.LAYER_OBSTACLES) -> void:
+	# Con modelo de B2W2, los muebles de cajas no hacen falta (el modelo ya los trae).
+	if _modeled:
+		return
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	var instance := MeshInstance3D.new()
@@ -217,6 +220,69 @@ func _light(parent: Node3D, at: Vector3, color: Color, range_m: float, energy: f
 
 
 ## Sala rectangular: piso con colisión, 4 paredes y luz.
+## Interiores con modelos originales de B2W2 (art/models/b2w2_int/, acordado con Fernando
+## el 2026-10-10). tools/fix_dae.py los deja listos para Godot.
+const INTERIOR_MODELS := {
+	"center": ["center"], "mart": ["mall"], "lab": ["lab_juniper", "lab_fennel"],
+	"house": ["house_floccesy5", "house_humilau7", "house_mistralton3", "house_accumula2"], "cabin": ["house_hugh"],
+	"gym": ["gym_aspertia", "gym_castelia", "gym_mistralton", "gym_icirrus", "gym_humilau", "gym_nacrene"],
+	"league": ["e4_room2", "e4_room4", "e4_room1"], "contest": ["school_striaton"], "daycare": ["daycare"],
+}
+const INTERIOR_DIR := "res://art/models/b2w2_int/"
+var _modeled := false
+
+
+## Pone el modelo de la sala (centrado, piso en y = 0) con colisión. Devuelve su planta
+## (ancho, fondo) en metros, o Vector2.ZERO si no hay modelo.
+func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vector2:
+	var options: Array = INTERIOR_MODELS.get(kind, [])
+	if options.is_empty():
+		return Vector2.ZERO
+	var folder: String = options[rng.randi() % options.size()]
+	var path := INTERIOR_DIR + folder + "/model.dae"
+	if not ResourceLoader.exists(path):
+		return Vector2.ZERO
+	var model := (load(path) as PackedScene).instantiate() as Node3D
+	model.scale = Vector3.ONE * BuildingModels.SCALE
+	var box := AABB()
+	var first := true
+	var meshes := model.find_children("*", "MeshInstance3D", true, false)
+	for node in meshes:
+		var mesh := node as MeshInstance3D
+		BuildingModels._fix_materials(mesh)
+		var local := BuildingModels._local_transform(mesh, model) * mesh.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	var center := box.get_center() * BuildingModels.SCALE
+	model.position = Vector3(-center.x, 0.0, -center.z)
+	root.add_child(model)
+	# Colisión: la geometría del modelo (paredes y muebles) como obstáculo, y un piso plano.
+	for node in meshes:
+		var mesh := node as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		var shape := mesh.mesh.create_trimesh_shape()
+		if shape == null:
+			continue
+		var body := StaticBody3D.new()
+		body.collision_layer = WorldBuilder.LAYER_OBSTACLES
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		body.add_child(collision)
+		mesh.add_child(body)
+	var size := Vector2(box.size.x, box.size.z) * BuildingModels.SCALE
+	var ground := StaticBody3D.new()
+	ground.collision_layer = WorldBuilder.LAYER_TERRAIN
+	var floor_shape := BoxShape3D.new()
+	floor_shape.size = Vector3(size.x + 4.0, 1.0, size.y + 4.0)
+	var floor_collision := CollisionShape3D.new()
+	floor_collision.shape = floor_shape
+	floor_collision.position.y = -0.5
+	ground.add_child(floor_collision)
+	root.add_child(ground)
+	return size
+
+
 func _room_shell(root: Node3D, size: Vector2, floor_color: Color, wall_color: Color) -> void:
 	_block(root, Vector3(size.x + 2, 1.0, size.y + 2), Vector3(0, -0.5, 0), floor_color, true, 0.0, WorldBuilder.LAYER_TERRAIN)
 	_block(root, Vector3(size.x + 2, WALL_H, 1), Vector3(0, WALL_H * 0.5, -size.y * 0.5 - 0.5), wall_color)
@@ -261,8 +327,14 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 		wall = Color(0.55, 0.55, 0.62)
 	elif kind == "cabin":
 		wall = Color(0.5, 0.36, 0.24)
-	_room_shell(root, size, FLOORS.get(kind, Color(0.7, 0.7, 0.7)), wall)
-	var door := Vector3(0, 0, size.y * 0.5 - 1.0)
+	_modeled = false
+	var model_size := _model_room(root, kind, rng)
+	if model_size != Vector2.ZERO:
+		size = model_size
+		_modeled = true
+	else:
+		_room_shell(root, size, FLOORS.get(kind, Color(0.7, 0.7, 0.7)), wall)
+	var door := Vector3(0, 0, size.y * 0.5 - (2.2 if _modeled else 1.0))
 	_block(root, Vector3(2.4, 0.05, 1.4), door + Vector3(0, 0.02, 0.2), Color(0.6, 0.2, 0.2), false)
 	_point(door + Vector3.UP * 0.5, "Salir", func() -> void: exit_to(current["return"]), 1.8)
 	var back := -size.y * 0.5 + 2.0
@@ -316,6 +388,8 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_block(root, Vector3(12, 0.8, 5), Vector3(0, 0.4, back + 2.0), Color(0.85, 0.55, 0.7))
 			_npc(root, Vector3(6, 0, back + 6.0), "guay_chica")
 			_point(Vector3(6, 0.5, back + 7.4), "Participar en el concurso", services.contest.bind(settlement))
+	# Las mazmorras sí usan bloques: se apaga el modo modelo al terminar la sala.
+	_modeled = false
 	return ORIGIN + door + Vector3(0, 0.3, -1.5)
 
 
