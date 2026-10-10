@@ -158,7 +158,10 @@ func _run() -> void:
 		await _frames(2)
 		Input.action_release(action)
 		await _frames(90)
-		_check(not is_instance_valid(nearest) or nearest.hp < hp_before, "el ataque especial controlado debe dañar al salvaje")
+		# Si el salvaje al azar es inmune al tipo del movimiento (×0), no hay daño que medir.
+		var move_type: int = Moves.get_move(companion.moves[slot])["type"]
+		var immune := is_instance_valid(nearest) and TypeChart.effectiveness(move_type, nearest.species.types) == 0.0
+		_check(immune or not is_instance_valid(nearest) or nearest.hp < hp_before, "el ataque especial controlado debe dañar al salvaje")
 		if is_instance_valid(nearest):
 			nearest.set_physics_process(true)
 	# Esquivar: impulso invulnerable.

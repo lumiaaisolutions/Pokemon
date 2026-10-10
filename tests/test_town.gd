@@ -82,7 +82,9 @@ func _run() -> void:
 	_check(ShopUI.sell("poke-ball", 2) and GameState.money == money - 2000 + 200, "vender a mitad de precio")
 	var tms := ShopUI.stock().filter(func(id: String) -> bool: return id.begins_with("tm-"))
 	_check(tms.size() == ShopUI.TM_PER_DAY, "la tienda vende %d MT por día" % ShopUI.TM_PER_DAY)
-	var entry: Dictionary = GameState.party[GameState.companion_index]
+	# Una ficha fija (Pikachu, con movimientos de varios tipos): el compañero al azar
+	# podía tener una lista tan corta que ya no hubiera nada que enseñar.
+	var entry: Dictionary = {"species": "pikachu", "shiny": false, "hp_ratio": 1.0}
 	Moves.ensure_entry(entry)
 	var before: int = (entry["unlocked"] as Array).size()
 	var learned := ""

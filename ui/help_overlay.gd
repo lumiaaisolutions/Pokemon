@@ -59,9 +59,33 @@ func _ready() -> void:
 	add_child(shade)
 
 
+## Toque corto de "help" (despliega u oculta la leyenda de botones del HUD).
+signal tapped
+
+## Mantener "help" más que esto abre la ayuda completa; un toque más corto es "tapped".
+const HOLD_TIME := 0.4
+var _held := -1.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("help") or (visible and event.is_action_pressed("ui_cancel")):
+	if visible and (event.is_action_pressed("help") or event.is_action_pressed("ui_cancel")):
 		get_viewport().set_input_as_handled()
+		toggle()
+	elif not visible and event.is_action_pressed("help"):
+		get_viewport().set_input_as_handled()
+		_held = 0.0
+	elif not visible and event.is_action_released("help") and _held >= 0.0:
+		get_viewport().set_input_as_handled()
+		_held = -1.0
+		tapped.emit()
+
+
+func _process(delta: float) -> void:
+	if _held < 0.0 or visible:
+		return
+	_held += delta
+	if _held >= HOLD_TIME:
+		_held = -1.0
 		toggle()
 
 

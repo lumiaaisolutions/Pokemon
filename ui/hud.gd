@@ -48,6 +48,7 @@ var _downed_info: Label
 var _downed_controls: Label
 var _downed_tint: ColorRect
 var _legend: VBoxContainer
+var _legend_tab: Button
 var _ball_panel: PanelContainer
 var _clock: Label
 var _prompt: Label
@@ -519,9 +520,46 @@ func _build_hints() -> void:
 	add_child(_tip)
 	_help = HelpOverlay.new()
 	add_child(_help)
+	_help.tapped.connect(toggle_legend)
+	# Pestaña para desplegar u ocultar la leyenda (también con un toque de H).
+	_legend_tab = Button.new()
+	_legend_tab.anchor_left = 1.0
+	_legend_tab.anchor_right = 1.0
+	_legend_tab.anchor_top = 1.0
+	_legend_tab.anchor_bottom = 1.0
+	_legend_tab.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_legend_tab.offset_right = -24
+	_legend_tab.offset_top = -436
+	_legend_tab.offset_bottom = -400
+	_legend_tab.focus_mode = Control.FOCUS_NONE
+	_legend_tab.add_theme_font_override("font", UiKit.font(true))
+	_legend_tab.add_theme_font_size_override("font_size", 17)
+	var tab_style := StyleBoxFlat.new()
+	tab_style.bg_color = Color(0.07, 0.11, 0.24, 0.8)
+	tab_style.set_corner_radius_all(14)
+	tab_style.content_margin_left = 14
+	tab_style.content_margin_right = 14
+	tab_style.content_margin_top = 4
+	tab_style.content_margin_bottom = 6
+	var tab_hover := tab_style.duplicate() as StyleBoxFlat
+	tab_hover.bg_color = Color(0.2, 0.3, 0.55, 0.95)
+	_legend_tab.add_theme_stylebox_override("normal", tab_style)
+	_legend_tab.add_theme_stylebox_override("hover", tab_hover)
+	_legend_tab.add_theme_stylebox_override("pressed", tab_hover)
+	_legend_tab.pressed.connect(toggle_legend)
+	add_child(_legend_tab)
+
+
+## Despliega u oculta la leyenda de botones (y lo recuerda en Opciones).
+func toggle_legend() -> void:
+	GameOptions.show_hints = not GameOptions.show_hints
+	GameOptions.save_options()
+	AudioBus.play_sfx("ui_open" if GameOptions.show_hints else "ui_close")
 
 
 func _update_hints() -> void:
+	_legend_tab.text = ("Ocultar controles  ▸  [%s]" if GameOptions.show_hints else "◂  Controles  [%s]") % InputHints.hint("help")
+	_legend_tab.visible = not (dialog != null and dialog.is_open())
 	# Mientras alguien habla, la leyenda se oculta para no encimarse.
 	_legend.visible = GameOptions.show_hints and not (dialog != null and dialog.is_open())
 	var rows: Array = []
@@ -548,14 +586,14 @@ func _update_hints() -> void:
 				if has_companion:
 					rows.append(["companion", "Toca: guardar o sacar · Mantén: cambiar"])
 					rows.append([null, "%s-%s: ordenar sus movimientos" % [MoveInput.hint(0), MoveInput.hint(3)]])
-				rows += [["map", "Mapa"], ["help", "Ayuda: todos los controles"]]
+				rows += [["map", "Mapa"], ["help", "Toca: ocultar · Mantén: ayuda"]]
 		Player.Mode.SWIM:
 			context = "surf" if _player.riding != null else "swim"
-			rows = [[null, "Surfeando sobre tu Pokémon"], ["help", "Ayuda"]] if _player.riding != null \
-					else [["jump", "Mantener: flotar"], ["dive", "Bucear"], ["help", "Ayuda"]]
+			rows = [[null, "Surfeando sobre tu Pokémon"], ["help", "Mantén: ayuda"]] if _player.riding != null \
+					else [["jump", "Mantener: flotar"], ["dive", "Bucear"], ["help", "Mantén: ayuda"]]
 		Player.Mode.DIVE:
 			context = "dive"
-			rows = [["jump", "Mantener: subir"], [null, "Suelta para hundirte"], ["help", "Ayuda"]]
+			rows = [["jump", "Mantener: subir"], [null, "Suelta para hundirte"], ["help", "Mantén: ayuda"]]
 	context += str(InputHints.gamepad)
 	if context == _legend_context:
 		return
