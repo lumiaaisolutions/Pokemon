@@ -99,6 +99,7 @@ func _setup_input_map() -> void:
 	_action("jump", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])
 	_action("dive", [_key(KEY_CTRL), _button(JOY_BUTTON_LEFT_SHOULDER)])
 	_action("menu", [_key(KEY_ESCAPE), _button(JOY_BUTTON_START)])
+	_action("map", [_key(KEY_M), _button(JOY_BUTTON_BACK)])
 
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])

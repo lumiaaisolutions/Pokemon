@@ -252,7 +252,8 @@ func _physics_process(delta: float) -> void:
 	velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
 	move_and_slide()
 	_sprite.animate(current, delta, target_speed > walk_speed() + 0.1)
-	_chase_ring.visible = state == State.CHASE
+	# El área de persecución se ve mientras te persigue o pelea contigo.
+	_chase_ring.visible = state == State.CHASE or (state == State.FIGHT and fight_target == player and role == Role.WILD)
 	_check_contact()
 
 

@@ -9,7 +9,7 @@
 | 1 | Hecha (aprobada) | `89ba4cc` | Nate animado, cámara libre, Pradera HD-2D |
 | 2 | Hecha (aprobada) | `33a8792` | Hierba alta, salvajes con IA, compañero al azar |
 | 2.5 | Hecha (probada por Fernando; sus comentarios dieron la 2.8) | `cadf095` | 3 biomas con agua, aparición por hábitat, shiny, persecución con stamina |
-| 2.8 | En curso: bloque 7 (mapa) | ver `git log` | Bloques 1–6 hechos (ver [historial](historial.md)) |
+| 2.8 | Implementada, esperando revisión de Fernando | ver `git log` | Los 7 bloques (ver [historial](historial.md)); 7 pruebas en headless con 0 fallos |
 | 2.6 | Pendiente | — | Asentamientos y lugares icónicos ([catálogo](catalogo_mundo.md)) |
 | 2.7 | Pendiente | — | NPC con rutinas, día/noche, clima |
 | 3 | Pendiente | — | Combate en tiempo real |
@@ -29,5 +29,5 @@
 - Ideas propuestas en el [catálogo](catalogo_mundo.md) (Zona Safari, concursos, estaciones…).
 
 ## Pendientes técnicos
-- El mundo tarda ~6.5 s en construirse: pantalla de carga u optimización.
+- El mundo tarda ~5–6.5 s en construirse (incluye la imagen del mapa): pantalla de carga u optimización.
 - FPS de 55–60 en el bosque denso y la montaña (meta: 60 estable).

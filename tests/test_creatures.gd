@@ -81,7 +81,10 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(2)
 
-	# Temperamentos con el jugador quieto en un claro.
+	# Temperamentos con el jugador quieto en un claro. El compañero se aparta: su
+	# defensa (ver test_fights) cambiaría con quién pelea cada salvaje.
+	(_main.companion as Node).process_mode = Node.PROCESS_MODE_DISABLED
+	(_main.companion as Node3D).global_position = Vector3(0, -50, 0)
 	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
 	await _frames(20)
 	await _check_temperament("absol", 7.0, "agresivo", func(start: float, end: float, contact: bool) -> bool: return contact)
@@ -93,7 +96,7 @@ func _run() -> void:
 	# Persecución con área: si el jugador sale del área, el perseguidor se rinde.
 	var chaser := _spawner.spawn_species(_species("absol"), _ground(6.0, 0.0), false, false)
 	await _frames(30)
-	_check(chaser.state == PokemonActor.State.CHASE, "el agresivo debe empezar a perseguir")
+	_check(chaser.state == PokemonActor.State.CHASE or chaser.fight_target == _player, "el agresivo debe empezar a perseguir (estado %d)" % chaser.state)
 	_check((chaser.get_node("ChaseRing") as Decal).visible, "al perseguir se muestra el área en el suelo")
 	var leash := chaser.chase_leash()
 	_check(leash >= 12.0 and leash <= 35.0, "el área de persecución debe estar entre 12 y 35 m (%.1f)" % leash)

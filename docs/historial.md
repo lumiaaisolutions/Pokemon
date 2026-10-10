@@ -17,14 +17,14 @@ Datos desde PokeAPI con sprites de pokeemerald-expansion, `DirectionalSprite` co
 ## Fase 2.5 — Mundo de 3 biomas (`cadf095`)
 Mundo de 480 m con pradera, bosque/pantano, montaña y costa, río y lago; 1,025 especies por hábitat y rareza; shiny; tamaños; persecución con área y stamina; legendarios en lugares fijos. Tras la prueba de Fernando, **el agua flotaba**: se rehízo con cauce y ribera, borde enterrado y una prueba de 277 puntos. Rendimiento: construcción de 21 s a 4 s.
 
-## Fase 2.8 — Mundo vivo (en curso)
+## Fase 2.8 — Mundo vivo (implementada, esperando revisión)
 Pedido tras probar la 2.5 (tirones, sprites rotos, aparición solo en hierba, demasiados legendarios):
 1. **Sprites y tirones** (`8c0f14f`, `5b97ccd`): hojas de 64 px y lado derecho propio; caminos recalculados solo si el destino cambia; calentamiento de shaders. De 27 a 16.7 ms de promedio y de 854 a 29 ms de peor cuadro.
 2. **Aparición, manadas, esconderse y legendarios** (`8c0f14f`): en cualquier lugar con cupo por zona, manadas de una línea evolutiva, escondite con efecto, legendarios en santuarios y cautelosos (pedido posterior de Fernando).
 3. **Salto, vida, caídas, agua y desmayo** (`bff7a63`): pedido posterior estilo Minecraft.
 4. **Coherencia de biomas** (`c6dee03`): nieve y roca por altura, caminos que conectan, borde del bosque, ribera viva y pantano.
 5. **Peleas** (`0a228c3`) y **emboscadas** (`6d90c25`): rivalidades, aturdido y humo, ataques al jugador, defensa y guardia del compañero; Bicho que caen y aves en picada.
-6. **Captura en el mundo**: apuntar y lanzar con física, fórmula oficial, sigilo y aturdido.
-7. **Mapa**: minimapa y mapa completo con niebla de exploración.
+6. **Captura en el mundo** (`7d8ca04`): apuntar y lanzar con física, fórmula oficial, sigilo y aturdido. Además, la documentación se reorganizó en un `.md` por tema.
+7. **Mapa**: minimapa que gira con la cámara y mapa completo con niebla de exploración.
 
-Problemas encontrados y corregidos en el camino: un río colgado sobre laderas, charcas encimadas, manadas con especies de otro hábitat (Marill en la pradera), un legendario que escapaba pasando junto al jugador, una optimización de navegación que dejaba sin camino a quien estaba junto al origen y una prueba con error de sintaxis que dejaba a Godot trabado (de ahí `tools/run_tests.sh` con límite de tiempo).
+Problemas encontrados y corregidos en el camino: un río colgado sobre laderas, charcas encimadas, manadas con especies de otro hábitat (Marill en la pradera), un legendario que escapaba pasando junto al jugador, una optimización de navegación que dejaba sin camino a quien estaba junto al origen una prueba con error de sintaxis que dejaba a Godot trabado (de ahí `tools/run_tests.sh` con un vigilante que lo mata al pasar el límite, porque Godot ignora `SIGALRM`) y un perseguidor que, al pasar a pelear, ya no respetaba su área.

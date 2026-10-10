@@ -12,8 +12,22 @@ status=0
 for test in "${TESTS[@]}"; do
   log="$LOG_DIR/$(basename -- "$test" .tscn).log"
   start=$(date +%s)
-  perl -e 'alarm shift; exec @ARGV' "$LIMIT" godot --headless --path . "$test" > "$log" 2>&1
+  # Vigilante: Godot ignora SIGALRM, así que se lanza en segundo plano y se mata
+  # con SIGKILL si se pasa del límite.
+  godot --headless --path . "$test" > "$log" 2>&1 &
+  pid=$!
+  timed_out=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ $(( $(date +%s) - start )) -ge "$LIMIT" ]; then
+      kill -9 "$pid" 2>/dev/null
+      timed_out=1
+      break
+    fi
+    sleep 1
+  done
+  wait "$pid" 2>/dev/null
   code=$?
+  [ $timed_out -eq 1 ] && code=142
   elapsed=$(( $(date +%s) - start ))
   if [ $code -ne 0 ] || grep -qE "SCRIPT ERROR|Parse Error" "$log"; then
     status=1

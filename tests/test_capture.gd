@@ -105,6 +105,17 @@ func _run() -> void:
 	await _frames(int((CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + 1.5) * 60))
 	_check(GameState.legendary_caught.get("raikou", false), "capturar a Raikou debe marcarlo como capturado")
 
+	# Mapa: se descubre al explorar y el mapa completo pausa el juego.
+	var map_ui := _main.get_node("MapUi") as MapUi
+	var explored_before := map_ui.data.explored_ratio()
+	_player.global_position = Vector3(-120, _world.surface_height_at(-120, 30) + 0.5, 30)
+	await _frames(60)
+	_check(map_ui.data.explored_ratio() > explored_before, "explorar una zona nueva debe descubrirla en el mapa")
+	map_ui.toggle_full_map()
+	_check(get_tree().paused and (map_ui.get_node("Full") as Control).visible, "el mapa completo debe abrirse y pausar el juego")
+	map_ui.toggle_full_map()
+	_check(not get_tree().paused, "al cerrar el mapa el juego sigue")
+
 
 ## Lanza una ball directo al Pokémon con resultado forzado (1 captura, 0 falla).
 func _throw_at(target: PokemonActor, result: int) -> PokeballProjectile:

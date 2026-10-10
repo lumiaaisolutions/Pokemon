@@ -25,6 +25,11 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	# Prueba de movimiento: sin salvajes al azar (una manada agresiva podría desmayar
+	# a Nate a mitad de la prueba). Los ataques se prueban en test_fights.
+	(_main.get_node("Spawner") as Node).set_process(false)
+	(_main.get_node("Legendaries") as Node).set_process(false)
+	(_main.get_node("Ambushes") as Node).set_process(false)
 	await _frames(30)
 	_check(_player.is_on_floor(), "el jugador debe empezar sobre el suelo")
 	_check(absf(_player.global_position.y - _world.surface_height_at(0, 0)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
