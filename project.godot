@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Pokemon Mundo Abierto"
-run/main_scene="res://world/main.tscn"
+run/main_scene="res://ui/character_select/character_select.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]

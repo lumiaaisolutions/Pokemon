@@ -44,6 +44,8 @@ var _lying: Node3D
 var _lying_sprite: Sprite3D
 var _heal_sparkle: float = 0.0
 var _downed_time: float = 0.0
+## Hoja overworld del personaje elegido.
+var sheet: Texture2D
 var _swim_time: float = 0.0
 var _swim_bob: float = 0.0
 var _splash_timer: float = 0.0
@@ -55,7 +57,13 @@ func _ready() -> void:
 	_sprite.run_row_offset = 4
 	_sprite.walk_fps = config.walk_fps
 	_sprite.run_fps = config.run_fps
-	_sprite.setup(config.sheet, config.hframes, config.vframes, config.pixel_size)
+	# Hoja del personaje elegido (todas con el formato de Nate). Sin animación de
+	# correr, corre con su caminar acelerado.
+	sheet = PlayerCharacters.sheet(GameState.character_id)
+	if not PlayerCharacters.find(GameState.character_id)["run"]:
+		_sprite.run_row_offset = 0
+		_sprite.run_fps = config.run_fps * 1.4
+	_sprite.setup(sheet, config.hframes, config.vframes, config.pixel_size)
 	_sprite.animate(Vector3.ZERO, 0.0)
 	stamina = config.stamina_max
 	health = config.health_max
@@ -192,7 +200,7 @@ func _process_downed(delta: float) -> void:
 	velocity.y = 0.0 if is_on_floor() else velocity.y - config.gravity * delta
 	move_and_slide()
 	_downed_time += delta
-	health = minf(health + config.health_max / config.downed_duration * delta, config.health_max)
+	health = minf(health + config.health_max / downed_duration() * delta, config.health_max)
 	health_changed.emit(health)
 	# Respira (sube y baja un poco) y suelta destellos de curación.
 	if _lying_sprite != null:
@@ -203,6 +211,11 @@ func _process_downed(delta: float) -> void:
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.HEAL, 0.6)
 	if health >= config.health_max:
 		_get_up()
+
+
+## Segundos que tarda en recuperarse del desmayo (según la dificultad).
+func downed_duration() -> float:
+	return config.downed_duration * GameState.difficulty_value("recovery")
 
 
 ## Se levanta: el sprite plano vuelve a quedar de pie y suelta un destello.
@@ -247,7 +260,7 @@ func _set_downed_visuals(on: bool) -> void:
 		if to_camera.length() > 0.01:
 			_lying.global_basis = Basis.looking_at(-to_camera.normalized(), Vector3.UP)
 	_lying_sprite = Sprite3D.new()
-	_lying_sprite.texture = config.sheet
+	_lying_sprite.texture = sheet
 	_lying_sprite.hframes = config.hframes
 	_lying_sprite.vframes = config.vframes
 	_lying_sprite.frame = 0
@@ -259,7 +272,7 @@ func _set_downed_visuals(on: bool) -> void:
 	_lying_sprite.modulate = Color(0.85, 0.85, 0.95)
 	_lying_sprite.layers = 2
 	_lying_sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var cell_height := config.sheet.get_height() / float(config.vframes)
+	var cell_height := sheet.get_height() / float(config.vframes)
 	_lying_sprite.position = Vector3(0.0, cell_height * 0.5 * config.pixel_size, 0.0)
 	_lying.add_child(_lying_sprite)
 	_lying.position.y = 0.06

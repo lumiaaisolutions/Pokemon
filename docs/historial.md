@@ -28,3 +28,10 @@ Pedido tras probar la 2.5 (tirones, sprites rotos, aparición solo en hierba, de
 7. **Mapa**: minimapa que gira con la cámara y mapa completo con niebla de exploración.
 
 Problemas encontrados y corregidos en el camino: un río colgado sobre laderas, charcas encimadas, manadas con especies de otro hábitat (Marill en la pradera), un legendario que escapaba pasando junto al jugador, una optimización de navegación que dejaba sin camino a quien estaba junto al origen una prueba con error de sintaxis que dejaba a Godot trabado (de ahí `tools/run_tests.sh` con un vigilante que lo mata al pasar el límite, porque Godot ignora `SIGALRM`) y un perseguidor que, al pasar a pelear, ya no respetaba su área.
+
+## Correcciones tras probar la 2.8 (`8247807`)
+Fernando probó la 2.8 y pidió: vista despejada (Pokémon grandes tapaban), mira libre y botones claros para lanzar, botón para guardar o sacar al compañero, emboscadores sin parpadeo, barras de stamina y aire distintas, poder bucear y subir con animación de nado, y que el desmayo se viera (tirado en el suelo, recuperación visible) y le dejara **controlar a su Pokémon** para pelear y esquivar. También, que al debilitarse el compañero lo llevara al Centro Pokémon con aviso (antes solo reaparecía a los 30 s). Todo se hizo; además, catálogo de 97 megas con Mega Greninja.
+
+## Fase 2.9 — Personaje y menú (en curso)
+- **Bloque 1, personaje:** pantalla inicial con chico o chica, 5 personajes de cada uno (protagonistas de cada generación) con vista previa que camina y gira, nombre y dificultad (Fácil, Normal, Difícil: daño de salvajes, dinero perdido y tiempo de recuperación). Los textos usan el nombre elegido. Hojas descargadas de Spriters Resource y DeviantArt (las de DeviantArt desde su CDN, porque Chrome bloqueaba descargas repetidas del sitio) y convertidas con `tools/protagonist_sheets.py`.
+- Siguientes bloques: ver el [plan](sistemas/menu_y_personaje.md).

@@ -327,12 +327,12 @@ func _update_downed_panel() -> void:
 	if not down:
 		return
 	var ratio := _player.health / _player.config.health_max
-	var seconds := (_player.config.health_max - _player.health) / _player.config.health_max * _player.config.downed_duration
+	var seconds := (_player.config.health_max - _player.health) / _player.config.health_max * _player.downed_duration()
 	var companion := main.get("companion") as PokemonActor if main != null else null
 	var name := companion.species.display_name if companion != null else "tu Pokémon"
-	_downed_title.text = "¡Nate está desmayado!"
+	_downed_title.text = "¡%s está desmayad%s!" % [GameState.player_name, "a" if GameState.gender == "female" else "o"]
 	_downed_bar.value = ratio * 100.0
-	_downed_info.text = "Recuperándose... %d%%  ·  %d s  ·  ¡Protégelo con %s!" % [int(ratio * 100.0), int(ceil(seconds)), name]
+	_downed_info.text = "Recuperándose... %d%%  ·  %d s  ·  ¡Protege a %s con %s!" % [int(ratio * 100.0), int(ceil(seconds)), GameState.player_name, name]
 	_downed_controls.text = "%s   %s   %s" % [InputHints.label("attack_1", "Golpe"), InputHints.label("attack_2", "Ataque especial"), InputHints.label("dodge", "Esquivar")]
 
 

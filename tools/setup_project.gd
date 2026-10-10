@@ -32,7 +32,7 @@ func _initialize() -> void:
 func _setup_application() -> void:
 	ProjectSettings.set_setting("application/config/name", "Pokemon Mundo Abierto")
 	ProjectSettings.set_setting("application/run/max_fps", 0)
-	ProjectSettings.set_setting("application/run/main_scene", "res://world/main.tscn")
+	ProjectSettings.set_setting("application/run/main_scene", "res://ui/character_select/character_select.tscn")
 
 
 func _setup_display() -> void:

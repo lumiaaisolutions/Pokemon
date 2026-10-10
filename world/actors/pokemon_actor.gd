@@ -950,7 +950,7 @@ func _apply_hit(node: Node3D, physical: bool) -> bool:
 		var target_player := node as Player
 		if target_player.mode == Player.Mode.DOWNED:
 			return false
-		target_player.take_damage(damage_to_player())
+		target_player.take_damage(damage_to_player() * GameState.difficulty_value("damage"))
 		contact_with_player.emit(self)
 		return true
 	return false

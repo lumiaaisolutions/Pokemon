@@ -1,13 +1,13 @@
 # Personaje, menú y sistemas del menú (Fase 2.9, plan)
 
-[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **plan**; se construye por bloques (ver abajo).
+[← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **bloque 1 hecho** (personaje, nombre y dificultad); el resto es plan y se construye por bloques (ver abajo).
 
 ## Inicio de partida
 - Eliges **Hombre o Mujer** y uno de **5 personajes** de cada uno; los 10 tienen la misma funcionalidad (caminar, correr, saltar, nadar, bucear, desmayo, lanzar).
   - Hombres: Red, Ethan, Lucas, Brendan, Calem.
   - Mujeres: Leaf, Lyra, Dawn, May, Serena.
-- Sprites: el mejor oficial por personaje. Ethan, Lyra, Red y Leaf de HGSS; Lucas y Dawn de Platino (Gen 4, 32 px, cercanos a B2W2). Brendan, May, Calem y Serena en versiones fan de estilo DS porque no hay oficiales a ese tamaño. Si alguno no trae correr, usa su caminar acelerado.
-- Escribes tu **nombre** (los textos lo usan en vez de "Nate") y eliges la **dificultad**: vida, daño de los salvajes y dinero perdido.
+- Sprites (el mejor oficial por personaje): Red, Ethan y Lyra de HGSS; Lucas y Dawn de Platino. No hay oficiales a ese tamaño de Leaf, Brendan, May, Calem y Serena, así que se usan versiones fan de estilo DS: Brendan de hyo-oppa (estilo DPPt/HGSS), May, Serena (pelo corto) y Leaf de Zender1752 (estilo Gen 5) y Calem de TOBALCR (estilo BW). Red, Calem, Leaf, May y Serena no traen correr: corren con su caminar acelerado.
+- Escribes tu **nombre** (los textos lo usan en vez de "Nate") y eliges la **dificultad**: daño de los salvajes (×0.6 / ×1 / ×1.4), dinero perdido al desmayarte (5 / 10 / 20 %) y tiempo de recuperación del desmayo (×0.75 / ×1 / ×1.25).
 - Vista previa: el personaje gira en 4 direcciones antes de confirmar.
 
 ## Menú (Esc / Options)
@@ -62,7 +62,7 @@
 - Se guarda: personaje, nombre y dificultad; posición; vida; dinero; equipo, caja y mochila; Pokédex e investigación; legendarios; niebla del mapa; misiones; logros; estadísticas y opciones. Las opciones se guardan aparte, en `user://`.
 
 ## Bloques de construcción
-1. Selección de personaje, nombre y dificultad (descarga y conversión de las 10 hojas).
+1. ✅ Selección de personaje, nombre y dificultad (descarga y conversión de las 10 hojas). Código: `ui/character_select/`, `core/player_characters.gd`, `GameState.character_id/player_name/gender/difficulty`.
 2. Marco del menú con pestañas y tira del equipo; pestañas Equipo, Ficha y Controles; rueda de cambio rápido.
 3. Datos de objetos y Mochila (todos los bolsillos), recolección en el mundo y fabricación.
 4. Pokédex con investigación; Caja (PC).

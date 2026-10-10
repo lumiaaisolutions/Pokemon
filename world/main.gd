@@ -109,7 +109,7 @@ func _on_player_downed() -> void:
 func _on_player_revived() -> void:
 	companion.set_controlled(false)
 	($CameraRig as CameraRig).set_target(_player)
-	($Hud as Hud).show_toast("¡Nate se recuperó!")
+	($Hud as Hud).show_toast("¡%s se recuperó!" % GameState.player_name)
 
 
 ## El compañero se debilitó: siempre lleva a Nate al Centro Pokémon (pantalla
@@ -138,8 +138,9 @@ func _return_companion(ratio: float) -> void:
 func _on_blacked_out() -> void:
 	var lost := GameState.apply_blackout_penalty()
 	var name := companion.species.display_name
-	var message := "¡Nate se desmayó!" if companion_state != CompanionState.FAINTED else "¡%s no puede continuar!" % name
-	($Hud as Hud).show_blackout("%s\nCorriste al Centro Pokémon...\nPerdiste $%d en el camino.\n\n%s y Nate están curados." % [message, lost, name], 2.6)
+	var player_name := GameState.player_name
+	var message := ("¡%s se desmayó!" % player_name) if companion_state != CompanionState.FAINTED else "¡%s no puede continuar!" % name
+	($Hud as Hud).show_blackout("%s\nCorriste al Centro Pokémon...\nPerdiste $%d en el camino.\n\n%s y %s están curados." % [message, lost, name, player_name], 2.6)
 	await get_tree().create_timer(0.7).timeout
 	companion.set_controlled(false)
 	($CameraRig as CameraRig).set_target(_player)

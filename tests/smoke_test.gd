@@ -36,6 +36,17 @@ func _ready() -> void:
 	if ProjectSettings.get_setting("rendering/textures/canvas_textures/default_texture_filter") != 0:
 		failures.append("El filtro 2D por defecto no es Nearest")
 
+	# Personajes: 5 chicos y 5 chicas, todos con hoja de 3 × 8 celdas de 32 px.
+	if PlayerCharacters.by_gender("male").size() != 5 or PlayerCharacters.by_gender("female").size() != 5:
+		failures.append("Deben ser 5 personajes de cada género")
+	for entry in PlayerCharacters.LIST:
+		var sheet := PlayerCharacters.sheet(entry["id"])
+		if not ResourceLoader.exists("res://art/trainers/%s_overworld.png" % entry["id"]) or sheet.get_size() != Vector2(96, 256):
+			failures.append("Hoja de %s ausente o con otro tamaño" % entry["id"])
+	if GameState.difficulty_value("damage") != 1.0:
+		failures.append("La dificultad por defecto debe ser Normal")
+	if ProjectSettings.get_setting("application/run/main_scene") != "res://ui/character_select/character_select.tscn":
+		failures.append("La partida debe empezar en la selección de personaje")
 	# Megas: el catálogo carga completo y Mega Greninja trae datos y sprites.
 	var megas := MegaCatalog.load_catalog()
 	if megas == null or megas.megas.size() < 90:
