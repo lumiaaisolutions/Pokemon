@@ -100,12 +100,14 @@ func _setup_input_map() -> void:
 	_action("dive", [_key(KEY_CTRL), _button(JOY_BUTTON_LEFT_SHOULDER)])
 	_action("menu", [_key(KEY_ESCAPE), _button(JOY_BUTTON_START)])
 	_action("map", [_key(KEY_M), _button(JOY_BUTTON_BACK)])
+	# Meter o sacar al compañero de su Pokéball (explorando).
+	_action("companion", [_key(KEY_Q), _button(JOY_BUTTON_Y)])
 
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])
 	_action("lock_on", [_key(KEY_TAB), _button(JOY_BUTTON_RIGHT_STICK)])
 	_action("attack_1", [_key(KEY_1), _mouse(MOUSE_BUTTON_LEFT), _button(JOY_BUTTON_X)])
-	_action("attack_2", [_key(KEY_2), _button(JOY_BUTTON_Y)])
+	_action("attack_2", [_key(KEY_2), _mouse(MOUSE_BUTTON_RIGHT), _button(JOY_BUTTON_Y)])
 	_action("attack_3", [_key(KEY_3), _button(JOY_BUTTON_LEFT_SHOULDER)])
 	_action("attack_4", [_key(KEY_4), _button(JOY_BUTTON_RIGHT_SHOULDER)])
 	_action("mega_evolve", [_key(KEY_G), _button(JOY_BUTTON_DPAD_UP)])

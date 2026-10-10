@@ -130,13 +130,27 @@ func _run() -> void:
 	for k in 4:
 		_spawner.spawn_species(_species("absol"), arena + Vector3(4.0 * cos(k * 1.6), 0, 4.0 * sin(k * 1.6)), false, false)
 	var max_attackers := 0
-	var guarded := false
 	for i in 600:
 		await get_tree().physics_frame
 		max_attackers = maxi(max_attackers, companion.attackers_count())
-		if companion.state == PokemonActor.State.FIGHT:
-			guarded = true
-	_check(guarded, "con Nate desmayado, el compañero debe pelear para protegerlo")
+	_check(companion.controlled, "con Nate desmayado, el jugador controla al compañero")
+	var rig := _main.get_node("CameraRig") as CameraRig
+	_check(rig.get("_target") == companion, "con Nate desmayado, la cámara sigue al compañero")
+	# Ataque especial y golpe físico controlados contra el salvaje más cercano.
+	var nearest := companion._nearest_wild(PokemonActor.CONTROL_TARGET_RADIUS)
+	_check(nearest != null, "debe haber un salvaje cerca del compañero")
+	if nearest != null:
+		var hp_before := nearest.hp
+		Input.action_press("attack_2")
+		await _frames(2)
+		Input.action_release("attack_2")
+		await _frames(90)
+		_check(not is_instance_valid(nearest) or nearest.hp < hp_before, "el ataque especial controlado debe dañar al salvaje")
+	# Esquivar: impulso invulnerable.
+	Input.action_press("dodge")
+	await _frames(2)
+	Input.action_release("dodge")
+	_check(companion.is_dashing(), "al esquivar, el compañero hace un impulso")
 	_check(max_attackers <= PokemonActor.GUARD_MAX_ATTACKERS, "nunca más de 2 salvajes contra el compañero (hubo %d)" % max_attackers)
 	_check(_player.mode == Player.Mode.DOWNED and _player.health > 0.0, "Nate sigue desmayado recuperándose")
 
@@ -144,10 +158,13 @@ func _run() -> void:
 	var blacked := [false]
 	_player.blacked_out.connect(func() -> void: blacked[0] = true)
 	companion.hp_max = 50.0
+	await _frames(30)
 	companion.receive_hit(100000.0, null)
-	await _frames(120)
+	_clear_wild()
+	await _frames(240)
 	_check(blacked[0], "si cae el compañero con Nate desmayado, es desmayo definitivo")
 	_check(_player.mode == Player.Mode.WALK and _player.global_position.distance_to(GameState.respawn_point) < 3.0, "Nate reaparece en el punto de inicio")
+	_check(not companion.controlled and rig.get("_target") == _player, "tras el desmayo la cámara vuelve a Nate")
 	_player.config.downed_duration = saved_duration
 
 	# Emboscadas: un Bicho agresivo cae sobre Nate al pasar bajo su árbol.
@@ -171,7 +188,7 @@ func _run() -> void:
 		_check(warned, "antes de caer debe mostrar el signo de exclamación")
 		_check(is_instance_valid(bug) and not bug.perched, "el Bicho agresivo debe caer al pasar Nate debajo")
 		var hit_or_fight := _player.health < _player.config.health_max or (is_instance_valid(bug) and bug.state in [PokemonActor.State.FIGHT, PokemonActor.State.CHASE])
-		_check(hit_or_fight, "al caer debe golpear a Nate o perseguirlo")
+		_check(hit_or_fight, "al caer debe golpear a Nate o perseguirlo (vida %.1f, estado %d, modo %d, distancia %.1f)" % [_player.health, bug.state if is_instance_valid(bug) else -1, _player.mode, bug.global_position.distance_to(_player.global_position) if is_instance_valid(bug) else -1.0])
 		_clear_wild()
 		await _frames(5)
 

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/mega/front.png" id="2_front"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/mega/back.png" id="3_back"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/mega/front_shiny.png" id="4_front_shiny"]
+[ext_resource type="Texture2D" path="res://art/pokemon/gallade/mega/back_shiny.png" id="5_back_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "gallade-mega"
+base_species = "gallade"
+display_name = "Mega Gallade"
+stone = "Galladita"
+types = Array[int]([13, 1])
+hp = 68
+attack = 165
+defense = 95
+sp_attack = 65
+sp_defense = 115
+speed = 110
+front = ExtResource("2_front")
+back = ExtResource("3_back")
+front_shiny = ExtResource("4_front_shiny")
+back_shiny = ExtResource("5_back_shiny")

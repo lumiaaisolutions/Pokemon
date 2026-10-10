@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "barbaracle-mega"
+base_species = "barbaracle"
+display_name = "Mega Barbaracle"
+stone = "Barbaraclita"
+types = Array[int]([5, 1])
+hp = 72
+attack = 140
+defense = 130
+sp_attack = 64
+sp_defense = 106
+speed = 88

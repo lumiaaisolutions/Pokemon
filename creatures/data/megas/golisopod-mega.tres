@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "golisopod-mega"
+base_species = "golisopod"
+display_name = "Mega Golisopod"
+stone = "Golisopodita"
+types = Array[int]([6, 8])
+hp = 75
+attack = 150
+defense = 175
+sp_attack = 70
+sp_defense = 120
+speed = 40

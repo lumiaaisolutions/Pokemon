@@ -16,6 +16,8 @@ signal blacked_out
 
 enum Mode { WALK, SWIM, DIVE, DOWNED }
 
+## Profundidad de los pies al nadar en la superficie (la cabeza queda fuera).
+const SWIM_SURFACE_DEPTH := 1.0
 ## Velocidad al caminar mientras apunta (fracción de la normal).
 const AIM_SPEED_FACTOR := 0.6
 
@@ -37,6 +39,14 @@ var _air_peak_y: float = 0.0
 var _was_on_floor := true
 var _drown_tick: float = 0.0
 var _downed_stars: Node3D
+## Nate tirado en el suelo (sprite plano que cae hacia atrás) mientras está desmayado.
+var _lying: Node3D
+var _lying_sprite: Sprite3D
+var _heal_sparkle: float = 0.0
+var _downed_time: float = 0.0
+var _swim_time: float = 0.0
+var _swim_bob: float = 0.0
+var _splash_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -64,8 +74,10 @@ func _physics_process(delta: float) -> void:
 	var aiming := Input.is_action_pressed("aim") and not swimming
 	var wants_run := Input.is_action_pressed("run") and input.length() > 0.1 and not swimming and not aiming
 	var running := wants_run and not exhausted and stamina > 0.0
-	_update_stamina(running, swimming, delta)
+	_update_stamina(running, swimming and input.length() > 0.1, delta)
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
+	if swimming and stamina <= 0.0:
+		target_speed *= config.swim_exhausted_speed_factor
 	if aiming:
 		target_speed = config.walk_speed * AIM_SPEED_FACTOR
 	# Con stick analógico, la velocidad escala con la inclinación.
@@ -90,11 +102,39 @@ func _physics_process(delta: float) -> void:
 	_update_fall(swimming)
 	_update_air(delta)
 	_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
+	_update_swim_visuals(horizontal, delta)
 	if aiming:
 		# Al apuntar, Nate mira hacia donde apunta la cámara.
 		var camera := get_viewport().get_camera_3d()
 		if camera != null:
 			_sprite.look_at_point(global_position - camera.global_basis.z)
+
+
+## Nado: se mece en la superficie, bracea más lento, deja ondas y salpicaduras al
+## avanzar y burbujas al bucear (no hay sprite de nado en B2W2).
+func _update_swim_visuals(horizontal: Vector3, delta: float) -> void:
+	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
+	if not swimming:
+		if _swim_bob != 0.0:
+			_swim_bob = 0.0
+			_sprite.place_on_ground()
+		_sprite.walk_fps = config.walk_fps
+		return
+	_sprite.walk_fps = config.walk_fps * 0.55
+	_swim_time += delta
+	_swim_bob = sin(_swim_time * 3.0) * 0.07
+	_sprite.place_on_ground()
+	_sprite.position.y += _swim_bob
+	_splash_timer -= delta
+	if _splash_timer > 0.0:
+		return
+	var level := _world.water_level_at(global_position.x, global_position.z)
+	if mode == Mode.DIVE:
+		_splash_timer = 0.5
+		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 1.4, PixelBurst.Kind.BUBBLES, 0.6)
+	elif horizontal.length() > 0.3:
+		_splash_timer = 0.35
+		PixelBurst.spawn(get_parent(), Vector3(global_position.x, level, global_position.z), PixelBurst.Kind.SPLASH, 0.45)
 
 
 ## Velocidad horizontal actual (la usan las pruebas y, más adelante, la UI y el audio).
@@ -151,24 +191,86 @@ func _process_downed(delta: float) -> void:
 	velocity.z = 0.0
 	velocity.y = 0.0 if is_on_floor() else velocity.y - config.gravity * delta
 	move_and_slide()
+	_downed_time += delta
 	health = minf(health + config.health_max / config.downed_duration * delta, config.health_max)
 	health_changed.emit(health)
+	# Respira (sube y baja un poco) y suelta destellos de curación.
+	if _lying_sprite != null:
+		_lying_sprite.scale = Vector3.ONE * (1.0 + 0.03 * sin(_downed_time * 3.0))
+	_heal_sparkle -= delta
+	if _heal_sparkle <= 0.0:
+		_heal_sparkle = 0.7
+		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.HEAL, 0.6)
 	if health >= config.health_max:
-		mode = Mode.WALK
-		_set_downed_visuals(false)
-		revived.emit()
+		_get_up()
 
 
-## Estrellitas girando sobre la cabeza mientras está desmayado.
+## Se levanta: el sprite plano vuelve a quedar de pie y suelta un destello.
+func _get_up() -> void:
+	mode = Mode.WALK
+	if _downed_stars != null:
+		_downed_stars.queue_free()
+		_downed_stars = null
+	if _lying != null:
+		var tween := create_tween()
+		tween.tween_property(_lying, "rotation:x", 0.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		await tween.finished
+	_set_downed_visuals(false)
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.8, PixelBurst.Kind.HEAL, 1.6)
+	revived.emit()
+
+
+## Desmayado: cae de espaldas al suelo (sprite plano mirando a la cámara), con
+## estrellitas girando sobre la cabeza. off lo deja otra vez de pie al instante.
 func _set_downed_visuals(on: bool) -> void:
 	if _downed_stars != null:
 		_downed_stars.queue_free()
 		_downed_stars = null
-	_sprite.modulate = Color(0.7, 0.7, 0.8) if on else Color.WHITE
+	if _lying != null:
+		_lying.queue_free()
+		_lying = null
+		_lying_sprite = null
+	_sprite.visible = not on
+	_sprite.modulate = Color.WHITE
 	if not on:
 		return
-	_downed_stars = DizzyStars.create(1.9)
+	_downed_time = 0.0
+	_heal_sparkle = 0.0
+	_lying = Node3D.new()
+	add_child(_lying)
+	# El eje +Z del pivote apunta a la cámara: al girar en X cae hacia atrás y
+	# queda boca arriba, visible desde la cámara.
+	var camera := get_viewport().get_camera_3d()
+	if camera != null:
+		var to_camera := camera.global_position - global_position
+		to_camera.y = 0.0
+		if to_camera.length() > 0.01:
+			_lying.global_basis = Basis.looking_at(-to_camera.normalized(), Vector3.UP)
+	_lying_sprite = Sprite3D.new()
+	_lying_sprite.texture = config.sheet
+	_lying_sprite.hframes = config.hframes
+	_lying_sprite.vframes = config.vframes
+	_lying_sprite.frame = 0
+	_lying_sprite.pixel_size = config.pixel_size
+	_lying_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	_lying_sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	_lying_sprite.shaded = false
+	_lying_sprite.double_sided = true
+	_lying_sprite.modulate = Color(0.85, 0.85, 0.95)
+	_lying_sprite.layers = 2
+	_lying_sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var cell_height := config.sheet.get_height() / float(config.vframes)
+	_lying_sprite.position = Vector3(0.0, cell_height * 0.5 * config.pixel_size, 0.0)
+	_lying.add_child(_lying_sprite)
+	_lying.position.y = 0.06
+	var tween := create_tween()
+	tween.tween_property(_lying, "rotation:x", -PI * 0.47, 0.45).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.1, PixelBurst.Kind.DUST, 0.8)
+	# Estrellitas sobre la cabeza (que quedó atrás, en el suelo).
+	_downed_stars = DizzyStars.create(0.45)
 	add_child(_downed_stars)
+	var head := _lying.global_basis * Vector3(0.0, 0.0, -cell_height * config.pixel_size * 0.75)
+	_downed_stars.position = Vector3(head.x, 0.45, head.z)
 
 
 func _update_water_mode() -> void:
@@ -182,19 +284,18 @@ func _update_water_mode() -> void:
 		mode = Mode.WALK
 
 
-## Movimiento vertical en el agua: flota con la cabeza fuera, o bucea con "dive".
-## Sin stamina se hunde. Saltar sube a la superficie.
+## Movimiento vertical en el agua: flota con la cabeza fuera; con "dive" baja y con
+## "jump" (o al soltar "dive") sube a la superficie. No se hunde solo.
 func _swim_vertical(delta: float) -> float:
 	var level := _world.water_level_at(global_position.x, global_position.z)
-	var surface_y := level - 1.0
+	var surface_y := level - SWIM_SURFACE_DEPTH
 	var floor_y := _world.surface_height_at(global_position.x, global_position.z) + 0.2
-	var sinking := stamina <= 0.0
-	if Input.is_action_pressed("dive") or sinking:
+	if Input.is_action_pressed("dive"):
 		mode = Mode.DIVE
 		return -config.dive_speed if global_position.y > floor_y else 0.0
 	if global_position.y < surface_y - 0.05:
-		# Bajo la superficie sin bucear: sube (más rápido si salta).
-		return config.dive_speed * (1.5 if Input.is_action_pressed("jump") else 1.0)
+		# Bajo la superficie: sube (más rápido si salta).
+		return config.dive_speed * (1.6 if Input.is_action_pressed("jump") else 1.0)
 	mode = Mode.SWIM
 	return (surface_y - global_position.y) / maxf(delta, 0.001)
 
@@ -237,7 +338,7 @@ func _update_stamina(running: bool, swimming: bool, delta: float) -> void:
 		if stamina <= 0.0:
 			exhausted = true
 	elif swimming:
-		# Nadar cansa: sin stamina se hunde (ver _swim_vertical).
+		# Nadar cansa poco; sin stamina nada más lento.
 		stamina = maxf(stamina - config.swim_stamina_drain * delta, 0.0)
 		_since_run = 0.0
 	else:

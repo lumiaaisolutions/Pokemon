@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "lucario-mega-z"
+base_species = "lucario"
+display_name = "Mega Lucario Z"
+stone = "Lucariita Z"
+types = Array[int]([1, 8])
+hp = 70
+attack = 100
+defense = 70
+sp_attack = 164
+sp_defense = 70
+speed = 151

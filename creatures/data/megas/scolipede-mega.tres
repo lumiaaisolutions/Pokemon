@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "scolipede-mega"
+base_species = "scolipede"
+display_name = "Mega Scolipede"
+stone = "Scolipedita"
+types = Array[int]([6, 3])
+hp = 60
+attack = 140
+defense = 149
+sp_attack = 75
+sp_defense = 99
+speed = 62

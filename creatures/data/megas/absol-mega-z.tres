@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "absol-mega-z"
+base_species = "absol"
+display_name = "Mega Absol Z"
+stone = "Absolita Z"
+types = Array[int]([16, 7])
+hp = 65
+attack = 154
+defense = 60
+sp_attack = 75
+sp_defense = 60
+speed = 151

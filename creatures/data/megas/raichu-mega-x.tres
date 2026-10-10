@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "raichu-mega-x"
+base_species = "raichu"
+display_name = "Mega Raichu X"
+stone = "Raichita X"
+types = Array[int]([12])
+hp = 60
+attack = 135
+defense = 95
+sp_attack = 90
+sp_defense = 95
+speed = 110

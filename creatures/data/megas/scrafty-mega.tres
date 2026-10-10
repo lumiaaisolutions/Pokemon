@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "scrafty-mega"
+base_species = "scrafty"
+display_name = "Mega Scrafty"
+stone = "Scraftita"
+types = Array[int]([16, 1])
+hp = 65
+attack = 130
+defense = 135
+sp_attack = 55
+sp_defense = 135
+speed = 68

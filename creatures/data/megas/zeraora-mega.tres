@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "zeraora-mega"
+base_species = "zeraora"
+display_name = "Mega Zeraora"
+stone = "Zeraorita"
+types = Array[int]([12])
+hp = 88
+attack = 157
+defense = 75
+sp_attack = 147
+sp_defense = 80
+speed = 153

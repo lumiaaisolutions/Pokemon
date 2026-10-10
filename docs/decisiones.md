@@ -41,3 +41,11 @@ Todas tomadas por Fernando el 2026-10-09, salvo las marcadas como *(Claude)*.
 - Inicial: 5 huevos al azar de básicos; eclosionan y Nate les lanza la Pokéball.
 - Megaevolución: una vez por combate, jugador y jefe; Piedra Llave y megapiedra; animación estilo X/Y.
 - Entrenadores NPC en la Fase 5.6 *(fase elegida por Claude a pedido de Fernando)*.
+
+## 2026-10-09 — Tras probar la 2.8
+- **Compañero debilitado → Centro Pokémon siempre** (antes regresaba a los 30 s). Pidió Fernando: "cuando me lo debilitan no me regresa ni al Centro Pokémon".
+- **Nate desmayado → controlas al compañero** con golpe, ataque especial y esquivar, en lugar de la guardia automática. Nate se ve tirado en el suelo y la recuperación es visible (panel, barra, destellos).
+- **Mira libre al apuntar**: la inclinación de la cámara se separa de la normal para lanzar hacia arriba o lejos.
+- **Botón del compañero** (Q / △) para guardarlo o sacarlo.
+- **Personajes**: 10 protagonistas de cada generación (5 y 5), con nombre y dificultad. Fernando prefirió a los protagonistas, aunque no comparten el estilo B2W2; se usan los sprites más cercanos (Gen 4 y fan de estilo DS).
+- **Menú con pestañas** y todo su contenido, ver [plan](sistemas/menu_y_personaje.md).

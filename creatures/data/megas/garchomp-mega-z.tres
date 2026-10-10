@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "garchomp-mega-z"
+base_species = "garchomp"
+display_name = "Mega Garchomp Z"
+stone = "Garchompita Z"
+types = Array[int]([15])
+hp = 108
+attack = 130
+defense = 85
+sp_attack = 141
+sp_defense = 85
+speed = 151

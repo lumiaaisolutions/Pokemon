@@ -6,7 +6,7 @@ const AUTOLOADS: Array[String] = ["GameState", "SaveSystem", "InputHints", "Audi
 const ACTIONS: Array[String] = [
 	"move_forward", "move_back", "move_left", "move_right", "run",
 	"camera_left", "camera_right", "camera_up", "camera_down", "zoom_in", "zoom_out",
-	"interact", "menu", "map", "jump", "dive",
+	"interact", "menu", "map", "companion", "jump", "dive",
 	"dodge", "lock_on", "attack_1", "attack_2", "attack_3", "attack_4", "mega_evolve", "capture",
 	"aim", "throw",
 ]
@@ -36,6 +36,14 @@ func _ready() -> void:
 	if ProjectSettings.get_setting("rendering/textures/canvas_textures/default_texture_filter") != 0:
 		failures.append("El filtro 2D por defecto no es Nearest")
 
+	# Megas: el catálogo carga completo y Mega Greninja trae datos y sprites.
+	var megas := MegaCatalog.load_catalog()
+	if megas == null or megas.megas.size() < 90:
+		failures.append("El catálogo de megas no cargó completo")
+	else:
+		var greninja := megas.find("greninja-mega")
+		if greninja == null or not greninja.has_battle_sprites() or greninja.base_total() != 630 or greninja.stone == "":
+			failures.append("Mega Greninja incompleta")
 	for failure: String in failures:
 		printerr("FALLO: " + failure)
 	print("smoke_test: %d autoloads, %d acciones, %d fallos" % [AUTOLOADS.size(), ACTIONS.size(), failures.size()])

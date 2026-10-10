@@ -54,6 +54,8 @@ const AMBUSH_WATCH_RADIUS := 8.0
 const AMBUSH_SHY_FLEE_RADIUS := 4.0
 const AMBUSH_WINDUP := 0.5
 const DROP_SPEED := 14.0
+## Cuánto se adelanta hacia la cámara el sprite de un Pokémon posado en un árbol.
+const PERCH_FRONT_OFFSET := 1.2
 const AMBUSH_HIT_RADIUS := 1.6
 ## Cada cuánto busca pelea con otros salvajes (rivalidades), en segundos.
 const RIVAL_SCAN_INTERVAL := 1.5
@@ -78,6 +80,8 @@ const REPATH_DISTANCE := 1.5
 @export var shiny := false
 ## Nada: se mueve sobre la superficie del agua, sin navegación.
 @export var swimming := false
+## Lo controla el jugador (mientras Nate está desmayado y lo protege).
+var controlled := false
 ## Legendario: nunca ataca; es cauteloso. Si te ve o lo asustas, muestra "?" y se
 ## reubica rápido: los voladores levantan el vuelo y los demás corren a un lugar seguro.
 @export var legendary := false
@@ -123,6 +127,7 @@ var _attack_cooldown: float = 0.0
 var _windup: float = 0.0
 var _rival_scan: float = 0.0
 var _health_bar: HealthBar3D
+var _faded := false
 var _dizzy: DizzyStars
 ## Emboscada: colgado de una rama (Bicho) o posado en la copa (ave) de perch_tree.
 var perched := false
@@ -203,6 +208,7 @@ func contact_radius() -> float:
 
 func _physics_process(delta: float) -> void:
 	_state_time += delta
+	_update_occlusion()
 	contact_cooldown = maxf(contact_cooldown - delta, 0.0)
 	_ignore_player = maxf(_ignore_player - delta, 0.0)
 	_update_sparkles(delta)
@@ -216,6 +222,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if perched:
 		_process_perched(delta)
+		return
+	if controlled:
+		_process_controlled(delta)
 		return
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 	if swimming:
@@ -419,12 +428,14 @@ func _think_companion() -> Array:
 		global_position = player.global_position + Vector3(1.0, 0.5, 1.0)
 		velocity = Vector3.ZERO
 		return [global_position, 0.0]
-	if distance > FOLLOW_DISTANCE:
+	# Camina a un costado de Nate (según la cámara), para no taparlo.
+	var side := _beside_player()
+	if global_position.distance_to(side) > FOLLOW_DISTANCE * 0.6:
 		var speed := walk_speed() if distance < FOLLOW_DISTANCE * 2.5 else run_speed()
 		# No ir más lento que el jugador cuando corre.
 		if player is Player:
 			speed = maxf(speed, (player as Player).get_ground_speed() * 1.05)
-		return [player.global_position, speed]
+		return [side, speed]
 	# Quieto junto al jugador: mira al salvaje más cercano, si hay uno.
 	var nearest := _nearest_wild(COMPANION_WATCH_RADIUS)
 	if nearest != null:
@@ -520,6 +531,144 @@ func _tell_pack(new_state: State) -> void:
 			mate._enter(State.CHASE)
 
 
+## Si tapa al jugador desde la cámara, se vuelve semitransparente.
+func _update_occlusion() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or player == null or perched or role == Role.COMPANION:
+		return
+	var from := camera.global_position
+	var to := player.global_position + Vector3.UP * 0.9
+	var center := global_position + Vector3.UP * species.overworld_cell * world_pixel_size() * 0.5
+	var segment := to - from
+	var t := clampf((center - from).dot(segment) / segment.length_squared(), 0.0, 1.0)
+	var radius := maxf(0.6, species.size_scale * 0.7)
+	var blocking := t < 0.97 and center.distance_to(from + segment * t) < radius
+	if blocking != _faded:
+		_faded = blocking
+		_sprite.set_faded(blocking)
+
+
+# --- Control directo (Nate desmayado) -------------------------------------------
+
+## Distancia máxima a Nate mientras lo protege.
+const GUARD_LEASH := 10.0
+const DASH_SPEED := 11.0
+const DASH_TIME := 0.25
+const DASH_COOLDOWN := 0.8
+## Al atacar, apunta al salvaje más cercano dentro de este radio.
+const CONTROL_TARGET_RADIUS := 10.0
+
+const PHYSICAL_COOLDOWN := 0.55
+const SPECIAL_COOLDOWN := 1.2
+const LUNGE_TIME := 0.22
+
+var _dash_time: float = 0.0
+var _special_cooldown: float = 0.0
+var _lunge_time: float = 0.0
+var _lunge_dir := Vector3.ZERO
+var _lunge_target: PokemonActor
+var _dash_cooldown: float = 0.0
+var _dash_dir := Vector3.ZERO
+
+
+## El jugador lo mueve (relativo a la cámara) y pelea: golpe físico (embestida al
+## salvaje más cercano), ataque especial (proyectil de su tipo, al salvaje más cercano
+## o al frente) y esquivar con un impulso (invulnerable mientras dura). No se aleja
+## más de GUARD_LEASH de Nate.
+func _process_controlled(delta: float) -> void:
+	_dash_cooldown = maxf(_dash_cooldown - delta, 0.0)
+	_special_cooldown = maxf(_special_cooldown - delta, 0.0)
+	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
+	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var camera := get_viewport().get_camera_3d()
+	var forward := Vector3.FORWARD
+	if camera != null:
+		forward = -camera.global_basis.z
+		forward.y = 0.0
+		forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
+	var right := forward.cross(Vector3.UP)
+	var direction := right * input.x - forward * input.y
+	if direction.length() > 1.0:
+		direction = direction.normalized()
+	var horizontal := direction * run_speed()
+	# Esquivar.
+	if Input.is_action_just_pressed("dodge") and _dash_cooldown <= 0.0:
+		_dash_time = DASH_TIME
+		_dash_cooldown = DASH_COOLDOWN
+		_dash_dir = direction.normalized() if direction.length() > 0.1 else -_sprite.facing_world
+		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.2, PixelBurst.Kind.DUST, 0.5)
+	if _dash_time > 0.0:
+		_dash_time -= delta
+		horizontal = _dash_dir * DASH_SPEED
+		_sprite.modulate.a = 0.55
+	else:
+		_sprite.modulate.a = 1.0
+	# Golpe físico: embestida hacia el más cercano.
+	if Input.is_action_just_pressed("attack_1") and _attack_cooldown <= 0.0 and _dash_time <= 0.0:
+		_attack_cooldown = PHYSICAL_COOLDOWN
+		var target := _nearest_wild(CONTROL_TARGET_RADIUS * 0.5)
+		var lunge_dir := _sprite.facing_world
+		if target != null:
+			lunge_dir = target.global_position - global_position
+			lunge_dir.y = 0.0
+			lunge_dir = lunge_dir.normalized()
+			_sprite.look_at_point(target.global_position)
+		_lunge_time = LUNGE_TIME
+		_lunge_dir = lunge_dir
+		_lunge_target = target
+		_flash(Color(1.6, 1.6, 1.6))
+	if _lunge_time > 0.0:
+		_lunge_time -= delta
+		horizontal = _lunge_dir * DASH_SPEED * 0.9
+		if _lunge_target != null and is_instance_valid(_lunge_target) \
+				and global_position.distance_to(_lunge_target.global_position) <= MELEE_RANGE + 0.4 * _lunge_target.species.size_scale:
+			_apply_hit(_lunge_target, true)
+			PixelBurst.spawn(get_parent(), _lunge_target.global_position + Vector3.UP * 0.5, PixelBurst.Kind.DUST, 0.7)
+			_lunge_target = null
+			_lunge_time = 0.0
+	# Ataque especial: proyectil de su tipo.
+	if Input.is_action_just_pressed("attack_2") and _special_cooldown <= 0.0:
+		_special_cooldown = SPECIAL_COOLDOWN
+		var target := _nearest_wild(CONTROL_TARGET_RADIUS)
+		var origin := global_position + Vector3.UP * 0.6 * species.size_scale
+		var to := origin + _sprite.facing_world * RANGED_MAX
+		var targets: Array[Node3D] = []
+		if target != null:
+			_sprite.look_at_point(target.global_position)
+			to = target.global_position + Vector3.UP * 0.6
+			targets.append(target)
+		var hit := func(node: Node3D) -> bool: return _apply_hit(node, false)
+		AttackProjectile.launch(get_parent(), origin, to, species.types[0], self, targets, hit)
+		_flash(Color(1.4, 1.4, 1.8))
+	# Correa: no se aleja de Nate.
+	if player != null:
+		var next := global_position + horizontal * delta
+		if next.distance_to(player.global_position) > GUARD_LEASH:
+			horizontal = (player.global_position - global_position).normalized() * run_speed()
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
+	velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
+	move_and_slide()
+	_sprite.animate(horizontal, delta, horizontal.length() > walk_speed())
+
+
+## ¿Está esquivando (invulnerable)?
+func is_dashing() -> bool:
+	return _dash_time > 0.0
+
+
+## Lo controla el jugador o vuelve a seguir a Nate solo.
+func set_controlled(on: bool) -> void:
+	controlled = on
+	fight_target = null
+	_windup = 0.0
+	_lunge_time = 0.0
+	_dash_time = 0.0
+	_sprite.modulate.a = 1.0
+	if not on:
+		_enter(State.FOLLOW)
+
+
 # --- Emboscadas desde los árboles ---------------------------------------------
 
 ## Lo cuelga de una rama de tree (Bicho) o lo posa en su copa (ave). Sin física
@@ -555,6 +704,7 @@ func perch_on(tree: Node3D, as_bird: bool) -> void:
 
 func _process_perched(delta: float) -> void:
 	_tree_shake_cue(delta)
+	_in_front_of_canopy()
 	if player == null:
 		return
 	var flat := player.global_position - global_position
@@ -588,9 +738,30 @@ func _process_perched(delta: float) -> void:
 				_sprite.animate(Vector3(to_target.x, 0, to_target.z), delta, true)
 
 
+## El árbol y el Pokémon son billboards en el mismo punto: sin separarlos se
+## pelean por la profundidad y parpadean. Adelanta el sprite (y el hilo) hacia la
+## cámara para que siempre quede delante de la copa.
+func _in_front_of_canopy() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var to_camera := camera.global_position - global_position
+	to_camera.y = 0.0
+	if to_camera.length() < 0.01:
+		return
+	var offset := to_camera.normalized() * PERCH_FRONT_OFFSET
+	_sprite.position.x = offset.x
+	_sprite.position.z = offset.z
+	if _thread != null:
+		_thread.position.x = offset.x
+		_thread.position.z = offset.z
+
+
 ## Aterriza: si cae sobre Nate lo golpea y empieza la pelea; si no, lo persigue.
 func _land() -> void:
 	perched = false
+	_sprite.position.x = 0.0
+	_sprite.position.z = 0.0
 	global_position = _drop_target
 	collision_layer = 4
 	collision_mask = 3
@@ -671,7 +842,7 @@ func start_fight(target: Node3D) -> void:
 
 ## Recibe un golpe: baja la vida, parpadea y responde (o huye si es tímido).
 func receive_hit(damage: float, from: Node3D) -> void:
-	if state == State.STUNNED:
+	if state == State.STUNNED or is_dashing():
 		return
 	hp = maxf(hp - damage, 0.0)
 	_health_bar.set_ratio(hp / hp_max)
@@ -681,6 +852,8 @@ func receive_hit(damage: float, from: Node3D) -> void:
 		_stun()
 		return
 	if role == Role.COMPANION:
+		if controlled:
+			return
 		if fight_target == null or not is_instance_valid(fight_target):
 			start_fight(from)
 		return
@@ -865,6 +1038,17 @@ func _flash(color: Color) -> void:
 	_sprite.modulate = color
 	var tween := create_tween()
 	tween.tween_property(_sprite, "modulate", Color.WHITE, 0.2)
+
+
+## Punto a un costado de Nate (derecha de la cámara), más lejos si es grande.
+func _beside_player() -> Vector3:
+	var camera := get_viewport().get_camera_3d()
+	var right := Vector3.RIGHT
+	if camera != null:
+		right = camera.global_basis.x
+		right.y = 0.0
+		right = right.normalized()
+	return player.global_position + right * (1.6 + species.size_scale * 0.6)
 
 
 ## Salvaje que amenaza a Nate: lo persigue o ataca cerca, o (con Nate desmayado)

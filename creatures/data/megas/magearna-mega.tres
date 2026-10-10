@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "magearna-mega"
+base_species = "magearna"
+display_name = "Mega Magearna"
+stone = "Magearnita"
+types = Array[int]([8, 17])
+hp = 80
+attack = 125
+defense = 115
+sp_attack = 170
+sp_defense = 115
+speed = 95

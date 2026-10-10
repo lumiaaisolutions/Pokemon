@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "zygarde-mega"
+base_species = "zygarde"
+display_name = "Mega Zygarde"
+stone = "Zygardita"
+types = Array[int]([15, 4])
+hp = 216
+attack = 70
+defense = 91
+sp_attack = 216
+sp_defense = 85
+speed = 100

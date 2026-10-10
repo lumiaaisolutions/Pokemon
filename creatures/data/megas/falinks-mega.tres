@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "falinks-mega"
+base_species = "falinks"
+display_name = "Mega Falinks"
+stone = "Falinksita"
+types = Array[int]([1])
+hp = 65
+attack = 135
+defense = 135
+sp_attack = 70
+sp_defense = 65
+speed = 100

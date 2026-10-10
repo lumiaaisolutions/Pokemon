@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "heatran-mega"
+base_species = "heatran"
+display_name = "Mega Heatran"
+stone = "Heatranita"
+types = Array[int]([9, 8])
+hp = 91
+attack = 120
+defense = 106
+sp_attack = 175
+sp_defense = 141
+speed = 67

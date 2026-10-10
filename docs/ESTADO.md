@@ -10,6 +10,8 @@
 | 2 | Hecha (aprobada) | `33a8792` | Hierba alta, salvajes con IA, compañero al azar |
 | 2.5 | Hecha (probada por Fernando; sus comentarios dieron la 2.8) | `cadf095` | 3 biomas con agua, aparición por hábitat, shiny, persecución con stamina |
 | 2.8 | Implementada, esperando revisión de Fernando | ver `git log` | Los 7 bloques (ver [historial](historial.md)); 7 pruebas en headless con 0 fallos |
+| 2.8+ | Correcciones tras la prueba de Fernando | ver `git log` | Vista despejada, mira libre, compañero con botón y tarjeta, control del compañero con Nate desmayado, Centro Pokémon al debilitarse, nado y buceo, emboscadas sin parpadeo, barras con ícono |
+| 2.9 | En curso | — | Personaje (10), nombre y dificultad; menú con pestañas, mochila, Pokédex con investigación, caja, guardado y opciones ([plan](sistemas/menu_y_personaje.md)) |
 | 2.6 | Pendiente | — | Asentamientos y lugares icónicos ([catálogo](catalogo_mundo.md)) |
 | 2.7 | Pendiente | — | NPC con rutinas, día/noche, clima |
 | 3 | Pendiente | — | Combate en tiempo real |
@@ -23,7 +25,6 @@
 | 7 | Pendiente | — | Pulido y entrega |
 
 ## Por confirmar con Fernando
-- Si el compañero cae con Nate de pie: ¿vuelve a su Pokéball y regresa a los 30 s con la mitad de la vida? (supuesto actual).
 - Entrenadores NPC (5.6): recompensa y si vuelven a retar.
 - Misiones y desbloqueos (5.5): qué desbloquea cada habilidad, cómo se gana y tipos de misión.
 - Ideas propuestas en el [catálogo](catalogo_mundo.md) (Zona Safari, concursos, estaciones…).

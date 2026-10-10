@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "staraptor-mega"
+base_species = "staraptor"
+display_name = "Mega Staraptor"
+stone = "Staraptorita"
+types = Array[int]([1, 2])
+hp = 85
+attack = 140
+defense = 100
+sp_attack = 60
+sp_defense = 90
+speed = 110

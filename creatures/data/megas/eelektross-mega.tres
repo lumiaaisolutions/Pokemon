@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "eelektross-mega"
+base_species = "eelektross"
+display_name = "Mega Eelektross"
+stone = "Eelektrossita"
+types = Array[int]([12])
+hp = 85
+attack = 145
+defense = 80
+sp_attack = 135
+sp_defense = 90
+speed = 80

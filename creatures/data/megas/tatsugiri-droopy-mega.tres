@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "tatsugiri-droopy-mega"
+base_species = "tatsugiri"
+display_name = "Mega Tatsugiri"
+stone = "Tatsugirita"
+types = Array[int]([15, 10])
+hp = 68
+attack = 65
+defense = 90
+sp_attack = 135
+sp_defense = 125
+speed = 92

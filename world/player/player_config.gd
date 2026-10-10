@@ -27,8 +27,10 @@ extends Resource
 @export var swim_depth: float = 1.1
 @export var swim_speed: float = 2.6
 @export var dive_speed: float = 2.0
-## Cansancio al nadar (stamina por segundo); sin stamina se hunde.
-@export var swim_stamina_drain: float = 3.0
+## Cansancio al nadar moviéndose (stamina por segundo). Flotar quieto la recupera.
+## Sin stamina nada más lento, pero no se hunde.
+@export var swim_stamina_drain: float = 1.0
+@export var swim_exhausted_speed_factor: float = 0.55
 ## Segundos de aire bajo el agua (10 burbujas) y recuperación por segundo al salir.
 @export var air_max: float = 15.0
 @export var air_refill: float = 6.0

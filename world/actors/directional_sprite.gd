@@ -51,6 +51,17 @@ func place_on_ground() -> void:
 	position.y = (cell_height * 0.5 - foot_offset_px) * pixel_size
 
 
+## Semitransparente (p. ej. cuando tapa al jugador). Con alpha cut no hay mezcla,
+## así que al desvanecerse cambia a transparencia normal.
+func set_faded(faded: bool, alpha: float = 0.3) -> void:
+	if faded:
+		alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+		modulate.a = alpha
+	else:
+		alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		modulate.a = 1.0
+
+
 ## Avanza la animación. horizontal es la velocidad horizontal del actor.
 func animate(horizontal: Vector3, delta: float, running: bool = false) -> void:
 	var speed := horizontal.length()

@@ -28,6 +28,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Peleas en el mundo | [sistemas/peleas.md](sistemas/peleas.md) |
 | Captura | [sistemas/captura.md](sistemas/captura.md) |
 | Mapa y minimapa | [sistemas/mapa.md](sistemas/mapa.md) |
+| Personaje, menú, mochila, Pokédex, guardado y opciones (plan 2.9) | [sistemas/menu_y_personaje.md](sistemas/menu_y_personaje.md) |
 | Combate y megaevolución (por hacer) | [sistemas/combate.md](sistemas/combate.md) |
 | Progresión, iniciales, misiones y entrenadores (por hacer) | [sistemas/progresion.md](sistemas/progresion.md) |
 

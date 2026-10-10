@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "darkrai-mega"
+base_species = "darkrai"
+display_name = "Mega Darkrai"
+stone = "Darkraita"
+types = Array[int]([16])
+hp = 70
+attack = 120
+defense = 130
+sp_attack = 165
+sp_defense = 130
+speed = 85

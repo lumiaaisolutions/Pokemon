@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="MegaData" format=3]
+
+[ext_resource type="Script" path="res://creatures/data/mega_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/pokemon/latias/mega/front.png" id="2_front"]
+[ext_resource type="Texture2D" path="res://art/pokemon/latias/mega/back.png" id="3_back"]
+[ext_resource type="Texture2D" path="res://art/pokemon/latias/mega/front_shiny.png" id="4_front_shiny"]
+[ext_resource type="Texture2D" path="res://art/pokemon/latias/mega/back_shiny.png" id="5_back_shiny"]
+
+[resource]
+script = ExtResource("1_script")
+identifier = "latias-mega"
+base_species = "latias"
+display_name = "Mega Latias"
+stone = "Latiasita"
+types = Array[int]([15, 13])
+hp = 80
+attack = 100
+defense = 120
+sp_attack = 140
+sp_defense = 150
+speed = 110
+front = ExtResource("2_front")
+back = ExtResource("3_back")
+front_shiny = ExtResource("4_front_shiny")
+back_shiny = ExtResource("5_back_shiny")

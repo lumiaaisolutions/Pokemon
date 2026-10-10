@@ -33,9 +33,22 @@ func _build() -> void:
 	add_child(_fill)
 
 
+## Muy cerca de la cámara la barra taparía la vista: se oculta.
+const HIDE_NEAR_CAMERA := 4.5
+
+var _ratio := 1.0
+
+
+func _process(_delta: float) -> void:
+	var camera := get_viewport().get_camera_3d()
+	var near := camera != null and camera.global_position.distance_to(global_position) < HIDE_NEAR_CAMERA
+	visible = _ratio < 0.999 and not near
+
+
 ## ratio en [0, 1]. La barra se encoge hacia la izquierda.
 func set_ratio(ratio: float) -> void:
 	ratio = clampf(ratio, 0.0, 1.0)
+	_ratio = ratio
 	visible = ratio < 0.999
 	_fill.scale.x = maxf(ratio, 0.001)
 	_fill.position.x = -WIDTH * (1.0 - ratio) * 0.5
