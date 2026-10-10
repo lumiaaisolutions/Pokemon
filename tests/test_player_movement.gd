@@ -9,6 +9,8 @@ var _main: Node3D
 var _player: Player
 var _world: WorldBuilder
 var _rig: CameraRig
+## Inicio de la partida (plaza del pueblo inicial).
+var _o := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -19,6 +21,7 @@ func _ready() -> void:
 	_player = _main.get_node("Player") as Player
 	_world = _main.get_node("World") as WorldBuilder
 	_rig = _main.get_node("CameraRig") as CameraRig
+	_o = _world.start_position()
 	await _run()
 	for failure: String in _failures:
 		printerr("FALLO: " + failure)
@@ -40,7 +43,7 @@ func _run() -> void:
 	_main.set("companion_state", 1)
 	await _frames(30)
 	_check(_player.is_on_floor(), "el jugador debe empezar sobre el suelo")
-	_check(absf(_player.global_position.y - _world.surface_height_at(0, 0)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
+	_check(absf(_player.global_position.y - _world.surface_height_at(_player.global_position.x, _player.global_position.z)) < 0.2, "el jugador debe quedar a ras del terreno al inicio (y=%.2f)" % _player.global_position.y)
 	_check(_terrain_faces_up(), "las caras del terreno deben mirar hacia arriba")
 	_check(_rig.get_pitch_deg() >= _rig.pitch_min_deg and _rig.get_pitch_deg() <= _rig.pitch_max_deg, "el pitch de la cámara debe estar dentro de sus límites")
 
@@ -140,7 +143,7 @@ func _run() -> void:
 	_check(_player.global_position.x < half, "el jugador cruzó el muro del borde (x=%.1f)" % _player.global_position.x)
 
 	# Stamina: correr la agota; agotado camina, y al recuperarse vuelve a correr.
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 0.5, _o.z)
 	_player.stamina = _player.config.stamina_max
 	await _frames(10)
 	Input.action_press("move_back")
@@ -155,7 +158,7 @@ func _run() -> void:
 	_check(not _player.exhausted and _player.stamina > 0.0, "al descansar debe recuperarse")
 
 	# Salto: sube y vuelve al suelo sin daño.
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 0.5, _o.z)
 	_player.velocity = Vector3.ZERO
 	await _frames(20)
 	var ground_y := _player.global_position.y
@@ -171,7 +174,7 @@ func _run() -> void:
 	_check(_player.is_on_floor() and is_equal_approx(_player.health, health_before), "un salto normal no hace daño")
 
 	# Caída desde 10 m: pierde (10 - 4) × 1 = 6 de vida (3 corazones).
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 10.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 10.5, _o.z)
 	_player.velocity = Vector3.ZERO
 	await _frames(90)
 	var fall_damage := health_before - _player.health
@@ -206,7 +209,7 @@ func _run() -> void:
 	Input.action_release("jump")
 
 	# Descanso: tras unos segundos sin daño, la vida sube sola.
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 0.5, _o.z)
 	_player.velocity = Vector3.ZERO
 	await _frames(30)
 	_player.heal(100.0)
@@ -216,7 +219,7 @@ func _run() -> void:
 	_check(_player.health > hurt_health, "tras %.0f s sin daño debe recuperar vida" % _player.config.health_regen_delay)
 
 	# Desmayo en tierra: estrellitas, recuperación y se levanta.
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 0.5, _o.z)
 	_player.velocity = Vector3.ZERO
 	await _frames(30)
 	var saved_duration := _player.config.downed_duration
@@ -259,7 +262,7 @@ func _run() -> void:
 	_check(_player.global_position.y > surf_level - 0.5, "surfeando no debe hundirse (y=%.2f, agua=%.2f)" % [_player.global_position.y, surf_level])
 	_check(squirtle.global_position.distance_to(_player.global_position) < 1.5, "el compañero va debajo del jugador")
 	_check(_player.air >= _player.config.air_max - 0.01, "surfeando no gasta aire")
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = Vector3(_o.x, _world.surface_height_at(_o.x, _o.z) + 0.5, _o.z)
 	_player.velocity = Vector3.ZERO
 	await _frames(30)
 	_check(_player.riding == null and squirtle.ridden_by == null, "al volver a tierra deja de surfear")
@@ -267,41 +270,40 @@ func _run() -> void:
 
 func _props_grounded() -> bool:
 	var ok := true
-	for group in _world.get_children():
-		if not group.name.begins_with("Props_"):
-			continue
-		for child in group.get_children():
-			if child is StaticBody3D:
+	var roots := _world.near_chunks()
+	for key: Vector2i in roots:
+		for child in (roots[key] as Node3D).get_children():
+			if child is StaticBody3D and (child.name.begins_with("Tree") or child.name.begins_with("Rock")):
 				var body := child as StaticBody3D
 				var sprite := body.get_node("Sprite") as Sprite3D
 				var radius := sprite.texture.get_width() * sprite.pixel_size * 0.5
 				var p := body.global_position
-				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.001 or not _bottom_row_opaque(sprite.texture):
+				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.01 or not _bottom_row_opaque(sprite.texture):
 					printerr("flota: %s en %s" % [body.name, p])
 					ok = false
-			elif child is MultiMeshInstance3D and child.name != "Bruma":
-				# (La bruma del pantano flota a propósito: no es un objeto apoyado.)
+			elif child is MultiMeshInstance3D and child.name.begins_with("Decor"):
 				var instance := child as MultiMeshInstance3D
 				var multimesh := instance.multimesh
 				var quad := multimesh.mesh as QuadMesh
-				var material := quad.material
-				var texture: Texture2D = (material as ShaderMaterial).get_shader_parameter("sprite_texture") if material is ShaderMaterial else (material as StandardMaterial3D).albedo_texture
+				var texture: Texture2D = (quad.material as ShaderMaterial).get_shader_parameter("sprite_texture")
 				if not _bottom_row_opaque(texture):
 					printerr("sprite con fila inferior transparente: %s" % instance.name)
 					ok = false
 				for i in multimesh.instance_count:
 					var p := multimesh.get_instance_transform(i).origin
-					if p.y > _world.ground_base_height(p.x, p.z, quad.size.x * 0.5) + 0.001:
-						printerr("decoración flotando: %s #%d" % [instance.name, i])
+					if p.y > _world.ground_base_height(p.x, p.z, quad.size.x * 0.5) + 0.01:
+						printerr("decoración flotando: %s #%d en %s" % [instance.name, i, p])
 						return false
 	return ok
 
 
-func _first_prop(prefix: String) -> Node3D:
-	for child in _world.get_node("Props_Pradera").get_children():
-		if child.name.begins_with(prefix):
-			return child as Node3D
-	return null
+## El árbol cargado más cercano al inicio.
+func _first_prop(_prefix: String) -> Node3D:
+	var best: Node3D
+	for tree: Node3D in get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP):
+		if best == null or tree.global_position.distance_to(_o) < best.global_position.distance_to(_o):
+			best = tree
+	return best
 
 
 func _bottom_row_opaque(texture: Texture2D) -> bool:
@@ -316,7 +318,8 @@ func _bottom_row_opaque(texture: Texture2D) -> bool:
 
 
 func _terrain_faces_up() -> bool:
-	var mesh := (_world.get_node("Terrain").get_child(0) as MeshInstance3D).mesh
+	var key := _world._chunk_key(_o.x, _o.z)
+	var mesh := ((_world.near_chunks()[key] as Node3D).get_node("Terrain/Mesh") as MeshInstance3D).mesh
 	var arrays := mesh.surface_get_arrays(0)
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 	for n in normals:

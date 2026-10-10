@@ -4,7 +4,7 @@ extends CanvasLayer
 ## Select, pausa el juego) con niebla de exploración y marcadores.
 
 const MINIMAP_SIZE := 200.0
-const MINIMAP_RADIUS_M := 60.0
+const MINIMAP_RADIUS_M := 150.0
 const DOT_RADIUS := 3.0
 const REVEAL_INTERVAL := 0.4
 
@@ -15,7 +15,6 @@ var data := WorldMapData.new()
 var _player: Player
 var _world: WorldBuilder
 var _reveal_timer: float = 0.0
-var _start_point := Vector3.ZERO
 
 @onready var _minimap: ColorRect = $Minimap
 @onready var _dots: Control = $Minimap/Dots
@@ -30,7 +29,6 @@ func _ready() -> void:
 	_player = get_node(player_path) as Player
 	_world = get_node(world_path) as WorldBuilder
 	data.build(_world)
-	_start_point = _player.global_position
 	var mini := _minimap.material as ShaderMaterial
 	mini.set_shader_parameter("map_tex", data.map_texture)
 	mini.set_shader_parameter("fog_tex", data.fog_texture)
@@ -68,6 +66,9 @@ func toggle_full_map() -> void:
 func _process(delta: float) -> void:
 	if _player == null:
 		return
+	data.poll()
+	# El minimapa aparece cuando la imagen está lista y se oculta en interiores.
+	_minimap.visible = data.is_ready and _player.global_position.x < WorldBuilder.INTERIOR_X
 	_reveal_timer -= delta
 	if _reveal_timer <= 0.0 and not get_tree().paused:
 		_reveal_timer = REVEAL_INTERVAL
@@ -105,7 +106,7 @@ func _draw_minimap_markers() -> void:
 		if pos != Vector2.INF:
 			var color := Color(1.0, 0.85, 0.2) if actor.shiny else (Color(0.95, 0.3, 0.25) if actor.state == PokemonActor.State.CHASE or actor.state == PokemonActor.State.FIGHT else Color.WHITE)
 			_dots.draw_rect(Rect2(pos - Vector2.ONE * DOT_RADIUS, Vector2.ONE * DOT_RADIUS * 2.0), color)
-	var start := _to_minimap(_start_point)
+	var start := _to_minimap(GameState.respawn_point)
 	if start != Vector2.INF:
 		_draw_pin(_dots, start, Color(0.3, 0.6, 1.0))
 	# Nate: flecha hacia arriba (adelante de la cámara), en el centro.
@@ -114,8 +115,25 @@ func _draw_minimap_markers() -> void:
 
 func _draw_full_markers() -> void:
 	var size := _full_map.size
-	var start_uv := data.world_to_uv(_start_point)
+	var start_uv := data.world_to_uv(GameState.respawn_point)
 	_draw_pin(_full_markers, start_uv * size, Color(0.3, 0.6, 1.0))
+	# Pueblos y ciudades (siempre) y lugares especiales ya descubiertos.
+	var font := ThemeDB.fallback_font
+	for settlement: Dictionary in _world.layout.settlements:
+		var at := data.world_to_uv(Vector3(float(settlement["x"]), 0, float(settlement["z"]))) * size
+		_full_markers.draw_rect(Rect2(at - Vector2(4, 4), Vector2(8, 8)), Color(0.95, 0.3, 0.3) if settlement["kind"] == "city" else Color(1, 1, 1))
+		_full_markers.draw_rect(Rect2(at - Vector2(4, 4), Vector2(8, 8)), Color.BLACK, false, 1.5)
+		if data.is_revealed(Vector3(float(settlement["x"]), 0, float(settlement["z"]))):
+			_full_markers.draw_string_outline(font, at + Vector2(7, -5), settlement["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color.BLACK)
+			_full_markers.draw_string(font, at + Vector2(7, -5), settlement["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	for place: Dictionary in _world.layout.places:
+		var point := Vector3(float(place["x"]), 0, float(place["z"]))
+		if not data.is_revealed(point):
+			continue
+		var at := data.world_to_uv(point) * size
+		_full_markers.draw_circle(at, 3.5, Color(0.7, 0.5, 1.0) if place["kind"] in ["portal", "floating_ruins", "sanctuary"] else Color(1.0, 0.85, 0.3))
+		_full_markers.draw_string_outline(font, at + Vector2(5, 4), Structures.place_title(place), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color.BLACK)
+		_full_markers.draw_string(font, at + Vector2(5, 4), Structures.place_title(place), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.95, 0.8))
 	var uv := data.world_to_uv(_player.global_position)
 	_draw_arrow(_full_markers, uv * size, _camera_yaw(), Color(1.0, 0.3, 0.3))
 

@@ -185,7 +185,7 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(5)
 	var ambushes := _main.get_node("Ambushes") as AmbushManager
-	var trees := _trees_near(_player.global_position, 60.0)
+	var trees := _trees_near(_player.global_position, 300.0)
 	_check(trees.size() >= 2, "debe haber árboles cerca para las emboscadas")
 	if trees.size() >= 2:
 		var bug := ambushes.place(_species("pinsir"), trees[0], false)
@@ -215,12 +215,12 @@ func _run() -> void:
 		_check(not is_instance_valid(bird), "el ave tímida debe salir volando si Nate se acerca")
 
 
-## Árboles del mundo ordenados por cercanía a point (hasta radius).
+## Árboles cargados ordenados por cercanía a point (hasta radius).
 func _trees_near(point: Vector3, radius: float) -> Array[Node3D]:
 	var found: Array[Node3D] = []
-	for body in _world.find_children("Tree*", "StaticBody3D", true, false):
-		if (body as Node3D).global_position.distance_to(point) < radius:
-			found.append(body as Node3D)
+	for body: Node3D in get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP):
+		if body.global_position.distance_to(point) < radius:
+			found.append(body)
 	found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_to(point) < b.global_position.distance_to(point))
 	return found
 
@@ -229,20 +229,30 @@ func _species(identifier: String) -> SpeciesData:
 	return load("res://creatures/data/species/%s.tres" % identifier) as SpeciesData
 
 
-## Un claro en la pradera: tierra firme, plano, sin agua a 15 m y lejos del inicio.
+## Un claro cerca del inicio: tierra firme y plana, sin árboles, edificios ni caminos
+## en 16 m, dentro de las zonas cargadas.
 func _find_clearing() -> Vector3:
-	for x in range(30, 200, 10):
-		for z in range(-60, 120, 10):
-			if _world.dominant_biome(x, z) != WorldBuilder.Biome.MEADOW:
+	var o := _world.start_position()
+	var trees := get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP)
+	for ring in range(4, 20):
+		for k in 24:
+			var angle := TAU * k / 24.0
+			var x := o.x + cos(angle) * ring * 12.0
+			var z := o.z + sin(angle) * ring * 12.0
+			var p := _ground(x, z)
+			if not _world.is_near_loaded(p) or not _world._dry_land(x, z, 16.0) or not _world.settlement_at(x, z, 20.0).is_empty():
 				continue
-			var dry := true
-			for dx in [-15, 0, 15]:
-				for dz in [-15, 0, 15]:
-					if _world.water_depth_at(x + dx, z + dz) > -0.5:
-						dry = false
-			if dry and absf(_world.surface_height_at(x + 5, z) - _world.surface_height_at(x, z)) < 0.8:
-				return _ground(x, z)
-	return _ground(30.0, -40.0)
+			if _world.distance_to_paths(x, z) < 8.0 or not _world.structures.place_at(x, z, 30.0).is_empty():
+				continue
+			var flat := true
+			for j in 8:
+				var a := TAU * j / 8.0
+				if absf(_world.surface_height_at(x + cos(a) * 14.0, z + sin(a) * 14.0) - p.y) > 1.2:
+					flat = false
+			if not flat or trees.any(func(t: Node3D) -> bool: return t.global_position.distance_to(p) < 16.0):
+				continue
+			return p
+	return o
 
 
 ## Punto en el suelo, en tierra firme.

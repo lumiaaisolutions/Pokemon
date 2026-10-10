@@ -17,6 +17,17 @@ signal blacked_out
 signal notice(text: String)
 
 enum Mode { WALK, SWIM, DIVE, DOWNED }
+## Cómo se desplaza en tierra: a pie, en bicicleta, montando a su compañero o volando sobre él.
+enum Ride { NONE, BIKE, MOUNT, FLY }
+
+const BIKE_SPEED_FACTOR := 1.7
+const FLY_SPEED := 15.0
+const FLY_FAST_SPEED := 24.0
+const FLY_CLIMB := 7.0
+## Altura máxima de vuelo sobre el nivel del mar.
+const FLY_CEILING := 260.0
+## Para bajarse volando hay que estar a menos de esta altura del suelo.
+const LAND_HEIGHT := 3.0
 
 ## Profundidad de los pies al nadar en la superficie (la cabeza queda fuera).
 const SWIM_SURFACE_DEPTH := 1.0
@@ -28,6 +39,10 @@ const AIM_SPEED_FACTOR := 0.6
 @onready var _sprite: DirectionalSprite = $Sprite
 
 var mode: Mode = Mode.WALK
+var ride: Ride = Ride.NONE
+## Compañero que monta (en tierra o en el aire).
+var mount: PokemonActor
+var _bike: Sprite3D
 var health: float = 20.0
 var stamina: float = 100.0
 ## Segundos de aire que le quedan bajo el agua.
@@ -84,15 +99,22 @@ func _physics_process(delta: float) -> void:
 	if mode == Mode.DOWNED:
 		_process_downed(delta)
 		return
+	if ride == Ride.FLY:
+		_process_flight(delta)
+		return
 	_update_water_mode()
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := _camera_relative(input)
 	var swimming := mode == Mode.SWIM or mode == Mode.DIVE
 	var aiming := ($ThrowAim as ThrowAim).is_aiming() and not swimming
 	var wants_run := Input.is_action_pressed("run") and input.length() > 0.1 and not swimming and not aiming
-	var running := wants_run and not exhausted and stamina > 0.0
+	var running := wants_run and not exhausted and stamina > 0.0 and ride == Ride.NONE
 	_update_stamina(running, swimming and riding == null and input.length() > 0.1, delta)
 	var target_speed := config.swim_speed if swimming else (config.run_speed if running else config.walk_speed)
+	if ride == Ride.BIKE and not swimming:
+		target_speed = config.run_speed * BIKE_SPEED_FACTOR
+	elif ride == Ride.MOUNT and not swimming and mount != null:
+		target_speed = mount_speed(mount) * (1.25 if wants_run else 1.0)
 	if swimming and riding != null:
 		target_speed = config.swim_speed * config.surf_speed_factor
 	if GameState.boost_active("speed"):
@@ -116,7 +138,10 @@ func _physics_process(delta: float) -> void:
 	elif is_on_floor():
 		velocity.y = 0.0
 		if Input.is_action_just_pressed("jump"):
-			velocity.y = config.jump_velocity
+			if ride == Ride.MOUNT and mount != null and can_carry_flying(mount):
+				take_off()
+			else:
+				velocity.y = config.jump_velocity
 	else:
 		velocity.y -= config.gravity * delta
 
@@ -131,8 +156,15 @@ func _physics_process(delta: float) -> void:
 		if _distance_buffer >= 10.0:
 			Achievements.add("distance", _distance_buffer)
 			_distance_buffer = 0.0
-	_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
+	if ride == Ride.NONE:
+		_sprite.animate(horizontal, delta, horizontal.length() > config.walk_speed + 0.5)
+	else:
+		# Sentado: no camina, solo mira hacia donde avanza.
+		_sprite.animate(Vector3.ZERO, delta, false)
+		if horizontal.length() > 0.1:
+			_sprite.look_at_point(global_position + horizontal)
 	_update_swim_visuals(horizontal, delta)
+	_update_ride_visuals()
 	if aiming:
 		# Al apuntar, Nate mira hacia donde apunta la cámara.
 		var camera := get_viewport().get_camera_3d()
@@ -249,6 +281,8 @@ func black_out() -> void:
 
 
 func _go_down() -> void:
+	if ride != Ride.NONE:
+		end_ride()
 	velocity = Vector3.ZERO
 	# Bajo el agua no hay quien lo proteja: desmayo definitivo.
 	if _world != null and _world.water_depth_at(global_position.x, global_position.z) > config.swim_depth:
@@ -356,6 +390,9 @@ func _update_water_mode() -> void:
 	if depth > config.swim_depth:
 		if mode == Mode.WALK:
 			mode = Mode.SWIM
+			# En el agua no se va en bicicleta ni montado en tierra.
+			if ride == Ride.BIKE or ride == Ride.MOUNT:
+				end_ride()
 	elif mode != Mode.WALK:
 		mode = Mode.WALK
 
@@ -427,6 +464,10 @@ func _update_air(delta: float) -> void:
 ## Daño por caída: se mide desde lo más alto que llegó en el aire.
 func _update_fall(swimming: bool) -> void:
 	var on_floor := is_on_floor()
+	if ride == Ride.FLY:
+		_air_peak_y = global_position.y
+		_was_on_floor = true
+		return
 	if swimming:
 		_air_peak_y = global_position.y
 	elif not on_floor:
@@ -473,3 +514,151 @@ func _camera_relative(input: Vector2) -> Vector3:
 ## Dirección visible ahora según la cámara. La usan las pruebas.
 func get_visible_facing() -> DirectionalSprite.Facing:
 	return _sprite.visible_facing()
+
+
+# --- Bicicleta, montura y vuelo ----------------------------------------------------------
+
+## Velocidad montando a un Pokémon: según su Velocidad base (más rápido que correr).
+static func mount_speed(actor: PokemonActor) -> float:
+	return clampf(7.5 + actor.species.speed * 0.05, 8.5, 14.0)
+
+
+## ¿Se puede montar a este compañero en tierra? (lo bastante grande y no solo acuático)
+static func can_mount(actor: PokemonActor) -> bool:
+	var water_only := actor.species.habitats.all(func(h: int) -> bool: return h == SpeciesData.Habitat.SEA or h == SpeciesData.Habitat.FRESHWATER)
+	return actor.species.height_m >= 1.0 and not (water_only and not actor.can_fly())
+
+
+## ¿Puede volar llevándolo? (vuela y es lo bastante grande)
+static func can_carry_flying(actor: PokemonActor) -> bool:
+	return actor.can_fly() and actor.species.height_m >= 1.0
+
+
+## Sube o baja de la bicicleta (si tiene una). Devuelve el mensaje.
+func toggle_bicycle() -> String:
+	if ride == Ride.BIKE:
+		end_ride()
+		return "Te bajaste de la bicicleta."
+	if ride != Ride.NONE:
+		return "Primero bájate de tu Pokémon."
+	if GameState.item_count("bicycle") <= 0:
+		return "No tienes bicicleta."
+	if mode != Mode.WALK or global_position.x > WorldBuilder.INTERIOR_X:
+		return "Aquí no puedes usar la bicicleta."
+	ride = Ride.BIKE
+	_update_ride_visuals()
+	return "¡Vas en bicicleta!"
+
+
+## Monta al compañero (y, si vuela, despega al saltar).
+func start_mount(actor: PokemonActor) -> void:
+	mount = actor
+	ride = Ride.MOUNT
+	actor.set_ridden(self)
+	_update_ride_visuals()
+
+
+## Despega (montado en un volador).
+func take_off() -> void:
+	if ride == Ride.MOUNT and mount != null and can_carry_flying(mount):
+		ride = Ride.FLY
+		velocity.y = FLY_CLIMB
+
+
+## Se baja de lo que sea (bicicleta, montura o vuelo).
+func end_ride() -> void:
+	if mount != null and is_instance_valid(mount):
+		mount.set_ridden(null)
+		mount.global_position = global_position + _camera_relative(Vector2(1, 0)) * 1.5 + Vector3.UP * 0.2
+	mount = null
+	ride = Ride.NONE
+	_air_peak_y = global_position.y
+	_update_ride_visuals()
+
+
+## Altura sobre el suelo (o el agua).
+func height_above_ground() -> float:
+	if _world == null:
+		return 0.0
+	var ground := maxf(_world.surface_height_at(global_position.x, global_position.z), _world.water_level_at(global_position.x, global_position.z))
+	return global_position.y - ground
+
+
+## Vuelo libre: se mueve relativo a la cámara; "jump" sube, "dive" baja; correr va más rápido.
+func _process_flight(delta: float) -> void:
+	if mount == null or not is_instance_valid(mount):
+		end_ride()
+		return
+	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var direction := _camera_relative(input)
+	var speed := FLY_FAST_SPEED if Input.is_action_pressed("run") else FLY_SPEED
+	var target := direction * speed * minf(input.length(), 1.0)
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z).move_toward(target, 30.0 * delta)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
+	var climb := 0.0
+	if Input.is_action_pressed("jump"):
+		climb = FLY_CLIMB
+	elif Input.is_action_pressed("dive"):
+		climb = -FLY_CLIMB * 1.3
+	velocity.y = move_toward(velocity.y, climb, 20.0 * delta)
+	if global_position.y > FLY_CEILING and velocity.y > 0.0:
+		velocity.y = 0.0
+	move_and_slide()
+	# Al tocar el suelo bajando, aterriza montado.
+	if is_on_floor() and climb < 0.0:
+		ride = Ride.MOUNT
+		velocity.y = 0.0
+	if horizontal.length() > 0.1:
+		_sprite.look_at_point(global_position + horizontal)
+	_sprite.animate(Vector3.ZERO, delta, false)
+	_update_ride_visuals()
+	_update_regen(delta)
+
+
+## Sprite del jugador sentado sobre la montura o la bicicleta.
+func _update_ride_visuals() -> void:
+	if ride == Ride.BIKE:
+		if _bike == null:
+			_bike = Sprite3D.new()
+			_bike.name = "Bicycle"
+			_bike.texture = _bike_texture()
+			_bike.pixel_size = config.pixel_size
+			_bike.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			SpriteMaterials.apply(_bike)
+			add_child(_bike)
+		_bike.visible = true
+		_sprite.place_on_ground()
+		_sprite.position.y += 0.3
+	elif _bike != null:
+		_bike.visible = false
+	if (ride == Ride.MOUNT or ride == Ride.FLY) and mount != null and is_instance_valid(mount):
+		_sprite.place_on_ground()
+		_sprite.position.y += mount.species.overworld_cell * mount.world_pixel_size() * 0.6
+		_sprite.set_instance_shader_parameter("cut_bottom", 0.45)
+		_swim_shader_on = true
+	elif ride == Ride.NONE and mode == Mode.WALK and _swim_shader_on:
+		_swim_shader_on = false
+		_sprite.place_on_ground()
+		_sprite.set_instance_shader_parameter("cut_bottom", -1000.0)
+
+
+## Bicicleta pixel art (generada): ruedas, cuadro rojo y manubrio.
+static func _bike_texture() -> Texture2D:
+	var image := Image.create_empty(30, 18, false, Image.FORMAT_RGBA8)
+	var dark := Color(0.12, 0.12, 0.14)
+	var frame := Color(0.85, 0.2, 0.2)
+	for wheel: Vector2 in [Vector2(6, 12), Vector2(23, 12)]:
+		for y in 18:
+			for x in 30:
+				var d := Vector2(x, y).distance_to(wheel)
+				if d <= 5.5 and d >= 4.0:
+					image.set_pixel(x, y, dark)
+	for i in 14:
+		image.set_pixel(8 + i, 8 + i / 5, frame)
+		image.set_pixel(8 + i, 9 + i / 5, frame)
+	for y in range(4, 12):
+		image.set_pixel(21, y, frame)
+	for x in range(18, 25):
+		image.set_pixel(x, 4, dark)
+	return ImageTexture.create_from_image(image)

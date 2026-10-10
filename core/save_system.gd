@@ -39,13 +39,20 @@ func save_slot(slot: int, main: Node) -> bool:
 	if main != null and main.has_method("sync_companion_to_party"):
 		main.sync_companion_to_party()
 	var player := main.get_node_or_null("Player") as Node3D if main != null else null
+	var map_ui := main.get_node_or_null("MapUi") as MapUi if main != null else null
+	if map_ui != null:
+		map_ui.data.store_fog()
 	var position := player.global_position if player != null else Vector3.ZERO
+	# Dentro de un interior se guarda la puerta (el interior no existe al cargar).
+	if position.x > WorldBuilder.INTERIOR_X:
+		var interiors := main.get_node_or_null("World/Structures/Services/Interiors") as Interiors if main != null else null
+		position = interiors.current.get("return", GameState.respawn_point) if interiors != null else GameState.respawn_point
 	var data := {
 		"version": VERSION,
 		"saved_at": Time.get_datetime_string_from_system(false, true),
 		"character_id": GameState.character_id, "player_name": GameState.player_name,
 		"gender": GameState.gender, "difficulty": GameState.difficulty,
-		"play_time": GameState.play_time, "money": GameState.money,
+		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "money": GameState.money,
 		"party": GameState.party, "box": GameState.box, "companion_index": GameState.companion_index,
 		"bag": GameState.bag, "selected_ball": GameState.selected_ball,
 		"dex": GameState.dex, "legendary_caught": GameState.legendary_caught,
@@ -77,6 +84,8 @@ func load_slot(slot: int) -> bool:
 	GameState.gender = data.get("gender", "male")
 	GameState.difficulty = int(data.get("difficulty", 1))
 	GameState.play_time = float(data.get("play_time", 0.0))
+	GameState.world_seed = int(data.get("world_seed", 0))
+	GameState.world_flags = data.get("world_flags", {})
 	GameState.money = int(data.get("money", 3000))
 	GameState.party.assign(data.get("party", []))
 	GameState.box.assign(data.get("box", []))

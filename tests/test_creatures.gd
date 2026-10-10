@@ -35,7 +35,7 @@ func _run() -> void:
 		await get_tree().physics_frame
 		waited += 1
 	_check(navigation.is_baked, "la navegación no terminó de hornearse en 30 s")
-	_check(navigation.navigation_mesh.get_polygon_count() > 100, "la malla de navegación está casi vacía")
+	_check(navigation.polygon_count() > 100, "la malla de navegación está casi vacía")
 	await _frames(10)
 
 	# Compañero: un básico del grupo que sigue al jugador.
@@ -64,7 +64,11 @@ func _run() -> void:
 	(_main.get_node("Ambushes") as Node).set_process(false)
 	_clear_wild()
 	var checked := 0
-	var spots: Array[Vector3] = [Vector3(0, 0, -20), Vector3(-150, 0, 20), Vector3(20, 0, -150), Vector3(70, 0, 40), Vector3(-165, 0, 95), Vector3(100, 0, 150)]
+	# Seis puntos alrededor del inicio, dentro de las zonas cargadas.
+	var o := _world.start_position()
+	var spots: Array[Vector3] = []
+	for k in 6:
+		spots.append(o + Vector3(cos(k * 1.05) * (40.0 + k * 35.0), 0, sin(k * 1.05) * (40.0 + k * 35.0)))
 	for spot in spots:
 		_player.global_position = Vector3(spot.x, _world.surface_height_at(spot.x, spot.z) + 0.5, spot.z)
 		for i in 10:
@@ -79,8 +83,8 @@ func _run() -> void:
 	await _frames(2)
 
 	# Tamaños por altura y shiny.
-	var wailord := _spawner.spawn_species(_species("wailord"), Vector3(0, 0, 0), false, false)
-	var joltik := _spawner.spawn_species(_species("joltik"), Vector3(0, 0, 0), true, false)
+	var wailord := _spawner.spawn_species(_species("wailord"), o, false, false)
+	var joltik := _spawner.spawn_species(_species("joltik"), o, true, false)
 	await _frames(2)
 	var wailord_sprite := wailord.get_node("Sprite") as Sprite3D
 	# (Cada individuo tiene su talla: se compara sin ella.)
@@ -98,7 +102,8 @@ func _run() -> void:
 	# defensa (ver test_fights) cambiaría con quién pelea cada salvaje.
 	(_main.companion as Node).process_mode = Node.PROCESS_MODE_DISABLED
 	(_main.companion as Node3D).global_position = Vector3(0, -50, 0)
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	var clearing := _clearing()
+	_player.global_position = clearing + Vector3.UP * 0.5
 	await _frames(20)
 	# Agresivo: te alcanza (contacto) o ya llegó a distancia de golpe (el ataque sale
 	# tras una espera al azar de 1.4 a 2.4 s).
@@ -127,7 +132,7 @@ func _run() -> void:
 	await _frames(2)
 
 	# Territorial: entra a su zona y lo persigue.
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = clearing + Vector3.UP * 0.5
 	var guard := _spawner.spawn_species(_species("aggron"), _ground(4.0, 0.0), false, false)
 	await _frames(30)
 	# Persigue o pelea con Nate, o con su compañero si este salió a defenderlo.
@@ -139,7 +144,7 @@ func _run() -> void:
 
 	# Cupo por zona: nunca más grupos que el cupo en una zona.
 	_spawner.set_process(true)
-	_player.global_position = Vector3(0, _world.surface_height_at(0, 0) + 0.5, 0)
+	_player.global_position = clearing + Vector3.UP * 0.5
 	for i in 900:
 		await get_tree().physics_frame
 	_spawner.set_process(false)
@@ -189,6 +194,12 @@ func _run() -> void:
 	var sanctuary_pos: Vector3 = legendaries.sanctuaries[mountain_index].position
 	_player.global_position = sanctuary_pos + Vector3(0, 0.5, 30)
 	await _frames(5)
+	# Espera la navegación de esa zona (se hornea al llegar).
+	for i in 600:
+		if navigation.is_area_baked(sanctuary_pos):
+			break
+		await get_tree().physics_frame
+	sanctuary_pos.y = _world.surface_height_at(sanctuary_pos.x, sanctuary_pos.z)
 	var legend := legendaries.summon(mountain_index, "groudon")
 	_check(legend != null and legend.legendary, "debe poder aparecer Groudon en el santuario de la cumbre")
 	if legend != null:
@@ -257,6 +268,32 @@ func _check_temperament(identifier: String, distance: float, label: String, pass
 
 func _species(identifier: String) -> SpeciesData:
 	return load("res://creatures/data/species/%s.tres" % identifier) as SpeciesData
+
+
+## Un claro cerca del inicio: tierra firme y plana, sin árboles, edificios ni caminos
+## en 16 m, dentro de las zonas cargadas.
+func _clearing() -> Vector3:
+	var o := _world.start_position()
+	var trees := get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP)
+	for ring in range(4, 20):
+		for k in 24:
+			var angle := TAU * k / 24.0
+			var x := o.x + cos(angle) * ring * 12.0
+			var z := o.z + sin(angle) * ring * 12.0
+			var p := Vector3(x, _world.surface_height_at(x, z), z)
+			if not _world.is_near_loaded(p) or not _world._dry_land(x, z, 16.0) or not _world.settlement_at(x, z, 20.0).is_empty():
+				continue
+			if _world.distance_to_paths(x, z) < 8.0 or not _world.structures.place_at(x, z, 30.0).is_empty():
+				continue
+			var flat := true
+			for j in 8:
+				var a := TAU * j / 8.0
+				if absf(_world.surface_height_at(x + cos(a) * 14.0, z + sin(a) * 14.0) - p.y) > 1.5:
+					flat = false
+			if not flat or trees.any(func(t: Node3D) -> bool: return t.global_position.distance_to(p) < 16.0):
+				continue
+			return p
+	return o
 
 
 ## Punto en el suelo a (dx, dz) del jugador.

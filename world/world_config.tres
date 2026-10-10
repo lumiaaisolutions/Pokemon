@@ -20,4 +20,7 @@ swamp_ground_texture = ExtResource("6_swamp_ground")
 water_texture = ExtResource("7_water")
 swamp_water_texture = ExtResource("8_swamp_water")
 prop_view_distance = 170.0
+size = 4096.0
+snow_height = 62.0
+rock_height = 45.0
 dead_tree_texture = ExtResource("9_dead_tree")

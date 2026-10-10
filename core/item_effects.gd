@@ -16,6 +16,10 @@ static func action_label(id: String) -> String:
 		return "Usar"
 	if item.has("training"):
 		return "Dar a tu compañero"
+	if item.has("tm"):
+		return "Enseñar a tu compañero"
+	if id == "bicycle":
+		return "Montar / bajar"
 	if id == "town-map":
 		return "Ver el mapa"
 	if item.has("sleep"):
@@ -90,6 +94,19 @@ static func use(id: String, main: Node) -> String:
 		target["training_free"] = int(target.get("training_free", 0)) + int(item["training"])
 		GameState.use_item(id)
 		return "+%d Puntos de Entrenamiento para repartir (pestaña Equipo)." % int(item["training"])
+	if item.has("tm"):
+		if GameState.party.is_empty():
+			return "No tienes Pokémon."
+		var learner: Dictionary = GameState.party[GameState.companion_index]
+		var learned := Moves.teach_type(learner, int(item["tm"]))
+		if learned == "":
+			return "%s no puede aprender más movimientos de tipo %s." % [MenuStyle.species(learner["species"]).display_name, MenuStyle.TYPE_NAMES[int(item["tm"])]]
+		GameState.use_item(id)
+		return "¡%s aprendió %s! Equípalo en el menú (Equipo)." % [MenuStyle.species(learner["species"]).display_name, Moves.get_move(learned)["name"]]
+	if id == "bicycle":
+		if player == null:
+			return ""
+		return player.toggle_bicycle()
 	if id == "town-map":
 		return "map"
 	if item.has("sleep"):

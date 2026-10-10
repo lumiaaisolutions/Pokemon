@@ -28,11 +28,6 @@ var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
-	for body in _world.find_children("*", "StaticBody3D", true, false):
-		for prefix: String in TREE_PREFIXES:
-			if body.name.begins_with(prefix):
-				_trees.append(body as Node3D)
-				break
 
 
 func _process(delta: float) -> void:
@@ -69,6 +64,10 @@ func place(species: SpeciesData, tree: Node3D, as_bird: bool) -> PokemonActor:
 
 
 func _pick_tree() -> Node3D:
+	# Los árboles de las zonas cercanas cargadas.
+	_trees.assign(get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP))
+	if _trees.is_empty():
+		return null
 	for attempt in 20:
 		var tree := _trees[_rng.randi() % _trees.size()]
 		var distance := tree.global_position.distance_to(_player.global_position)

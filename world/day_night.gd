@@ -20,9 +20,13 @@ const KEYS := [
 	[24.0, Color(0.45, 0.55, 0.9), 0.2, Color(0.03, 0.05, 0.14), Color(0.08, 0.1, 0.22), Color(0.42, 0.48, 0.72), 0.42],
 ]
 
+## Luz en interiores (Interiors): 1 afuera, menos en edificios y mazmorras.
+static var interior_light := 1.0
+
 var _sun: DirectionalLight3D
 var _environment: Environment
 var _sky: ProceduralSkyMaterial
+var _base_fog := 0.0
 
 
 func _ready() -> void:
@@ -31,6 +35,9 @@ func _ready() -> void:
 	if world_environment != null:
 		_environment = world_environment.environment
 		_sky = _environment.sky.sky_material as ProceduralSkyMaterial if _environment.sky != null else null
+		_base_fog = _environment.fog_density
+	if _sun != null:
+		_sun.shadow_enabled = GameOptions.shadows_enabled()
 	_apply(GameState.clock_hour())
 
 
@@ -57,10 +64,11 @@ func _apply(hour: float) -> void:
 		var azimuth := lerpf(-70.0, 70.0, daylight) if hour >= 6.0 and hour <= 18.0 else 150.0
 		_sun.rotation_degrees = Vector3(-elevation, azimuth, 0.0)
 		_sun.light_color = (a[1] as Color).lerp(b[1], t)
-		_sun.light_energy = lerpf(float(a[2]), float(b[2]), t)
+		_sun.light_energy = (lerpf(float(a[2]), float(b[2]), t) * Weather.light_factor + Weather.flash) * interior_light
 	if _environment != null:
-		_environment.ambient_light_energy = lerpf(float(a[6]), float(b[6]), t)
+		_environment.ambient_light_energy = lerpf(float(a[6]), float(b[6]), t) * (1.0 if interior_light >= 1.0 else 0.8)
 		_environment.fog_light_color = (a[4] as Color).lerp(b[4], t)
+		_environment.fog_density = _base_fog + Weather.fog_extra
 	if _sky != null:
 		_sky.sky_top_color = (a[3] as Color).lerp(b[3], t)
 		_sky.sky_horizon_color = (a[4] as Color).lerp(b[4], t)

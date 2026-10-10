@@ -102,6 +102,7 @@ func _ready() -> void:
 		gathering.prompt_changed.connect(func(text: String) -> void: _prompt.text = text)
 	_player.notice.connect(show_toast)
 	GameState.notice.connect(show_toast)
+	_build_location_banner()
 
 
 func _process(delta: float) -> void:
@@ -127,16 +128,64 @@ func _process(delta: float) -> void:
 		(_bubbles_box.get_child(i) as TextureRect).visible = air_ratio > float(i) / BUBBLES
 	_reticle.visible = (_player.get_node("ThrowAim") as ThrowAim).is_aiming()
 	_update_ball_panel()
-	_clock.text = "%s Día %d · %s" % ["☾" if GameState.is_night() else "☀", GameState.game_day() + 1, DayNight.clock_text(GameState.clock_hour())]
+	_clock.text = "%s Día %d · %s\n%s · %s" % ["☾" if GameState.is_night() else "☀", GameState.game_day() + 1, DayNight.clock_text(GameState.clock_hour()),
+			Weather.NAMES[Weather.current], Weather.season_name(GameState.game_day())]
 	_update_companion_card()
 	_update_downed_panel()
 	_update_hints()
 	# Tinte azul si la cámara está bajo el agua.
 	if _world == null:
 		_world = get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
+		if _world != null and _world.structures != null:
+			_world.structures.prompt_changed.connect(func(text: String) -> void: _prompt.text = text)
+	_update_location(delta)
 	var camera := get_viewport().get_camera_3d()
 	_underwater.visible = camera != null and _world != null \
 			and camera.global_position.y < _world.water_level_at(camera.global_position.x, camera.global_position.z)
+
+
+var _location: Label
+var _location_name := ""
+var _location_timer := 0.0
+var _location_show := 0.0
+
+
+## Cartel con el nombre del lugar (pueblo, lugar especial o bioma) al llegar.
+func _build_location_banner() -> void:
+	_location = _small_label("", 30)
+	_location.anchor_left = 0.5
+	_location.anchor_right = 0.5
+	_location.offset_left = -400
+	_location.offset_right = 400
+	_location.offset_top = 70
+	_location.offset_bottom = 110
+	_location.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_location.add_theme_color_override("font_color", Color(1.0, 1.0, 0.92))
+	_location.add_theme_color_override("font_outline_color", Color(0.1, 0.12, 0.2))
+	_location.add_theme_constant_override("outline_size", 8)
+	_location.modulate.a = 0.0
+	add_child(_location)
+
+
+func _update_location(delta: float) -> void:
+	if _world == null or _location == null:
+		return
+	_location_show = maxf(_location_show - delta, 0.0)
+	_location.modulate.a = clampf(_location_show, 0.0, 1.0)
+	_location_timer -= delta
+	if _location_timer > 0.0:
+		return
+	_location_timer = 0.5
+	var where := _world.location_name(_player.global_position.x, _player.global_position.z)
+	if where != _location_name:
+		_location_name = where
+		_location.text = where
+		_location_show = 3.5
+
+
+## Lugar actual (pruebas).
+func location_text() -> String:
+	return _location_name
 
 
 ## Pantalla negra de desmayo con el mensaje; dura seconds.
@@ -151,15 +200,32 @@ func show_blackout(message: String, seconds: float) -> void:
 	tween.tween_callback(func() -> void: _blackout.visible = false)
 
 
-## Mensaje breve arriba al centro.
+var _toast_queue: Array[String] = []
+var _toast_tween: Tween
+
+
+## Mensaje breve arriba al centro. Si hay uno en pantalla, espera su turno (cola de 4);
+## dura según su largo y la velocidad de texto de Opciones.
 func show_toast(message: String) -> void:
+	if _toast_tween != null and _toast_tween.is_running():
+		if _toast_queue.size() < 4 and not _toast_queue.has(message) and _toast.text != message:
+			_toast_queue.append(message)
+		return
 	_toast.text = message
 	_toast.visible = true
 	_toast.modulate.a = 1.0
-	var tween := create_tween()
-	tween.tween_interval(2.2)
-	tween.tween_property(_toast, "modulate:a", 0.0, 0.6)
-	tween.tween_callback(func() -> void: _toast.visible = false)
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(GameOptions.notice_seconds(message))
+	_toast_tween.tween_property(_toast, "modulate:a", 0.0, 0.4)
+	_toast_tween.tween_callback(func() -> void:
+		_toast.visible = false
+		if not _toast_queue.is_empty():
+			show_toast.call_deferred(_toast_queue.pop_front()))
+
+
+## Último aviso mostrado (pruebas).
+func toast_text() -> String:
+	return _toast.text
 
 
 func _reticle_texture() -> Texture2D:

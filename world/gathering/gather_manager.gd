@@ -3,11 +3,13 @@ extends Node3D
 ## Puntos de recolección del mundo: arbustos de bayas, árboles de bonguri, setas, rocas
 ## con minerales y conchas, según el hábitat. Brillan para que se vean; cerca de uno, el
 ## HUD muestra "[E] Recoger" y con "interact" se recogen de 1 a 3 objetos. Vuelven a
-## crecer al día siguiente del juego.
+## crecer al día siguiente del juego. Se crean con cada zona cercana del mundo (siempre
+## los mismos para la misma semilla) y se liberan con ella.
 
 signal prompt_changed(text: String)
 
-const PER_HABITAT := 22
+## Intentos de punto por zona de 128 m.
+const PER_CHUNK := 4
 const PICK_RADIUS := 2.2
 ## Tipo de punto por hábitat: [nombre, ícono, tabla de objetos {id: peso}, mín., máx.]
 const KINDS := {
@@ -33,38 +35,42 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_world = get_node(world_path) as WorldBuilder
 	_player = get_node(player_path) as Player
-	_rng.seed = _world.config.seed * 31 + 5
-	_place_all()
+	_rng.randomize()
+	_world.chunk_built.connect(_populate)
+	var chunks := _world.near_chunks()
+	for key: Vector2i in chunks:
+		_populate(key, chunks[key])
 
 
-func _place_all() -> void:
-	var half := _world.config.size * 0.5 - 12.0
-	var counts := {}
-	for attempt in PER_HABITAT * KINDS.size() * 6:
-		var x := _rng.randf_range(-half, half)
-		var z := _rng.randf_range(-half, half)
+## Puntos de una zona recién construida (deterministas por semilla y zona).
+func _populate(key: Vector2i, root: Node3D) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key) ^ (_world.config.seed * 31 + 5)
+	for i in PER_CHUNK:
+		var x := (key.x + rng.randf()) * WorldBuilder.CHUNK
+		var z := (key.y + rng.randf()) * WorldBuilder.CHUNK
+		var pick := rng.randi()
 		var habitat := _world.habitat_at(x, z)
-		if not KINDS.has(habitat) or counts.get(habitat, 0) >= PER_HABITAT:
+		if not KINDS.has(habitat) or not _world.is_inside(x, z, 12.0):
 			continue
 		var on_beach := habitat == SpeciesData.Habitat.SEA
-		if not on_beach and _world.water_depth_at(x, z) > -0.3:
+		var depth := _world.water_depth_at(x, z)
+		if (not on_beach and depth > -0.3) or (on_beach and depth > -0.1):
 			continue
-		if on_beach and _world.water_depth_at(x, z) > -0.1:
-			continue
-		if Vector2(x, z).length() < 10.0:
+		if not _world.settlement_at(x, z, 4.0).is_empty() or _world.distance_to_paths(x, z) < 3.0:
 			continue
 		var kinds: Array = KINDS[habitat]
-		var kind: Array = kinds[_rng.randi() % kinds.size()]
-		counts[habitat] = counts.get(habitat, 0) + 1
-		_nodes.append(_make_node(kind, Vector3(x, _world.surface_height_at(x, z), z)))
+		var id := "%d_%d_%d" % [key.x, key.y, i]
+		_nodes.append(_make_node(kinds[pick % kinds.size()], Vector3(x, _world.surface_height_at(x, z), z), root, id))
 
 
-func _make_node(kind: Array, at: Vector3) -> Node3D:
+func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	var node := Node3D.new()
-	node.name = "Gather%d" % _nodes.size()
+	node.name = "Gather_%s" % id
 	node.set_meta("kind", kind)
-	node.set_meta("regrow_day", -1)
-	add_child(node)
+	node.set_meta("id", id)
+	node.set_meta("regrow_day", int((GameState.world_flags.get("gather", {}) as Dictionary).get(id, -1)))
+	parent.add_child(node)
 	node.global_position = at
 	var sprite := Sprite3D.new()
 	sprite.name = "Sprite"
@@ -105,6 +111,11 @@ func _make_node(kind: Array, at: Vector3) -> Node3D:
 
 func _process(_delta: float) -> void:
 	var day := GameState.game_day()
+	var alive: Array[Node3D] = []
+	for n in _nodes:
+		if is_instance_valid(n) and not (n as Node3D).is_queued_for_deletion():
+			alive.append(n)
+	_nodes = alive
 	var best: Node3D
 	var best_distance := PICK_RADIUS
 	for node in _nodes:
@@ -147,6 +158,9 @@ func collect(node: Node3D) -> Dictionary:
 	GameState.gathered.emit(picked, amount)
 	PixelBurst.spawn(get_parent(), node.global_position + Vector3.UP * 0.4, PixelBurst.Kind.LEAVES if kind[1] != "hard-stone" else PixelBurst.Kind.ROCK, 0.6)
 	node.set_meta("regrow_day", GameState.game_day() + 1)
+	if not GameState.world_flags.has("gather"):
+		GameState.world_flags["gather"] = {}
+	GameState.world_flags["gather"][node.get_meta("id")] = GameState.game_day() + 1
 	node.visible = false
 	_nearest = null
 	prompt_changed.emit("")

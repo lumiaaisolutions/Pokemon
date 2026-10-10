@@ -51,42 +51,44 @@ func _ready() -> void:
 	_place_sanctuaries()
 
 
+## Santuarios de la región: los lugares "sanctuary" del mapa (con el hábitat de donde
+## cayeron), la cumbre más alta, la orilla de un lago (agua dulce) y un faro (mar);
+## cada hábitat tiene al menos uno.
 func _place_sanctuaries() -> void:
+	var layout := _world.layout
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _world.config.seed + 97
-	# La cumbre más alta es siempre un santuario de montaña.
-	var summit := _highest_point(rng)
-	sanctuaries.append({"position": summit, "habitat": SpeciesData.Habitat.MOUNTAIN})
+	for place: Dictionary in layout.places_of("sanctuary"):
+		if place.get("summit", false):
+			var sx := float(place["x"])
+			var sz := float(place["z"])
+			sanctuaries.append({"position": Vector3(sx, _world.height_at(sx, sz), sz), "habitat": SpeciesData.Habitat.MOUNTAIN})
+	for place: Dictionary in layout.places_of("sanctuary"):
+		if place.get("summit", false):
+			continue
+		var x := float(place["x"])
+		var z := float(place["z"])
+		sanctuaries.append({"position": Vector3(x, _world.height_at(x, z), z), "habitat": _world.habitat_at(x, z)})
+	if not layout.lakes.is_empty():
+		var lake: Vector4 = layout.lakes[rng.randi() % layout.lakes.size()]
+		var x := lake.x + lake.z + RegionLayout.LAKE_BANK + 2.0
+		sanctuaries.append({"position": Vector3(x, _world.height_at(x, lake.y), lake.y), "habitat": SpeciesData.Habitat.FRESHWATER})
+	var coast := layout.places_of("lighthouse")
+	if not coast.is_empty():
+		var x := float(coast[0]["x"]) + 6.0
+		var z := float(coast[0]["z"])
+		sanctuaries.append({"position": Vector3(x, _world.height_at(x, z), z), "habitat": SpeciesData.Habitat.SEA})
 	for habitat: SpeciesData.Habitat in SANCTUARIES_PER_HABITAT:
-		var wanted: int = SANCTUARIES_PER_HABITAT[habitat] - (1 if habitat == SpeciesData.Habitat.MOUNTAIN else 0)
-		var placed := 0
-		for attempt in 2000:
-			if placed >= wanted:
-				break
-			var half := _world.config.size * 0.5 - 15.0
+		if sanctuaries.any(func(s: Dictionary) -> bool: return s.habitat == habitat):
+			continue
+		for attempt in 3000:
+			var half := _world.config.size * 0.5 - RegionLayout.EDGE_MOUNTAIN
 			var x := rng.randf_range(-half, half)
 			var z := rng.randf_range(-half, half)
-			if Vector2(x, z).length() < spawn_clear_radius or _world.habitat_at(x, z) != habitat:
+			if _world.habitat_at(x, z) != habitat or layout.water_level_at(x, z) - layout.height_at(x, z) > -0.3:
 				continue
-			if _world.water_depth_at(x, z) > -0.3:
-				continue
-			var point := Vector3(x, _world.surface_height_at(x, z), z)
-			if sanctuaries.any(func(s: Dictionary) -> bool: return (s.position as Vector3).distance_to(point) < min_spacing):
-				continue
-			sanctuaries.append({"position": point, "habitat": habitat})
-			placed += 1
-
-
-func _highest_point(rng: RandomNumberGenerator) -> Vector3:
-	var best := Vector3(0, -INF, 0)
-	var half := _world.config.size * 0.5 - 15.0
-	for i in 3000:
-		var x := rng.randf_range(-half, half)
-		var z := rng.randf_range(-half, half)
-		var y := _world.surface_height_at(x, z)
-		if y > best.y:
-			best = Vector3(x, y, z)
-	return best
+			sanctuaries.append({"position": Vector3(x, _world.height_at(x, z), z), "habitat": habitat})
+			break
 
 
 func _process(_delta: float) -> void:

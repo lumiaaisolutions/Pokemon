@@ -214,6 +214,9 @@ func _start() -> void:
 	GameState.dex.clear()
 	GameState.bag = Items.starting_bag()
 	GameState.play_time = 0.0
+	# Cada partida nueva tiene su propio mundo.
+	GameState.world_seed = randi_range(1, 1 << 30)
+	GameState.world_flags = {}
 	GameState.character_id = _character["id"]
 	GameState.gender = _gender
 	GameState.player_name = _player_name()

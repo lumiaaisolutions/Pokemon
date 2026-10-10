@@ -118,6 +118,27 @@ static func unlock_next(entry: Dictionary) -> String:
 	return id
 
 
+## MT: desbloquea un movimiento de tipo type de la lista de la especie (primero los de
+## MT y tutor, luego los de nivel). Devuelve su id o "".
+static func teach_type(entry: Dictionary, type: int) -> String:
+	ensure_entry(entry)
+	var unlocked: Array = entry["unlocked"]
+	var data := learnset(entry["species"])
+	var options: Array[String] = []
+	for id: String in data["other"]:
+		if not unlocked.has(id) and int(get_move(id)["type"]) == type:
+			options.append(id)
+	if options.is_empty():
+		for pair: Array in data["level"]:
+			if not unlocked.has(pair[1]) and int(get_move(pair[1])["type"]) == type:
+				options.append(pair[1])
+	if options.is_empty():
+		return ""
+	options.sort_custom(func(a: String, b: String) -> bool: return int(get_move(a)["power"]) > int(get_move(b)["power"]))
+	unlocked.append(options[0])
+	return options[0]
+
+
 ## Registra un uso (dominio y desbloqueo por uso). Devuelve el movimiento recién
 ## desbloqueado o "".
 static func register_use(entry: Dictionary, id: String) -> String:

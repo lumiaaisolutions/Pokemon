@@ -320,6 +320,8 @@ func _habitat_map(box: VBoxContainer, species: SpeciesData) -> void:
 	box.add_child(MenuStyle.label("Hábitat", 20, MenuStyle.ACCENT))
 	var spawner := _menu.main.get_node_or_null("Spawner") as WildSpawner if _menu.main != null else null
 	var map_ui := _menu.main.get_node_or_null("MapUi") as MapUi if _menu.main != null else null
+	if map_ui != null:
+		map_ui.data.wait()
 	if spawner == null or map_ui == null or map_ui.data.map_texture == null:
 		box.add_child(MenuStyle.label("Mapa no disponible.", 17, MenuStyle.MUTED))
 		return

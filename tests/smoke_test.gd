@@ -8,8 +8,10 @@ const ACTIONS: Array[String] = [
 	"camera_left", "camera_right", "camera_up", "camera_down", "zoom_in", "zoom_out",
 	"interact", "menu", "map", "companion", "help", "ball_next", "ball_prev", "menu_prev", "menu_next", "move_modifier", "jump", "dive",
 	"dodge", "lock_on", "attack_1", "attack_2", "attack_3", "attack_4", "mega_evolve", "capture",
-	"aim", "throw",
+	"aim", "throw", "ride",
 ]
+## En el mando el zoom es un solo botón que da la vuelta (cruceta →): zoom_out solo va en mouse.
+const PAD_OPTIONAL: Array[String] = ["zoom_out"]
 
 
 func _ready() -> void:
@@ -26,7 +28,7 @@ func _ready() -> void:
 		var events := InputMap.action_get_events(action)
 		var has_kbm := events.any(func(e: InputEvent) -> bool: return e is InputEventKey or e is InputEventMouseButton)
 		var has_pad := events.any(func(e: InputEvent) -> bool: return e is InputEventJoypadButton or e is InputEventJoypadMotion)
-		if not (has_kbm and has_pad):
+		if not (has_kbm and (has_pad or PAD_OPTIONAL.has(action))):
 			failures.append("La acción %s no tiene teclado/mouse y mando" % action)
 
 	var material := load("res://art/materials/pixel_base.tres") as StandardMaterial3D

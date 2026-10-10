@@ -103,6 +103,75 @@ func _ready() -> void:
 			GameState.play_time += GameState.DAY_SECONDS
 		for i in 30:
 			await get_tree().process_frame
+	# "pueblo": vista amplia del pueblo inicial desde arriba.
+	if args.size() > 5 and args[5] == "pueblo":
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_pitch_deg", 45.0)
+		rig.set("_zoom", rig.zoom_max)
+		rig.set("_yaw_deg", 30.0)
+		for i in 60:
+			await get_tree().process_frame
+	# "vuelo": monta un Charizard y sube 40 m para ver la región desde el aire.
+	if args.size() > 5 and args[5] == "vuelo":
+		var player := scene.get_node("Player") as Player
+		var old := scene.get("companion") as PokemonActor
+		if old != null:
+			old.queue_free()
+		scene.call("_create_companion", load("res://creatures/data/species/charizard.tres"), false, player.global_position + Vector3(1.5, 0.3, 0.0))
+		for i in 10:
+			await get_tree().process_frame
+		scene.call("toggle_ride")
+		player.take_off()
+		player.global_position.y += 40.0
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_pitch_deg", 25.0)
+		rig.set("_zoom", rig.zoom_max)
+		for i in 150:
+			await get_tree().process_frame
+	# "interior:tipo": entra al interior más cercano de ese tipo (center, mart, cave…).
+	if args.size() > 5 and args[5].begins_with("interior:"):
+		var kind := args[5].substr(9)
+		var world := scene.get_node("World") as WorldBuilder
+		var services := world.structures.services
+		var player := scene.get_node("Player") as Player
+		if kind in Interiors.DUNGEONS:
+			var place: Dictionary = world.layout.places_of(kind if kind != "sewer" else "cave")[0]
+			services.enter_interior(kind, {}, place)
+		else:
+			var settlement: Dictionary = world.layout.settlements[0]
+			for s: Dictionary in world.layout.settlements:
+				if (s["buildings"] as Array).any(func(b: Dictionary) -> bool: return b["kind"] == kind):
+					settlement = s
+					break
+			var building: Dictionary = (settlement["buildings"] as Array).filter(func(b: Dictionary) -> bool: return b["kind"] == kind)[0]
+			services.enter_interior(kind, settlement, building)
+		for i in 90:
+			await get_tree().process_frame
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_pitch_deg", 50.0)
+		for i in 30:
+			await get_tree().process_frame
+		print("interior en ", player.global_position)
+	# "clima:N": fuerza el clima N (0 despejado, 2 lluvia, 3 tormenta, 4 nieve, 6 arena, 8 niebla).
+	if args.size() > 5 and args[5].begins_with("clima:"):
+		Weather.forced = int(args[5].substr(6))
+		for i in 200:
+			await get_tree().process_frame
+	# "lugar:tipo": lleva al jugador frente al primer lugar especial de ese tipo.
+	if args.size() > 5 and args[5].begins_with("lugar:"):
+		var world := scene.get_node("World") as WorldBuilder
+		var player := scene.get_node("Player") as Player
+		var place: Dictionary = world.layout.places_of(args[5].substr(6))[0]
+		var x := float(place["x"]) + 6.0
+		var z := float(place["z"]) + 22.0
+		world.ensure_area(Vector3(x, 0, z))
+		player.global_position = Vector3(x, world.height_at(x, z) + 1.0, z)
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.snap()
+		rig.set("_pitch_deg", 20.0)
+		rig.set("_zoom", rig.zoom_max)
+		for i in 120:
+			await get_tree().process_frame
 	# "ayuda": abre la pantalla de Ayuda.
 	if args.size() > 5 and args[5] == "ayuda":
 		var help := scene.get_node("Hud").get("_help") as HelpOverlay

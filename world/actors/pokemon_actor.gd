@@ -643,8 +643,16 @@ func set_ridden(rider: Node3D) -> void:
 
 ## Va bajo el jugador, en la superficie, mirando hacia donde avanza.
 func _process_ridden(delta: float) -> void:
-	var level := world.water_level_at(ridden_by.global_position.x, ridden_by.global_position.z) if world != null else ridden_by.global_position.y
 	var moving := Vector3((ridden_by as CharacterBody3D).velocity.x, 0.0, (ridden_by as CharacterBody3D).velocity.z)
+	var rider := ridden_by as Player
+	if rider != null and rider.ride != Player.Ride.NONE:
+		# Montado en tierra o volando: bajo el jugador.
+		global_position = ridden_by.global_position + Vector3(0, 0.02, 0)
+		velocity = Vector3.ZERO
+		_sprite.animate(moving, delta, moving.length() > walk_speed() or rider.ride == Player.Ride.FLY)
+		_rival_scan = RIVAL_SCAN_INTERVAL
+		return
+	var level := world.water_level_at(ridden_by.global_position.x, ridden_by.global_position.z) if world != null else ridden_by.global_position.y
 	global_position = Vector3(ridden_by.global_position.x, level - species.overworld_cell * world_pixel_size() * 0.35, ridden_by.global_position.z)
 	velocity = Vector3.ZERO
 	_sprite.animate(moving, delta, moving.length() > walk_speed())
@@ -1506,7 +1514,8 @@ func _fly(delta: float) -> void:
 	var total := Vector2(_escape_target.x - _fly_start.x, _escape_target.z - _fly_start.z).length()
 	var t := clampf(_state_time * FLY_SPEED / maxf(total, 1.0), 0.0, 1.0)
 	var flat := _fly_start.lerp(_escape_target, t)
-	global_position = Vector3(flat.x, flat.y + sin(t * PI) * FLY_HEIGHT, flat.z)
+	# El arco sube por encima del punto más alto (salida o llegada), aunque baje de una cumbre.
+	global_position = Vector3(flat.x, flat.y + sin(t * PI) * (FLY_HEIGHT + absf(_escape_target.y - _fly_start.y)), flat.z)
 	_sprite.animate((_escape_target - _fly_start).normalized() * FLY_SPEED, delta, true)
 	if t >= 1.0:
 		home = global_position

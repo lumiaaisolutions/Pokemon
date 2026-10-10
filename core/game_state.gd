@@ -20,6 +20,12 @@ var tips_seen := {}
 ## Premios del profesor ya entregados (ver Research.REWARDS).
 var rewards_claimed := {}
 
+## Semilla del mundo de la partida (0 = la de WorldConfig; una partida nueva elige una al azar).
+var world_seed: int = 0
+## Banderas del mundo: medallas, cintas, descubrimientos, tesoros, guardería,
+## regalos de vecinos, eventos, etc. (ver world/region/town_services.gd).
+var world_flags := {}
+
 ## --- Historia y Rotom Móvil (ver world/rotom/activity_manager.gd) ---
 ## Elenco al azar de la partida.
 var professor := ""

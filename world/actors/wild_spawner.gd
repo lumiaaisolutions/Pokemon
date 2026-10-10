@@ -301,7 +301,8 @@ func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesD
 	var total := 0.0
 	for species in candidates:
 		var occupied := 6.0 if ActivityManager.is_occupied(point) and (species.types.has(PokemonTypes.Type.DARK) or species.types.has(PokemonTypes.Type.POISON)) else 1.0
-		total += species.spawn_weight * home_factor(species.identifier, point) * time_factor(species) * occupied
+		var place := _world.type_affinity(species.types, point.x, point.z) * weather_factor(species)
+		total += species.spawn_weight * home_factor(species.identifier, point) * time_factor(species) * occupied * place
 		weights.append(total)
 	var index := weights.bsearch(_rng.randf() * total)
 	return candidates[mini(index, candidates.size() - 1)]
@@ -326,6 +327,9 @@ func _process(delta: float) -> void:
 		var actor := node as PokemonActor
 		if actor.global_position.distance_to(_player.global_position) > despawn_distance:
 			actor.queue_free()
+	# Dentro de un interior aparecen solo los Pokémon del interior.
+	if _player.global_position.x > WorldBuilder.INTERIOR_X:
+		return
 	_timer -= delta
 	if _timer > 0.0:
 		return
@@ -369,6 +373,11 @@ func spawn_one() -> PokemonActor:
 				water_mode = 1
 		var habitat := _world.habitat_at(point.x, point.z)
 		var species := pick_species(habitat, water_mode, zone, point)
+		# Lugares con Pokémon propios (Zona Safari, ruinas) y eventos del mundo.
+		if water_mode == 0:
+			var special := special_pick(point)
+			if special != null:
+				species = special
 		# Clima: en la nieve no hay Fuego, Planta ni Bicho; el Hielo vive en la nieve o el mar.
 		for retry in CLIMATE_RETRIES:
 			if species == null or climate_ok(species, point):
@@ -388,15 +397,44 @@ const CLIMATE_RETRIES := 8
 const COLD_MARGIN := 4.0
 
 
+## Pokémon de un lugar especial o de un evento en point (o null): Zona Safari, Unown
+## junto a las ruinas, y los de los eventos activos (brotes masivos).
+func special_pick(point: Vector3) -> SpeciesData:
+	var events := get_tree().get_first_node_in_group(&"world_events") as WorldEvents
+	if events != null:
+		var outbreak := events.outbreak_species_at(point)
+		if outbreak != null and _rng.randf() < 0.7:
+			return outbreak
+	var services := _world.structures.services if _world.structures != null else null
+	if services != null and not services.safari_place_at(point).is_empty() and _rng.randf() < 0.6:
+		var pool := services.safari_species()
+		if not pool.is_empty():
+			return pool[_rng.randi() % pool.size()]
+	if _world.structures != null:
+		var place := _world.structures.place_at(point.x, point.z, 50.0)
+		if not place.is_empty() and place["kind"] == "ruins" and _rng.randf() < 0.5:
+			return MenuStyle.species("unown")
+	return null
+
+
+## Peso por el clima del momento (ver Weather): lluvia más Agua, nieve más Hielo…
+func weather_factor(species: SpeciesData) -> float:
+	var weather := get_tree().get_first_node_in_group(&"weather") as Weather
+	return weather.type_factor(species.types) if weather != null else 1.0
+
+
 ## ¿Puede vivir species en point según el clima (frío de la nieve)?
 func climate_ok(species: SpeciesData, point: Vector3) -> bool:
-	var cold := point.y >= _world.config.snow_height - COLD_MARGIN
+	var biome := _world.region_biome_at(point.x, point.z)
+	if biome in [RegionLayout.Biome.DESERT, RegionLayout.Biome.VOLCANO] and species.types.has(PokemonTypes.Type.ICE):
+		return false
+	var cold := point.y >= _world.config.snow_height - COLD_MARGIN or biome == RegionLayout.Biome.TUNDRA
 	var types := species.types
 	if cold:
 		return not (types.has(PokemonTypes.Type.FIRE) or types.has(PokemonTypes.Type.GRASS) or types.has(PokemonTypes.Type.BUG)) \
 				or types.has(PokemonTypes.Type.ICE)
 	if types.has(PokemonTypes.Type.ICE):
-		return _world.habitat_at(point.x, point.z) == SpeciesData.Habitat.SEA
+		return _world.habitat_at(point.x, point.z) == SpeciesData.Habitat.SEA and _world.region_biome_at(point.x, point.z) != RegionLayout.Biome.BEACH
 	return true
 
 
@@ -462,9 +500,11 @@ func _spawn_pack(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habi
 
 
 ## Crea un salvaje de la especie dada en el punto (lo usan también las pruebas).
-func spawn_species(species: SpeciesData, point: Vector3, shiny: bool, swimming: bool, legendary := false) -> PokemonActor:
+func spawn_species(species: SpeciesData, point: Vector3, shiny: bool, swimming: bool, legendary := false, size := 1.0) -> PokemonActor:
 	var actor := ACTOR_SCENE.instantiate() as PokemonActor
 	actor.species = species
+	if not is_equal_approx(size, 1.0):
+		actor.size_factor = size
 	actor.legendary = legendary
 	actor.role = PokemonActor.Role.WILD
 	actor.shiny = shiny

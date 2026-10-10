@@ -66,6 +66,13 @@ func _on_body_entered(body: Node) -> void:
 	var actor := body as PokemonActor
 	if actor.role != PokemonActor.Role.WILD or actor.state == PokemonActor.State.DROP:
 		return
+	# Los Pokémon de un entrenador (gimnasio, Liga) no se capturan: la ball rebota.
+	if actor.has_meta("trainer"):
+		_done = true
+		PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.DUST, 0.5)
+		GameState.notice.emit("¡No puedes capturar el Pokémon de un entrenador!")
+		queue_free()
+		return
 	# El inicial de la ceremonia siempre se captura.
 	if actor.ceremony:
 		forced_result = 1

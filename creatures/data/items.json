@@ -49,6 +49,10 @@
       "name": "Tesoros"
     },
     {
+      "id": "mts",
+      "name": "MT"
+    },
+    {
       "id": "clave",
       "name": "Objetos clave"
     },
@@ -200,6 +204,16 @@
         "heals": true
       },
       "desc": "El Pokémon capturado queda con la vida completa."
+    },
+    {
+      "id": "safari-ball",
+      "name": "Safari Ball",
+      "pocket": "pokeballs",
+      "price": 0,
+      "ball": {
+        "rate": 1.5
+      },
+      "desc": "Solo sirve dentro de la Zona Safari (×1.5). Se devuelven al salir."
     },
     {
       "id": "potion",
@@ -647,6 +661,150 @@
       "key": true,
       "icon": "",
       "desc": "Premio del profesor: los Pokémon shiny aparecen 3 veces más."
+    },
+    {
+      "id": "tm-normal",
+      "name": "MT de tipo Normal",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 0,
+      "desc": "Enseña a tu compañero un movimiento de tipo Normal de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-fighting",
+      "name": "MT de tipo Lucha",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 1,
+      "desc": "Enseña a tu compañero un movimiento de tipo Lucha de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-flying",
+      "name": "MT de tipo Volador",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 2,
+      "desc": "Enseña a tu compañero un movimiento de tipo Volador de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-poison",
+      "name": "MT de tipo Veneno",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 3,
+      "desc": "Enseña a tu compañero un movimiento de tipo Veneno de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-ground",
+      "name": "MT de tipo Tierra",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 4,
+      "desc": "Enseña a tu compañero un movimiento de tipo Tierra de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-rock",
+      "name": "MT de tipo Roca",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 5,
+      "desc": "Enseña a tu compañero un movimiento de tipo Roca de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-bug",
+      "name": "MT de tipo Bicho",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 6,
+      "desc": "Enseña a tu compañero un movimiento de tipo Bicho de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-ghost",
+      "name": "MT de tipo Fantasma",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 7,
+      "desc": "Enseña a tu compañero un movimiento de tipo Fantasma de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-steel",
+      "name": "MT de tipo Acero",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 8,
+      "desc": "Enseña a tu compañero un movimiento de tipo Acero de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-fire",
+      "name": "MT de tipo Fuego",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 9,
+      "desc": "Enseña a tu compañero un movimiento de tipo Fuego de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-water",
+      "name": "MT de tipo Agua",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 10,
+      "desc": "Enseña a tu compañero un movimiento de tipo Agua de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-grass",
+      "name": "MT de tipo Planta",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 11,
+      "desc": "Enseña a tu compañero un movimiento de tipo Planta de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-electric",
+      "name": "MT de tipo Eléctrico",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 12,
+      "desc": "Enseña a tu compañero un movimiento de tipo Eléctrico de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-psychic",
+      "name": "MT de tipo Psíquico",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 13,
+      "desc": "Enseña a tu compañero un movimiento de tipo Psíquico de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-ice",
+      "name": "MT de tipo Hielo",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 14,
+      "desc": "Enseña a tu compañero un movimiento de tipo Hielo de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-dragon",
+      "name": "MT de tipo Dragón",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 15,
+      "desc": "Enseña a tu compañero un movimiento de tipo Dragón de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-dark",
+      "name": "MT de tipo Siniestro",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 16,
+      "desc": "Enseña a tu compañero un movimiento de tipo Siniestro de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
+    },
+    {
+      "id": "tm-fairy",
+      "name": "MT de tipo Hada",
+      "pocket": "mts",
+      "price": 3000,
+      "tm": 17,
+      "desc": "Enseña a tu compañero un movimiento de tipo Hada de su lista oficial (MT y tutor) que aún no tenga desbloqueado."
     }
   ],
   "recipes": [

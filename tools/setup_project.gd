@@ -98,7 +98,9 @@ func _setup_input_map() -> void:
 	_action("camera_up", [_key(KEY_UP), _axis(JOY_AXIS_RIGHT_Y, -1.0)])
 	_action("camera_down", [_key(KEY_DOWN), _axis(JOY_AXIS_RIGHT_Y, 1.0)])
 	_action("zoom_in", [_mouse(MOUSE_BUTTON_WHEEL_UP), _button(JOY_BUTTON_DPAD_RIGHT)])
-	_action("zoom_out", [_mouse(MOUSE_BUTTON_WHEEL_DOWN), _button(JOY_BUTTON_DPAD_LEFT)])
+	_action("zoom_out", [_mouse(MOUSE_BUTTON_WHEEL_DOWN)])
+	# Montar / bajarse: montura, vuelo o bicicleta.
+	_action("ride", [_key(KEY_V), _button(JOY_BUTTON_DPAD_LEFT)])
 
 	# Exploración
 	_action("interact", [_key(KEY_E), _button(JOY_BUTTON_A)])

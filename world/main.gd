@@ -23,6 +23,18 @@ func _ready() -> void:
 	_player.downed.connect(_on_player_downed)
 	_player.revived.connect(_on_player_revived)
 	($Hud as Hud).main = self
+	# Clima por bioma y eventos del mundo.
+	var weather := Weather.new()
+	weather.name = "Weather"
+	weather.world_path = NodePath("../World")
+	weather.player_path = NodePath("../Player")
+	add_child(weather)
+	var events := WorldEvents.new()
+	events.name = "Events"
+	events.world_path = NodePath("../World")
+	events.player_path = NodePath("../Player")
+	events.spawner_path = NodePath("../Spawner")
+	add_child(events)
 	# Menú (Esc / Options) en su propia capa, sobre el HUD.
 	var menu_layer := CanvasLayer.new()
 	menu_layer.name = "MenuLayer"
@@ -38,7 +50,10 @@ func _ready() -> void:
 		_player.global_position = SaveSystem.pending_position + Vector3.UP * 0.5
 		SaveSystem.pending_position = Vector3.INF
 	else:
+		# Partida nueva: en la plaza del pueblo inicial.
+		_player.global_position = ($World as WorldBuilder).start_position()
 		GameState.respawn_point = _player.global_position
+	($CameraRig as CameraRig).snap()
 	_warm_up_shaders()
 	if starter_ceremony and GameState.party.is_empty():
 		_start_ceremony.call_deferred()
@@ -84,6 +99,8 @@ func swap_companion(index: int) -> void:
 	var at := _player.global_position + _side_offset()
 	var was_out := companion_state == CompanionState.OUT
 	if companion != null:
+		if _player.mount == companion:
+			_player.end_ride()
 		if _player.riding == companion:
 			_player.riding = null
 		companion.queue_free()
@@ -156,6 +173,8 @@ func _physics_process(_delta: float) -> void:
 	if companion == null:
 		return
 	var in_water := _player.mode == Player.Mode.SWIM or _player.mode == Player.Mode.DIVE
+	if _player.ride == Player.Ride.MOUNT or _player.ride == Player.Ride.FLY:
+		return
 	if in_water and companion_state == CompanionState.OUT and not _busy and not companion.controlled:
 		if companion.can_surf():
 			if _player.riding == null:
@@ -236,6 +255,9 @@ var _wheel: CompanionWheel
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ride") and _player.mode == Player.Mode.WALK:
+		toggle_ride()
+		return
 	if event.is_action_pressed("companion") and companion != null and not _busy and _player.mode == Player.Mode.WALK:
 		_companion_pressed_at = Time.get_ticks_msec()
 	elif event.is_action_released("companion") and _companion_pressed_at >= 0:
@@ -253,6 +275,33 @@ func _unhandled_input(event: InputEvent) -> void:
 			_send_out_companion()
 
 
+## Montar / bajarse (V o ←): montura si el compañero es grande (y vuela si es volador;
+## despega con saltar), o la bicicleta si la tienes.
+func toggle_ride() -> String:
+	var message := ""
+	if _player.ride != Player.Ride.NONE:
+		if _player.ride == Player.Ride.FLY and _player.height_above_ground() > Player.LAND_HEIGHT:
+			message = "Baja primero (%s) para aterrizar." % InputHints.hint("dive")
+		else:
+			var was_bike := _player.ride == Player.Ride.BIKE
+			_player.end_ride()
+			message = "Te bajaste de la bicicleta." if was_bike else "Te bajaste de %s." % companion.species.display_name
+	elif companion != null and companion_state == CompanionState.OUT and not companion.controlled and not _busy and Player.can_mount(companion):
+		_player.start_mount(companion)
+		message = "¡Montas a %s!%s" % [companion.species.display_name,
+				(" Salta (%s) para volar." % InputHints.hint("jump")) if Player.can_carry_flying(companion) else ""]
+		Achievements.add("rides")
+	elif GameState.item_count("bicycle") > 0:
+		message = _player.toggle_bicycle()
+	elif companion != null and companion_state == CompanionState.OUT:
+		message = "%s es muy pequeño para montarlo." % companion.species.display_name
+	else:
+		message = "Saca a tu compañero para montarlo."
+	if message != "":
+		($Hud as Hud).show_toast(message)
+	return message
+
+
 func _update_wheel() -> void:
 	if _companion_pressed_at < 0 or GameState.party.size() < 2:
 		return
@@ -267,6 +316,8 @@ func _update_wheel() -> void:
 
 ## Lo regresa a su Pokéball: destello rojo, se encoge hacia Nate y desaparece.
 func _recall_companion() -> void:
+	if _player.mount == companion:
+		_player.end_ride()
 	_busy = true
 	companion.set_controlled(false)
 	companion.fight_target = null
