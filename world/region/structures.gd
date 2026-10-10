@@ -226,7 +226,7 @@ func _roof(parent: Node3D, width: float, depth: float, height: float, base_y: fl
 
 func _collider(parent: Node3D, size: Vector3, center: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
-	body.collision_layer = WorldBuilder.LAYER_OBSTACLES
+	body.collision_layer = WorldBuilder.LAYER_OBSTACLES | WorldBuilder.LAYER_CAMERA
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var collision := CollisionShape3D.new()
@@ -235,6 +235,13 @@ func _collider(parent: Node3D, size: Vector3, center: Vector3) -> StaticBody3D:
 	body.add_child(collision)
 	parent.add_child(body)
 	return body
+
+
+## Bloqueo solo para la cámara, del tamaño completo del modelo (techos y aleros
+## incluidos), para que nunca se meta dentro de un edificio.
+func _camera_blocker(parent: Node3D, size: Vector3, center: Vector3) -> void:
+	var body := _collider(parent, size, center)
+	body.collision_layer = WorldBuilder.LAYER_CAMERA
 
 
 func _sign(parent: Node3D, text: String, at: Vector3, color: Color = Color.WHITE) -> Label3D:
@@ -327,6 +334,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		root.add_child(model["node"])
 		_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, 0), Color(0.62, 0.6, 0.57))
 		_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.82), Vector3(0, size.y * 0.5, -size.z * 0.06))
+		_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, 0))
 		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
 		var model_title: String = BUILDING_NAMES[kind]
 		if kind == "gym":
@@ -401,7 +409,10 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 		_collider(root, Vector3(0.4, 3.0, 0.4), node.position + Vector3(0, 1.5, 0))
 		var light := OmniLight3D.new()
 		light.light_color = Color(1.0, 0.85, 0.55)
-		light.omni_range = 7.0
+		# Suave: antes la pared blanca del Centro se veía encendida de noche.
+		light.omni_range = 5.0
+		light.omni_attenuation = 1.6
+		light.light_specular = 0.0
 		light.light_energy = 0.0
 		light.position = node.position + Vector3(0, (lamp["size"] as Vector3).y, 0)
 		light.add_to_group(&"night_lights")
@@ -420,7 +431,10 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 				var piece_node: Node3D = piece["node"]
 				piece_node.position = Vector3(fx, 0.0, front + 2.6)
 				root.add_child(piece_node)
+				# Las cercas no se atraviesan.
+				_collider(root, Vector3(fence_size.x, maxf(fence_size.y, 1.0), maxf(fence_size.z, 0.35)), Vector3(fx, maxf(fence_size.y, 1.0) * 0.5, front + 2.6))
 		_box(root, Vector3(0.12, 1.0, 0.12), Vector3(1.8, 0.5, front + 2.2), Color(0.45, 0.3, 0.2))
+		_collider(root, Vector3(0.5, 1.3, 0.4), Vector3(1.8, 0.65, front + 2.2))
 		_box(root, Vector3(0.5, 0.35, 0.35), Vector3(1.8, 1.1, front + 2.2), [Color(0.85, 0.25, 0.25), Color(0.25, 0.45, 0.85)][rng.randi() % 2])
 
 
@@ -472,6 +486,7 @@ func _place(place: Dictionary) -> Node3D:
 			root.add_child(node)
 			_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.45, node.position.z), stone.darkened(0.2))
 			_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.85), Vector3(0, size.y * 0.5, node.position.z))
+			_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, node.position.z))
 			match kind:
 				"tower", "mansion":
 					for i in (18 if kind == "tower" else 6):

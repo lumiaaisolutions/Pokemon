@@ -869,6 +869,16 @@ func lose_track(seconds: float) -> void:
 		_enter(State.RETURN if role == Role.WILD else State.FOLLOW)
 
 
+## Olvida peleas y persecuciones (al entrar o salir de un interior): el compañero vuelve
+## a seguir a Nate y un salvaje regresa a su zona.
+func calm() -> void:
+	fight_target = null
+	_windup = 0.0
+	velocity = Vector3.ZERO
+	if state in [State.CHASE, State.FIGHT, State.APPROACH, State.AMBUSH]:
+		_enter(State.RETURN if role == Role.WILD else State.FOLLOW)
+
+
 ## ¿Está esquivando (invulnerable)?
 func is_dashing() -> bool:
 	return _dash_time > 0.0

@@ -96,9 +96,11 @@ func _ready() -> void:
 		menu.show_tab(int(args[5].substr(5)))
 		for i in 20:
 			await get_tree().process_frame
-	# "hora:H": pone el reloj a la hora H (p. ej. hora:22).
-	if args.size() > 5 and args[5].begins_with("hora:"):
-		GameState.play_time = (float(args[5].substr(5)) - GameState.START_HOUR) * 60.0
+	# "hora:H": pone el reloj a la hora H (p. ej. hora:22). También como 7.º argumento
+	# para combinarla con otra opción (p. ej. pueblo hora:21).
+	var hour_arg := args[5] if args.size() > 5 and args[5].begins_with("hora:") else (args[6] if args.size() > 6 and args[6].begins_with("hora:") else "")
+	if hour_arg != "":
+		GameState.play_time = (float(hour_arg.substr(5)) - GameState.START_HOUR) * 60.0
 		if GameState.play_time < 0.0:
 			GameState.play_time += GameState.DAY_SECONDS
 		for i in 30:
@@ -130,6 +132,64 @@ func _ready() -> void:
 		rig.set("_zoom", rig.zoom_max)
 		for i in 150:
 			await get_tree().process_frame
+	# "lago:N": el jugador en la orilla del lago N (o del primero en pantano con "lago:pantano").
+	if args.size() > 5 and args[5].begins_with("lago:"):
+		var world := scene.get_node("World") as WorldBuilder
+		var player := scene.get_node("Player") as Player
+		var which := args[5].substr(5)
+		var lake: Vector4 = world.layout.lakes[0]
+		if which == "charca":
+			# Primera charca de pantano cerca del inicio (zonas en espiral).
+			var o := world.start_position()
+			var found := false
+			for ring in range(1, 30):
+				for k in 16:
+					var a := TAU * k / 16.0
+					var ponds: Array = world._ponds_at(o.x + cos(a) * ring * 64.0, o.z + sin(a) * ring * 64.0)
+					if not ponds.is_empty() and not found:
+						var p4: Vector4 = ponds[0]
+						lake = Vector4(p4.x, p4.y, p4.z, p4.w)
+						found = true
+		elif which == "pantano":
+			for l: Vector4 in world.layout.lakes:
+				if world.layout.biome_at(l.x, l.y) in [RegionLayout.Biome.SWAMP, RegionLayout.Biome.TOXIC_SWAMP]:
+					lake = l
+					break
+		elif which.is_valid_int():
+			lake = world.layout.lakes[mini(int(which), world.layout.lakes.size() - 1)]
+		var at := Vector2(lake.x, lake.y) + Vector2(1, 0) * (lake.z + 14.0)
+		world.ensure_area(Vector3(at.x, 0, at.y))
+		player.global_position = Vector3(at.x, world.surface_height_at(at.x, at.y) + 0.5, at.y)
+		var rig := scene.get_node("CameraRig") as CameraRig
+		rig.set("_yaw_deg", 90.0)
+		rig.set("_pitch_deg", 12.0)
+		print("lago en ", lake, " bioma ", world.layout.biome_at(lake.x, lake.y))
+		for i in 120:
+			await get_tree().process_frame
+	# "edificio:tipo:grados": el jugador a 9 m del primer edificio de ese tipo (center,
+	# house, mart…) en el ángulo dado (0 = de frente, 180 = por detrás), mirándolo.
+	if args.size() > 5 and args[5].begins_with("edificio:"):
+		var parts := args[5].split(":")
+		var world := scene.get_node("World") as WorldBuilder
+		var player := scene.get_node("Player") as Player
+		var target: Dictionary = {}
+		var owner_town: Dictionary = {}
+		for s: Dictionary in world.layout.settlements:
+			for b: Dictionary in s["buildings"]:
+				if b["kind"] == parts[1] and target.is_empty():
+					target = b
+					owner_town = s
+		if not target.is_empty():
+			var front := Vector2(float(owner_town["x"]) - float(target["x"]), float(owner_town["z"]) - float(target["z"])).normalized()
+			var dir := front.rotated(deg_to_rad(float(parts[2]) if parts.size() > 2 else 0.0))
+			var at := Vector2(float(target["x"]), float(target["z"])) + dir * 9.0
+			world.ensure_area(Vector3(at.x, 0, at.y))
+			player.global_position = Vector3(at.x, world.surface_height_at(at.x, at.y) + 0.5, at.y)
+			var rig := scene.get_node("CameraRig") as CameraRig
+			rig.set("_yaw_deg", rad_to_deg(atan2(dir.x, dir.y)))
+			rig.set("_pitch_deg", 25.0)
+			for i in 90:
+				await get_tree().process_frame
 	# "interior:tipo": entra al interior más cercano de ese tipo (center, mart, cave…).
 	if args.size() > 5 and args[5].begins_with("interior:"):
 		var kind := args[5].substr(9)

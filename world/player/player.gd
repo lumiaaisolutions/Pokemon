@@ -117,6 +117,9 @@ func _physics_process(delta: float) -> void:
 		return
 	_update_water_mode()
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	# Hablando con alguien (caja de diálogo) no se mueve.
+	if DialogBox.blocking:
+		input = Vector2.ZERO
 	# En combate el teclado mueve a tu Pokémon; tú solo te mueves al apuntar la Pokéball.
 	var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
 	if battle != null and battle.active and not ($ThrowAim as ThrowAim).is_aiming():

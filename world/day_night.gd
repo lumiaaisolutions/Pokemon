@@ -75,7 +75,9 @@ func _apply(hour: float) -> void:
 	if lamps_on != _lamps_on:
 		_lamps_on = lamps_on
 		for light in get_tree().get_nodes_in_group(&"night_lights"):
-			(light as Light3D).light_energy = 1.6 if lamps_on else 0.0
+			(light as Light3D).light_energy = 0.75 if lamps_on else 0.0
+		for material in BuildingModels.window_materials:
+			material.emission_energy_multiplier = 0.35 if lamps_on else 0.0
 	if _sky != null:
 		_sky.sky_top_color = (a[3] as Color).lerp(b[3], t)
 		_sky.sky_horizon_color = (a[4] as Color).lerp(b[4], t)

@@ -74,7 +74,53 @@ static func instance(kind: String, variant: int) -> Dictionary:
 	holder.add_child(node)
 	node.position = Vector3(-center.x, -box.position.y, -center.z) * SCALE
 	var size := box.size * SCALE
+	# Núcleo sólido: los modelos de la DS no tienen las caras que nunca se veían (la parte
+	# de atrás); por dentro va una caja del color de sus paredes para tapar los huecos.
+	if not kind in DECOR_KINDS:
+		var core := MeshInstance3D.new()
+		core.name = "Core"
+		var cube := BoxMesh.new()
+		cube.size = Vector3(size.x * 0.86, size.y * 0.72, size.z * 0.86)
+		core.mesh = cube
+		core.position = Vector3(0, cube.size.y * 0.5, 0)
+		var material := StandardMaterial3D.new()
+		material.albedo_color = _wall_color(name)
+		material.roughness = 1.0
+		material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		core.material_override = material
+		core.visibility_range_end = 520.0
+		holder.add_child(core)
 	return {"node": holder, "size": size, "front": size.z * 0.5}
+
+
+## Tipos que son decoración (sin núcleo).
+const DECOR_KINDS := ["lamp", "fence", "sign", "bench", "stump"]
+static var _wall_colors := {}
+
+
+## Color promedio de la textura más grande del modelo (sus paredes), algo oscurecido.
+static func _wall_color(name: String) -> Color:
+	if _wall_colors.has(name):
+		return _wall_colors[name]
+	var best: Image = null
+	for file in DirAccess.get_files_at(ROOT + name):
+		if not file.ends_with(".png") or file.contains("kage") or file.contains("mado") or file.contains("win"):
+			continue
+		var texture := load(ROOT + name + "/" + file) as Texture2D
+		var image := texture.get_image() if texture != null else null
+		if image != null and (best == null or image.get_width() * image.get_height() > best.get_width() * best.get_height()):
+			best = image
+	var color := Color(0.6, 0.58, 0.55)
+	if best != null:
+		var small := best.duplicate() as Image
+		if small.is_compressed():
+			small.decompress()
+		small.resize(1, 1, Image.INTERPOLATE_BILINEAR)
+		color = small.get_pixel(0, 0)
+		color.a = 1.0
+	color = color.darkened(0.15)
+	_wall_colors[name] = color
+	return color
 
 
 static func _scene(name: String) -> PackedScene:
@@ -99,6 +145,10 @@ static func _local_transform(node: Node3D, root: Node3D) -> Transform3D:
 	return transform
 
 
+## Materiales de ventanas (compartidos): DayNight les sube la emisión de noche.
+static var window_materials: Array[BaseMaterial3D] = []
+
+
 ## Píxel nítido y recorte de transparencias (ventanas y sombras del modelo).
 static func _fix_materials(mesh: MeshInstance3D) -> void:
 	if mesh.mesh == null:
@@ -118,6 +168,14 @@ static func _fix_materials(mesh: MeshInstance3D) -> void:
 				base.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 				var texture := base.albedo_texture
 				var path := texture.resource_path if texture != null else ""
+				# Ventanas ("mado", "win"): brillan cálidas de noche (DayNight las enciende).
+				if path.get_file().contains("mado") or path.get_file().contains("win"):
+					base.emission_enabled = true
+					base.emission = Color(1.0, 0.72, 0.38)
+					base.emission_texture = texture
+					var hour := GameState.clock_hour()
+					base.emission_energy_multiplier = 0.35 if hour < 6.5 or hour >= 18.5 else 0.0
+					window_materials.append(base)
 				if path.contains("kage"):
 					# Sombra pintada del modelo: semitransparente.
 					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

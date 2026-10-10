@@ -419,12 +419,11 @@ func _send_out_companion() -> void:
 	var from := _hand_position()
 	var to := _player.global_position + _side_offset()
 	to.y = ($World as WorldBuilder).surface_height_at(to.x, to.z) + 0.15
+	# La ball se abre en la mano con un destello y el relámpago rojo va hasta donde
+	# aparece el Pokémon, que se forma rojo y crece.
 	fx.ball.global_position = from
-	var flight := create_tween()
-	flight.tween_method(func(t: float) -> void:
-		fx.ball.global_position = from.lerp(to, t) + Vector3.UP * sin(t * PI) * 1.2, 0.0, 1.0, 0.4)
-	await flight.finished
-	PixelBurst.spawn(self, to + Vector3.UP * 0.2, PixelBurst.Kind.SMOKE, 0.5)
+	fx.flash(from, 0.8)
+	PixelBurst.spawn(self, to + Vector3.UP * 0.2, PixelBurst.Kind.SMOKE, 0.4)
 	companion.process_mode = Node.PROCESS_MODE_INHERIT
 	companion.visible = true
 	companion.global_position = to + Vector3.UP * 0.15
@@ -435,10 +434,14 @@ func _send_out_companion() -> void:
 	var height := companion.species.overworld_cell * companion.world_pixel_size()
 	var tween := create_tween()
 	tween.tween_method(func(t: float) -> void:
-		fx.set_beam(to, to + Vector3.UP * height * t)
-		sprite.scale = Vector3.ONE * lerpf(0.05, 1.0, t), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		fx.set_beam(from, to + Vector3.UP * height * 0.45 * t)
+		sprite.scale = Vector3.ONE * lerpf(0.05, 1.0, t), 0.0, 1.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func() -> void:
+		fx.hide_beam()
+		fx.flash(to + Vector3.UP * height * 0.45, 1.2))
 	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 	await tween.finished
+	await get_tree().create_timer(0.2).timeout
 	fx.queue_free()
 	companion_state = CompanionState.OUT
 	($Hud as Hud).show_toast("¡Adelante, %s!" % companion.species.display_name)

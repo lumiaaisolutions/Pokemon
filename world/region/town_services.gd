@@ -75,9 +75,14 @@ func move_party_to(point: Vector3) -> void:
 	p.global_position = point
 	p.velocity = Vector3.ZERO
 	var c := companion()
+	var battle := main().get_node_or_null("Battle") as BattleManager
+	if battle != null and battle.active:
+		battle.finish("flee")
 	if c != null and c.visible and not c.is_queued_for_deletion():
 		c.global_position = point + Vector3(1.4, 0.2, 1.0)
 		c.velocity = Vector3.ZERO
+		# Sin objetivos de afuera (si no, se queda pegado a la pared queriendo pelear).
+		c.calm()
 	var rig := main().get_node_or_null("CameraRig") as CameraRig
 	if rig != null:
 		rig.snap()

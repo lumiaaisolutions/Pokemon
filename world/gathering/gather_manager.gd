@@ -108,6 +108,30 @@ func _near_water(x: float, z: float) -> bool:
 	return false
 
 
+## Qué da este punto hoy (fijo por punto y día): es el mismo fruto que se ve en él.
+func item_for(node: Node3D) -> String:
+	var kind: Array = node.get_meta("kind")
+	var table: Dictionary = kind[2]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s:%d" % [node.get_meta("id"), GameState.game_day()])
+	var total := 0
+	for id: String in table:
+		total += int(table[id])
+	var roll := rng.randi_range(1, total)
+	for id: String in table:
+		roll -= int(table[id])
+		if roll <= 0:
+			return id
+	return table.keys()[0]
+
+
+func _refresh_fruit(node: Node3D) -> void:
+	var texture := Items.icon(item_for(node))
+	for child in node.get_node("Fruit").get_children():
+		if child is Sprite3D:
+			(child as Sprite3D).texture = texture
+
+
 func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	var node := Node3D.new()
 	node.name = "Gather_%s" % id
@@ -133,7 +157,7 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	node.add_child(fruit)
 	for spot: Vector3 in FRUIT_SPOTS.get(kind[0], [Vector3(0, 0.1, 0)]):
 		var sprite := Sprite3D.new()
-		sprite.texture = Items.icon(kind[1])
+		sprite.texture = Items.icon(item_for(node))
 		sprite.pixel_size = 0.022 if kind[0] in ["Arbusto de bayas", "Árbol de bonguri"] else 0.03
 		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -183,6 +207,8 @@ func _process(_delta: float) -> void:
 		var fruit := node.get_node("Fruit") as Node3D
 		if fruit.visible != available:
 			fruit.visible = available
+			if available:
+				_refresh_fruit(node)
 		if not available or _player.mode != Player.Mode.WALK:
 			continue
 		var distance := node.global_position.distance_to(_player.global_position)
@@ -191,7 +217,7 @@ func _process(_delta: float) -> void:
 			best = node
 	if best != _nearest:
 		_nearest = best
-		prompt_changed.emit("" if best == null else InputHints.label("interact", "Recoger: %s" % (best.get_meta("kind") as Array)[0]))
+		prompt_changed.emit("" if best == null else InputHints.label("interact", "Recoger: %s (%s)" % [Items.display_name(item_for(best)), String((best.get_meta("kind") as Array)[0]).to_lower()]))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -203,17 +229,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Recoge un punto: de 1 a 3 objetos de su tabla; vuelve a crecer al día siguiente.
 func collect(node: Node3D) -> Dictionary:
 	var kind: Array = node.get_meta("kind")
-	var table: Dictionary = kind[2]
-	var total := 0
-	for id: String in table:
-		total += int(table[id])
-	var roll := _rng.randi_range(1, total)
-	var picked: String = table.keys()[0]
-	for id: String in table:
-		roll -= int(table[id])
-		if roll <= 0:
-			picked = id
-			break
+	var picked := item_for(node)
 	var amount := _rng.randi_range(int(kind[3]), int(kind[4]))
 	GameState.add_item(picked, amount)
 	GameState.gathered.emit(picked, amount)

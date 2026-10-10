@@ -22,6 +22,9 @@ const MAX_GRASS_ACTORS := 16
 const LAYER_TERRAIN := 1
 const LAYER_OBSTACLES := 2
 const LAYER_FRONTIER := 16
+## Solo para la cámara: los edificios y lugares de fuera la detienen (sus colisionadores
+## están en obstáculos + esta capa); los muros de los interiores no, para ver la sala.
+const LAYER_CAMERA := 4
 ## Capa visual de los sprites (para la cámara del mapa y efectos).
 const VISUAL_LAYER_SPRITES := 2
 ## Familia de suelo dominante (compatibilidad: mapa, pruebas y efectos).
@@ -795,7 +798,18 @@ func _ponds_of(key: Vector2i) -> Array:
 			var margin := radius + POND_BANK + 3.0
 			var px := key.x * CHUNK + rng.randf_range(margin, CHUNK - margin)
 			var pz := key.y * CHUNK + rng.randf_range(margin, CHUNK - margin)
-			var level := layout.height_at(px, pz) - 0.3
+			# Nivel = el punto más bajo de la orilla (antes, el centro: en pendiente el agua
+			# quedaba flotando del lado de abajo). En pendientes fuertes no hay charca.
+			var rim_low := INF
+			var rim_high := -INF
+			for j in 12:
+				var angle := TAU * j / 12.0
+				var rim := layout.height_at(px + cos(angle) * (radius + POND_BANK), pz + sin(angle) * (radius + POND_BANK))
+				rim_low = minf(rim_low, rim)
+				rim_high = maxf(rim_high, rim)
+			if rim_high - rim_low > 2.5:
+				continue
+			var level := minf(layout.height_at(px, pz), rim_low) - 0.3
 			if level < layout.sea_level + 0.5 or _in_settlement(px, pz, margin) or layout.road_info(px, pz).x < margin:
 				continue
 			if ponds.any(func(p: Vector4) -> bool: return Vector2(p.x, p.y).distance_to(Vector2(px, pz)) < p.z + radius + POND_BANK * 2.0):

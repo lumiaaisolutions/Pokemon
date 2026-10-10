@@ -72,7 +72,7 @@ func _run() -> void:
 	var normal_length := arm.spring_length
 	Input.action_press("aim")
 	await _frames(40)
-	_check(rig.aiming and arm.spring_length < normal_length - 1.0, "al apuntar la cámara debe acercarse al hombro")
+	_check(rig.aiming and arm.spring_length < normal_length - 1.0, "al apuntar la cámara debe acercarse al hombro (apunta=%s, %.2f -> %.2f)" % [rig.aiming, normal_length, arm.spring_length])
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	_check(aim.get_children().any(func(d: Node) -> bool: return (d as Sprite3D).visible), "al apuntar debe verse el arco de la trayectoria")
 	# Lanzar: descuenta una ball y la ball vuela y cae al suelo sin atravesarlo.

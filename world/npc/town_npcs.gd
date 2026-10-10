@@ -21,8 +21,16 @@ const DESPAWN_DISTANCE := 320.0
 const WALK_SPEED := 2.2
 const TALK_RADIUS := 2.2
 const PER_KIND := {"city": 9, "town": 6, "village": 4, "cabins": 2}
-const NAMES := ["Ana", "Beto", "Carla", "Dani", "Elena", "Fito", "Gaby", "Hugo", "Inés", "Joel", "Karla", "Leo", "Mari", "Nico",
-		"Olga", "Paco", "Quique", "Rosa", "Santi", "Tere", "Uri", "Vale", "Wendy", "Ximena", "Yayo", "Zoe"]
+## Nombres por género (el del sprite): antes una sola lista daba "Mari" a un chico.
+const MALE_NAMES := ["Beto", "Fito", "Hugo", "Joel", "Leo", "Nico", "Paco", "Quique", "Santi", "Uri", "Yayo", "Dani", "Iván", "Toño", "Raúl", "Memo"]
+const FEMALE_NAMES := ["Ana", "Carla", "Elena", "Gaby", "Inés", "Karla", "Mari", "Olga", "Rosa", "Tere", "Vale", "Wendy", "Ximena", "Zoe", "Lupita", "Sofi"]
+const NAMES := MALE_NAMES + FEMALE_NAMES
+
+
+## Nombre al azar para un personaje de ese género ("male" o "female").
+static func name_for(gender: String, rng: RandomNumberGenerator) -> String:
+	var list: Array = MALE_NAMES if gender == "male" else FEMALE_NAMES
+	return list[rng.randi() % list.size()]
 const ROLES := ["vecino", "vendedor", "enfermera", "investigador", "entrenador", "niño", "abuela"]
 ## Tintes de ropa para que no se vean iguales a los protagonistas.
 const PET_POOL := preload("res://creatures/data/basic_pool.tres")
@@ -102,7 +110,8 @@ func _populate(index: int, settlement: Dictionary) -> Array:
 		var work: Dictionary = works[rng.randi() % works.size()] if not works.is_empty() and rng.randf() < 0.6 else {}
 		var entry: Dictionary = PlayerCharacters.LIST[rng.randi() % PlayerCharacters.LIST.size()]
 		var npc := {
-			"name": NAMES[rng.randi() % NAMES.size()],
+			"look": entry["id"],
+			"name": name_for(entry["gender"], rng),
 			"role": ROLES[rng.randi() % ROLES.size()] if work.is_empty() else {"center": "enfermera", "mart": "vendedor", "lab": "investigador", "gym": "entrenador", "contest": "coordinador"}[work["kind"]],
 			"town": settlement["name"],
 			"home": _door(settlement, home) if not home.is_empty() else plaza + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)),
@@ -167,6 +176,11 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 		return
 	var node: Node3D = npc["node"]
 	var sprite := node.get_node("Sprite") as DirectionalSprite
+	# Hablando contigo: se detiene y te mira.
+	if npc.get("talking", false) or npc.get("battling_player", false):
+		sprite.look_at_point(_player.global_position)
+		sprite.animate(Vector3.ZERO, delta)
+		return
 	var goal := goal_for(npc, hour, stormy)
 	if goal != npc["goal"]:
 		npc["goal"] = goal
@@ -200,7 +214,7 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 			npc["wait"] = _rng.randf_range(4.0, 10.0)
 			npc["spot"] = (npc["plaza"] as Vector2) + Vector2(_rng.randf_range(-7.0, 7.0), _rng.randf_range(-7.0, 7.0))
 			npc["route"] = [npc["spot"]] as Array[Vector2]
-	node.global_position.y = _world.surface_height_at(node.global_position.x, node.global_position.z)
+	node.global_position.y = _stand_y(node)
 	if velocity == Vector3.ZERO and node.visible and _player.global_position.distance_to(node.global_position) < 4.0:
 		sprite.look_at_point(_player.global_position)
 	sprite.animate(velocity, delta)
@@ -212,6 +226,72 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 
 
 ## Pokémon pequeño de un habitante (sprite de 4 direcciones que lo sigue).
+## Altura donde se para: en el suelo, o nadando (hundido hasta medio cuerpo, con
+## ondas) si el agua es profunda.
+func _stand_y(node: Node3D) -> float:
+	return swim_height(_world, node)
+
+
+static func swim_height(world: WorldBuilder, node: Node3D) -> float:
+	var x := node.global_position.x
+	var z := node.global_position.z
+	var ground := world.surface_height_at(x, z)
+	var depth := world.water_depth_at(x, z)
+	var swimming := depth > 0.55
+	_set_ripples(node, swimming)
+	return world.water_level_at(x, z) - 0.6 if swimming else ground
+
+
+## Ondas en el agua alrededor de quien nada.
+static func _set_ripples(node: Node3D, on: bool) -> void:
+	var ripples := node.get_node_or_null("Ripples") as CPUParticles3D
+	if ripples == null:
+		if not on:
+			return
+		ripples = CPUParticles3D.new()
+		ripples.name = "Ripples"
+		var quad := QuadMesh.new()
+		quad.size = Vector2(0.9, 0.9)
+		quad.orientation = PlaneMesh.FACE_Y
+		var material := StandardMaterial3D.new()
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.vertex_color_use_as_albedo = true
+		material.albedo_texture = _ring_texture()
+		quad.material = material
+		ripples.mesh = quad
+		ripples.amount = 3
+		ripples.lifetime = 1.2
+		ripples.gravity = Vector3.ZERO
+		ripples.scale_amount_min = 0.6
+		ripples.scale_amount_max = 1.8
+		var grow := Curve.new()
+		grow.add_point(Vector2(0, 0.4))
+		grow.add_point(Vector2(1, 1.6))
+		ripples.scale_amount_curve = grow
+		var fade := Gradient.new()
+		fade.colors = PackedColorArray([Color(1, 1, 1, 0.7), Color(1, 1, 1, 0)])
+		ripples.color_ramp = fade
+		ripples.position.y = 0.62
+		node.add_child(ripples)
+	ripples.emitting = on
+
+
+static var _ring: Texture2D
+
+
+static func _ring_texture() -> Texture2D:
+	if _ring == null:
+		var image := Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+		for y in 32:
+			for x in 32:
+				var d := Vector2(x - 15.5, y - 15.5).length()
+				if d > 12.0 and d < 15.0:
+					image.set_pixel(x, y, Color(1, 1, 1, 0.9))
+		_ring = ImageTexture.create_from_image(image)
+	return _ring
+
+
 func _make_pet(rng: RandomNumberGenerator) -> Node3D:
 	var species: SpeciesData = null
 	for attempt in 20:
@@ -240,7 +320,7 @@ func _follow(pet: Node3D, owner_node: Node3D, owner_sprite: DirectionalSprite, v
 		pet.global_position = behind
 	else:
 		pet.global_position = before.lerp(behind, minf(delta * 3.0, 1.0))
-	pet.global_position.y = _world.surface_height_at(pet.global_position.x, pet.global_position.z)
+	pet.global_position.y = _stand_y(pet)
 	var sprite := pet.get_node_or_null("Sprite") as DirectionalSprite
 	if sprite != null:
 		sprite.animate((pet.global_position - before) / maxf(delta, 0.001) if velocity != Vector3.ZERO else Vector3.ZERO, delta)
@@ -254,6 +334,11 @@ func _update_travelers() -> void:
 	for traveler: Dictionary in _travelers.duplicate():
 		var node: Node3D = traveler["node"]
 		if node.global_position.distance_to(p) > 220.0 or p.x > WorldBuilder.INTERIOR_X:
+			# Su campamento se va con él (antes quedaba la fogata encendida de día).
+			if traveler["camp"] != null and is_instance_valid(traveler["camp"]):
+				(traveler["camp"] as Node).queue_free()
+			if traveler["pet"] != null and is_instance_valid(traveler["pet"]):
+				(traveler["pet"] as Node).queue_free()
 			node.queue_free()
 			_world.structures.remove_point(traveler["point"])
 			_travelers.erase(traveler)
@@ -285,8 +370,8 @@ func _make_traveler(road_index: int, point_index: int, at: Vector2) -> Dictionar
 	sprite.material_override = SpriteMaterials.for_texture(sprite.texture, TINTS[_rng.randi() % TINTS.size()])
 	node.global_position = Vector3(at.x, _world.surface_height_at(at.x, at.y), at.y)
 	var names := _world.layout.settlements.map(func(s: Dictionary) -> String: return s["name"])
-	var traveler := {"node": node, "road": road_index, "index": point_index, "dir": 1 if _rng.randf() < 0.5 else -1, "camp": null,
-			"name": NAMES[_rng.randi() % NAMES.size()], "from": names[_rng.randi() % names.size()], "to": names[_rng.randi() % names.size()]}
+	var traveler := {"look": entry["id"], "node": node, "road": road_index, "index": point_index, "dir": 1 if _rng.randf() < 0.5 else -1, "camp": null,
+			"name": name_for(entry["gender"], _rng), "from": names[_rng.randi() % names.size()], "to": names[_rng.randi() % names.size()]}
 	traveler["pet"] = _make_pet(_rng) if _rng.randf() < 0.6 else null
 	traveler["point"] = _world.structures.add_point(node.global_position, "Hablar con %s (viajero)" % traveler["name"], _talk_traveler.bind(traveler), TALK_RADIUS)
 	return traveler
@@ -297,7 +382,14 @@ func _update_traveler(traveler: Dictionary, hour: float, delta: float) -> void:
 	var node: Node3D = traveler["node"]
 	var sprite := node.get_node("Sprite") as DirectionalSprite
 	var velocity := Vector3.ZERO
+	if traveler.get("talking", false) or traveler.get("battling_player", false):
+		sprite.look_at_point(_player.global_position)
+		sprite.animate(Vector3.ZERO, delta)
+		return
 	var night := hour >= 21.0 or hour < 6.0
+	# Nunca acampan dentro de un pueblo: siguen caminando hasta salir.
+	if night and traveler["camp"] == null and not _world.settlement_at(node.global_position.x, node.global_position.z, 25.0).is_empty():
+		night = false
 	if night:
 		if traveler["camp"] == null:
 			traveler["camp"] = _make_camp(node.global_position + Vector3(2.0, 0, 0))
@@ -320,7 +412,7 @@ func _update_traveler(traveler: Dictionary, hour: float, delta: float) -> void:
 			node.global_position.x += move.x
 			node.global_position.z += move.y
 			velocity = Vector3(to.normalized().x, 0, to.normalized().y) * TRAVELER_SPEED
-	node.global_position.y = _world.surface_height_at(node.global_position.x, node.global_position.z)
+	node.global_position.y = _stand_y(node)
 	if velocity == Vector3.ZERO and _player.global_position.distance_to(node.global_position) < 4.0:
 		sprite.look_at_point(_player.global_position)
 	sprite.animate(velocity, delta)
@@ -367,17 +459,6 @@ func _make_camp(at: Vector3) -> Node3D:
 	flames.position = Vector3(-2.0, 0.2, 1.0)
 	camp.add_child(flames)
 	return camp
-
-
-func _talk_traveler(traveler: Dictionary) -> void:
-	var hour := GameState.clock_hour()
-	var text := "Voy de %s a %s. ¡Los caminos están llenos de Pokémon!" % [traveler["from"], traveler["to"]] if hour >= 6.0 and hour < 21.0 \
-			else "Esta noche acampo aquí. Mañana sigo hacia %s." % traveler["to"]
-	if _rng.randf() < 0.3:
-		var gift: String = ["oran-berry", "potion", "great-ball", "repel"][_rng.randi() % 4]
-		GameState.add_item(gift, 1)
-		text += " Toma, para el camino: %s." % Items.display_name(gift)
-	GameState.notice.emit("%s (viajero): %s" % [traveler["name"], text])
 
 
 func travelers() -> Array:
@@ -435,7 +516,7 @@ func _run_practice(delta: float) -> void:
 	pet_a.global_position = center - axis * (1.5 - lunge_a)
 	pet_b.global_position = center + axis * (1.5 - lunge_b)
 	for pet: Node3D in [pet_a, pet_b]:
-		pet.global_position.y = _world.surface_height_at(pet.global_position.x, pet.global_position.z)
+		pet.global_position.y = _stand_y(pet)
 		var sprite := pet.get_node_or_null("Sprite") as DirectionalSprite
 		if sprite != null:
 			sprite.look_at_point(center)
@@ -482,13 +563,13 @@ func _talk(npc: Dictionary) -> void:
 	var weather := ""
 	match Weather.current:
 		Weather.Kind.RAIN, Weather.Kind.STORM:
-			weather = " Con esta lluvia salen más Pokémon de tipo Agua."
+			weather = "Con esta lluvia salen más Pokémon de tipo Agua."
 		Weather.Kind.SNOW, Weather.Kind.BLIZZARD:
-			weather = " ¡Qué frío! Dicen que con nieve salen Pokémon de Hielo."
+			weather = "¡Qué frío! Dicen que con nieve salen Pokémon de Hielo."
 		Weather.Kind.FOG:
-			weather = " Con niebla aparecen Pokémon Fantasma..."
+			weather = "Con niebla aparecen Pokémon Fantasma..."
 		Weather.Kind.SAND:
-			weather = " La arena trae Pokémon de Tierra y Roca."
+			weather = "La arena trae Pokémon de Tierra y Roca."
 	var role_line: String = {
 		"vendedor": "La tienda abre de 8:00 a 21:00. Hoy hay MT nuevas.",
 		"enfermera": "En el Centro Pokémon curamos a tu equipo a cualquier hora.",
@@ -498,7 +579,116 @@ func _talk(npc: Dictionary) -> void:
 		"niño": "¡Un día voy a montar un Pokémon volador como tú!",
 		"abuela": "En mis tiempos íbamos a las aguas termales a descansar.",
 	}.get(npc["role"], "Vivo aquí en %s. ¿Ya conoces todo el pueblo?" % npc["town"])
-	GameState.notice.emit("%s: %s %s%s" % [npc["name"], greeting, role_line, weather])
+	var lines: Array = [greeting + " " + role_line]
+	if weather != "":
+		lines.append(weather)
+	_converse(npc, lines, String(npc["role"]))
+
+
+func _talk_traveler(traveler: Dictionary) -> void:
+	var hour := GameState.clock_hour()
+	var lines: Array = ["Voy de %s a %s. ¡Los caminos están llenos de Pokémon!" % [traveler["from"], traveler["to"]] if hour >= 6.0 and hour < 21.0 \
+			else "Esta noche acampo aquí. Mañana sigo hacia %s." % traveler["to"]]
+	# Un regalo de vez en cuando (una vez al día por viajero).
+	var gift_key := "gift:%s:%d" % [traveler["name"], GameState.game_day()]
+	if not GameState.world_flags.has(gift_key) and _rng.randf() < 0.3:
+		GameState.world_flags[gift_key] = true
+		var gift: String = ["oran-berry", "potion", "great-ball", "repel"][_rng.randi() % 4]
+		lines.append("Toma, para el camino: %s." % Items.display_name(gift))
+		traveler["gift"] = gift
+	_converse(traveler, lines, "viajero")
+
+
+## Ganas de pelear hoy según su oficio (acordado con Fernando): cambia cada día y se
+## mantiene ese día.
+const FIGHT_MOOD := {"entrenador": 0.8, "viajero": 0.4, "vecino": 0.3, "investigador": 0.3, "coordinador": 0.3,
+		"vendedor": 0.1, "abuela": 0.1, "niño": 0.1, "enfermera": 0.05}
+
+
+static func wants_fight(person: Dictionary, role: String) -> bool:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s:%s:%d" % [person.get("name", ""), person.get("town", person.get("from", "")), GameState.game_day()])
+	return rng.randf() < float(FIGHT_MOOD.get(role, 0.3))
+
+
+static func person_id(person: Dictionary) -> String:
+	return "npc:%s:%s" % [person.get("town", person.get("from", "")), person.get("name", "")]
+
+
+## Retrato: el primer cuadro (de frente) de la hoja del personaje.
+static func portrait(look: String) -> Texture2D:
+	var sheet := PlayerCharacters.sheet(look)
+	if sheet == null:
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = sheet
+	atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
+	return atlas
+
+
+func _dialog() -> DialogBox:
+	return get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+
+
+## Conversación: se detiene, te mira, habla en la caja y, si lleva Pokémon y hoy tiene
+## ganas, ofrece pelear (premio y revancha como los entrenadores de camino).
+func _converse(person: Dictionary, lines: Array, role: String) -> void:
+	var dialog := _dialog()
+	if dialog == null:
+		GameState.notice.emit("%s: %s" % [person["name"], " ".join(lines)])
+		return
+	person["talking"] = true
+	var has_pet: bool = person.get("pet") != null and is_instance_valid(person.get("pet")) and (person["pet"] as Node).has_meta("species")
+	var options: Array = []
+	var beaten := int(GameState.world_flags.get("trainer_beaten:" + person_id(person), -1)) == GameState.game_day()
+	if has_pet and beaten:
+		lines.append("¡Qué buen combate tuvimos! Mañana quiero la revancha.")
+	elif has_pet and wants_fight(person, role):
+		lines.append("Oye, ¿y si peleamos? ¡Mi %s está listo!" % MenuStyle.species(String((person["pet"] as Node).get_meta("species"))).display_name)
+		options = ["Retar", "Adiós"]
+	var title := "%s (%s)" % [person["name"], role]
+	dialog.open(title, lines, portrait(String(person.get("look", "nate_bw2"))), options, func(index: int) -> void:
+		if index == 0:
+			_challenge_person(person, role))
+	dialog.closed.connect(func() -> void:
+		person["talking"] = false
+		var gift := String(person.get("gift", ""))
+		if gift != "":
+			person.erase("gift")
+			GameState.add_item(gift, 1)
+			AudioBus.play_jingle("me_item")
+			GameState.notice.emit("Recibiste %s." % Items.display_name(gift)), CONNECT_ONE_SHOT)
+
+
+func _challenge_person(person: Dictionary, role: String) -> void:
+	var battle := get_parent().get_node_or_null("Battle") as BattleManager
+	var trainers := get_parent().get_node_or_null("RouteTrainers") as RouteTrainers
+	if battle == null or trainers == null:
+		return
+	if not battle.ready_to_fight():
+		GameState.notice.emit("Saca a tu Pokémon para pelear con %s." % person["name"])
+		return
+	var node: Node3D = person["node"]
+	var pos := Vector2(node.global_position.x, node.global_position.z)
+	var start := _world.start_position()
+	var spot := {"id": person_id(person), "pos": pos, "class": role.capitalize(), "name": person["name"],
+			"strength": clampf(pos.distance_to(Vector2(start.x, start.z)) / 1800.0, 0.0, 1.0)}
+	var info := trainers.team_for(spot)
+	info["name"] = "%s %s" % [role.capitalize(), person["name"]]
+	var pet: Node3D = person["pet"]
+	var own := MenuStyle.species(String(pet.get_meta("species")))
+	if own != null:
+		(info["team"] as Array)[0] = own
+	info["at"] = node.global_position + (_player.global_position - node.global_position).normalized() * 2.5
+	person["battling_player"] = true
+	pet.visible = false
+	info["on_end"] = func(_result: String) -> void:
+		person["battling_player"] = false
+		if is_instance_valid(pet):
+			pet.visible = true
+	if not battle.start_trainer(info):
+		person["battling_player"] = false
+		pet.visible = true
 
 
 ## Habitantes visibles ahora (pruebas).

@@ -15,6 +15,13 @@ const MINT := Color(0.72, 0.95, 0.45)
 const GOLD := Color(1.0, 0.86, 0.35)
 const MUTED := Color(0.72, 0.78, 0.92)
 const HP_GREEN := Color(0.36, 0.86, 0.46)
+## Estilo claro (Pokopia, acordado el 2026-10-10): paneles crema, acentos rojos.
+const CREAM := Color(0.98, 0.97, 0.94)
+const PAPER := Color(0.93, 0.92, 0.88)
+const RED := Color(0.89, 0.22, 0.25)
+const RED_DARK := Color(0.68, 0.12, 0.16)
+const TEXT := Color(0.2, 0.2, 0.26)
+const TEXT_SOFT := Color(0.45, 0.45, 0.52)
 
 static var _font: Font
 static var _font_bold: Font
@@ -402,3 +409,35 @@ static func centered_margin(child: Control, horizontal: float = 0.04, vertical: 
 	margin.add_theme_constant_override("margin_bottom", int(size.y * vertical))
 	margin.add_child(child)
 	return margin
+
+
+# --- Estilo claro (Pokopia) ------------------------------------------------------------
+
+## Panel claro redondeado con borde de color (tarjetas, diálogo).
+static func light_style(border: Color = RED, radius: int = 18, border_width: int = 3) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = CREAM
+	style.set_corner_radius_all(radius)
+	style.border_color = border
+	style.set_border_width_all(border_width)
+	style.set_content_margin_all(14)
+	style.shadow_color = Color(0, 0, 0, 0.22)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 3)
+	return style
+
+
+## Círculo de color con un ícono dentro (categoría de un aviso, retrato).
+static func icon_badge(texture: Texture2D, color: Color, diameter: float = 52.0) -> Control:
+	var holder := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.set_corner_radius_all(int(diameter * 0.5))
+	style.set_content_margin_all(diameter * 0.16)
+	holder.add_theme_stylebox_override("panel", style)
+	holder.custom_minimum_size = Vector2(diameter, diameter)
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var icon := icon_rect(texture, Vector2(diameter, diameter) * 0.68)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	holder.add_child(icon)
+	return holder

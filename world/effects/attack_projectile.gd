@@ -58,6 +58,10 @@ func _physics_process(delta: float) -> void:
 	var step := SPEED * delta
 	global_position += _direction * step
 	_travelled += step
+	# El atacante ya no existe (capturado o se fue): el ataque se desvanece.
+	if not on_hit.is_valid():
+		queue_free()
+		return
 	for target in targets:
 		if not is_instance_valid(target):
 			continue

@@ -83,6 +83,12 @@ func _ready() -> void:
 		label.add_theme_color_override("font_outline_color", Color(0.04, 0.06, 0.14))
 		label.add_theme_constant_override("outline_size", 4)
 	_pill(_toast, UiKit.MINT)
+	cards = NoticeCards.new()
+	cards.name = "Cards"
+	_root_control().add_child(cards)
+	dialog = DialogBox.new()
+	dialog.name = "Dialog"
+	_root_control().add_child(dialog)
 	GameState.pokemon_caught.connect(func(name: String, shiny: bool, location: String) -> void:
 		show_toast("¡Atrapaste a %s%s! (va a tu %s)" % [name, " ✦" if shiny else "", location]))
 	GameState.capture_failed.connect(func(name: String) -> void: show_toast("¡%s escapó de la Pokéball!" % name))
@@ -212,12 +218,27 @@ func show_blackout(message: String, seconds: float) -> void:
 
 
 var _toast_queue: Array[String] = []
+## Avisos en tarjetas y caja de diálogo (estilo claro, 2026-10-10).
+var cards: NoticeCards
+var dialog: DialogBox
+var _speech := RegEx.create_from_string("^([A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñ.]*(?: [A-ZÁÉÍÓÚÑ\\w.]+){0,3}): (.+)$")
 var _toast_tween: Tween
 
 
 ## Mensaje breve arriba al centro. Si hay uno en pantalla, espera su turno (cola de 4);
 ## dura según su largo y la velocidad de texto de Opciones.
 func show_toast(message: String) -> void:
+	_toast.text = message
+	# "Nombre: texto" es alguien que habla (menos Rotom, que es un aviso del teléfono).
+	var match := _speech.search(message)
+	if match != null and not match.get_string(1).begins_with("Rotom") and not message.begins_with("["):
+		dialog.say(match.get_string(1), match.get_string(2))
+		return
+	cards.show_notice(message.trim_prefix("[Rotom] ").trim_prefix("Rotom: "), "mission" if message.begins_with("[Rotom]") or message.begins_with("Rotom:") else "")
+
+
+## Aviso antiguo (etiqueta arriba al centro): ya no se muestra; queda por compatibilidad.
+func _old_toast(message: String) -> void:
 	if _toast_tween != null and _toast_tween.is_running():
 		if _toast_queue.size() < 4 and not _toast_queue.has(message) and _toast.text != message:
 			_toast_queue.append(message)
@@ -501,7 +522,8 @@ func _build_hints() -> void:
 
 
 func _update_hints() -> void:
-	_legend.visible = GameOptions.show_hints
+	# Mientras alguien habla, la leyenda se oculta para no encimarse.
+	_legend.visible = GameOptions.show_hints and not (dialog != null and dialog.is_open())
 	var rows: Array = []
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	var context := ""
@@ -758,3 +780,16 @@ func _pixel_texture(rows: Array, palette: Dictionary) -> Texture2D:
 			if palette.has(c):
 				image.set_pixel(x, y, palette[c])
 	return ImageTexture.create_from_image(image)
+
+
+## Contenedor de pantalla completa para las tarjetas y el diálogo (el HUD es un CanvasLayer).
+func _root_control() -> Control:
+	var root := get_node_or_null("NoticeRoot") as Control
+	if root == null:
+		root = Control.new()
+		root.name = "NoticeRoot"
+		root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.theme = UiKit.theme()
+		add_child(root)
+	return root

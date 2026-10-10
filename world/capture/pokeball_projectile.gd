@@ -116,27 +116,89 @@ func start_capture(actor: PokemonActor) -> void:
 		if stealth:
 			GameState.dex_count(actor.species.identifier, "behind")
 		GameState.species_caught.emit(actor.species.identifier, stealth)
-		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SAND, 0.8)
+		_caught_effect()
 		GameState.pokemon_caught.emit(actor.species.display_name, actor.shiny, location)
 		AudioBus.play_sfx("caught")
 		AudioBus.play_jingle("me_pokeget")
 		actor.captured()
 	else:
+		# Se abre: destello blanco y humo.
 		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.SMOKE, 0.8)
+		var open_fx := RecallBeam.new()
+		get_parent().add_child(open_fx)
+		open_fx.ball.visible = false
+		open_fx.flash(global_position + Vector3.UP * 0.3, 1.0)
+		get_tree().create_timer(0.5).timeout.connect(open_fx.queue_free)
 		GameState.capture_failed.emit(actor.species.display_name)
 		AudioBus.play_sfx("ball_open")
 		actor.set_inside_ball(false)
 		actor.escape_from_ball(thrower)
+		queue_free()
+		return
+	# Capturado: la ball se queda un momento con las estrellas antes de desaparecer.
+	await get_tree().create_timer(0.9).timeout
 	queue_free()
 
 
+## Una sacudida: la ball se tambalea, rueda un poco de lado a lado y da un saltito
+## (como en los juegos); luego una pausa antes de la siguiente.
 func _shake() -> void:
 	AudioBus.play_sfx("ball_shake")
+	var side := 1.0 if _rng.randf() < 0.5 else -1.0
+	var base := _sprite.position
 	var tween := create_tween()
-	tween.tween_property(_sprite, "rotation:z", 0.4, SHAKE_TIME * 0.25)
-	tween.tween_property(_sprite, "rotation:z", -0.4, SHAKE_TIME * 0.5)
-	tween.tween_property(_sprite, "rotation:z", 0.0, SHAKE_TIME * 0.25)
+	tween.tween_property(_sprite, "rotation:z", 0.6 * side, SHAKE_TIME * 0.2).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(_sprite, "position", base + Vector3(-0.07 * side, 0.05, 0), SHAKE_TIME * 0.2)
+	tween.tween_property(_sprite, "rotation:z", -0.6 * side, SHAKE_TIME * 0.4).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(_sprite, "position", base + Vector3(0.07 * side, 0.0, 0), SHAKE_TIME * 0.4)
+	tween.tween_property(_sprite, "rotation:z", 0.0, SHAKE_TIME * 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(_sprite, "position", base, SHAKE_TIME * 0.4)
+	tween.tween_interval(0.3)
 	await tween.finished
+
+
+## ¡Capturado!: "clic", el botón destella y salen estrellas hacia arriba.
+func _caught_effect() -> void:
+	var flash := create_tween()
+	flash.tween_property(_sprite, "modulate", Color(1.8, 1.8, 1.6), 0.08)
+	flash.tween_property(_sprite, "modulate", Color.WHITE, 0.2)
+	for i in 5:
+		var star := Sprite3D.new()
+		star.texture = _star_texture()
+		star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		star.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		star.shaded = false
+		star.pixel_size = 0.035
+		star.layers = 2
+		get_parent().add_child(star)
+		star.global_position = global_position + Vector3.UP * 0.2
+		var angle := lerpf(-1.1, 1.1, i / 4.0)
+		var camera := get_viewport().get_camera_3d()
+		var right := camera.global_basis.x if camera != null else Vector3.RIGHT
+		var target := star.global_position + right * sin(angle) * 0.9 + Vector3.UP * (0.7 + cos(angle) * 0.5)
+		var tween := star.create_tween()
+		tween.tween_property(star, "global_position", target, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(star, "rotation:z", TAU, 0.6)
+		tween.tween_property(star, "modulate:a", 0.0, 0.35)
+		tween.tween_callback(star.queue_free)
+
+
+static var _star: Texture2D
+
+
+static func _star_texture() -> Texture2D:
+	if _star == null:
+		var rows := ["....Y....", "...YYY...", "YYYYWYYYY", ".YYWWWYY.", "..YYWYY..", ".YYY.YYY.", "YY.....YY"]
+		var image := Image.create_empty(9, 7, false, Image.FORMAT_RGBA8)
+		for y in rows.size():
+			for x in 9:
+				match rows[y][x]:
+					"Y":
+						image.set_pixel(x, y, Color(1.0, 0.85, 0.2))
+					"W":
+						image.set_pixel(x, y, Color(1.0, 1.0, 0.85))
+		_star = ImageTexture.create_from_image(image)
+	return _star
 
 
 ## Pokéball pixel art de 7×7: mitad roja, mitad blanca y franja negra con botón.

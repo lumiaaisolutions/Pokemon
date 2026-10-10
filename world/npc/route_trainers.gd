@@ -72,9 +72,9 @@ func _build_spots() -> void:
 				var biome := _world.region_biome_at(pos.x, pos.y)
 				var classes: Array = CLASSES.get(biome, DEFAULT_CLASSES)
 				var id := "%d:%d" % [road_index, spots.size()]
-				spots.append({"id": id, "pos": pos, "facing": Vector3(-side.x, 0, -side.y),
-						"class": classes[rng.randi() % classes.size()], "name": TownNPCs.NAMES[rng.randi() % TownNPCs.NAMES.size()],
-						"look": rng.randi() % PlayerCharacters.LIST.size(), "strength": clampf(pos.distance_to(Vector2(start.x, start.z)) / 1800.0, 0.0, 1.0)})
+				var look_index := rng.randi() % PlayerCharacters.LIST.size()
+				spots.append({"id": id, "name": TownNPCs.name_for(PlayerCharacters.LIST[look_index]["gender"], rng), "pos": pos, "facing": Vector3(-side.x, 0, -side.y),
+						"class": classes[rng.randi() % classes.size()], "look": look_index, "strength": clampf(pos.distance_to(Vector2(start.x, start.z)) / 1800.0, 0.0, 1.0)})
 			walked -= segment
 
 
@@ -161,7 +161,7 @@ func _update_trainer(trainer: Dictionary, battle: BattleManager, delta: float) -
 			if to.length() > 2.6:
 				velocity = to.normalized() * WALK_SPEED
 				node.global_position += velocity * delta
-				node.global_position.y = _world.surface_height_at(node.global_position.x, node.global_position.z)
+				node.global_position.y = TownNPCs.swim_height(_world, node)
 			else:
 				_challenge(trainer)
 		"battle":
@@ -173,7 +173,7 @@ func _update_trainer(trainer: Dictionary, battle: BattleManager, delta: float) -
 			if back.length() > 0.3:
 				velocity = back.normalized() * WALK_SPEED * 0.7
 				node.global_position += velocity * delta
-				node.global_position.y = _world.surface_height_at(node.global_position.x, node.global_position.z)
+				node.global_position.y = TownNPCs.swim_height(_world, node)
 			else:
 				trainer["state"] = "watch"
 	sprite.animate(velocity, delta)
