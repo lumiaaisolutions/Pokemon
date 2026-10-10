@@ -35,25 +35,30 @@ func _draw() -> void:
 	var font := UiKit.font(true)
 	# Anillos de fondo.
 	for ring in [1.0, 0.66, 0.33]:
-		draw_colored_polygon(_points(center, radius * ring, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), Color(1, 1, 1, 0.06 if ring < 1.0 else 0.1))
+		draw_colored_polygon(_points(center, radius * ring, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), _tone(0.06 if ring < 1.0 else 0.1))
 	var outline := _points(center, radius, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-	draw_polyline(outline + PackedVector2Array([outline[0]]), Color(1, 1, 1, 0.3), 2.0)
+	draw_polyline(outline + PackedVector2Array([outline[0]]), _tone(0.3), 2.0)
 	for p in outline:
-		draw_line(center, p, Color(1, 1, 1, 0.12), 1.0)
+		draw_line(center, p, _tone(0.12), 1.0)
 	# Valores.
 	var shape := _points(center, radius, values)
-	draw_colored_polygon(shape, fill_color)
-	draw_polyline(shape + PackedVector2Array([shape[0]]), Color(0.9, 1.0, 0.7), 2.5)
+	draw_colored_polygon(shape, Color(0.95, 0.35, 0.35, 0.55) if UiKit.light else fill_color)
+	draw_polyline(shape + PackedVector2Array([shape[0]]), UiKit.RED if UiKit.light else Color(0.9, 1.0, 0.7), 2.5)
 	# Nombres y calificaciones.
 	for i in 6:
 		var angle := -PI / 2 + TAU * i / 6.0
 		var at := center + Vector2(cos(angle), sin(angle)) * (radius + 46)
 		var name: String = AXES[i]
 		var width := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
-		draw_string(font, at + Vector2(-width * 0.5, -4), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color(0.92, 0.95, 1.0))
+		draw_string(font, at + Vector2(-width * 0.5, -4), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, UiKit.ink(Color(0.92, 0.95, 1.0)))
 		var note: String = notes[i]
 		var note_width := font.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
-		draw_string(font, at + Vector2(-note_width * 0.5, 18), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, UiKit.MINT)
+		draw_string(font, at + Vector2(-note_width * 0.5, 18), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, UiKit.RED_DARK if UiKit.light else UiKit.MINT)
+
+
+## Líneas de fondo: blancas sobre oscuro, grises sobre el estilo claro.
+func _tone(alpha: float) -> Color:
+	return Color(0, 0, 0, alpha) if UiKit.light else Color(1, 1, 1, alpha)
 
 
 func _points(center: Vector2, radius: float, scales: Array) -> PackedVector2Array:

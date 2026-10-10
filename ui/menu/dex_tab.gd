@@ -25,70 +25,203 @@ func _init(menu: GameMenu) -> void:
 	_menu = menu
 
 
+## Vista: "grid" (cuadrícula estilo Pokopia) o "detail" (ficha de una especie).
+var _view := "grid"
+var _sort := 0
+const SORT_NAMES := ["Orden numérico", "Por nombre", "Por tipo"]
+const GRID_PAGE := 48
+
+
 func build() -> Control:
-	var root := HBoxContainer.new()
-	root.add_theme_constant_override("separation", 16)
-	var left := VBoxContainer.new()
-	left.custom_minimum_size.x = 560
-	left.add_theme_constant_override("separation", 8)
-	root.add_child(left)
-	left.add_child(_filters())
+	if _view == "detail" and _selected != "" and MenuStyle.species(_selected) != null:
+		return _detail_page(MenuStyle.species(_selected))
+	return _grid_page()
+
+
+## Cuadrícula: capturados a color, vistos en silueta gris y los no vistos solo con su
+## número (no aparecen). Al enfocar: círculo amarillo y burbuja con el nombre.
+func _grid_page() -> Control:
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
 	var list := _filtered()
+	match _sort:
+		1:
+			list.sort_custom(func(a: SpeciesData, b: SpeciesData) -> bool: return _sort_name(a) < _sort_name(b))
+		2:
+			list.sort_custom(func(a: SpeciesData, b: SpeciesData) -> bool: return _sort_type(a) < _sort_type(b))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Margen arriba para que quepa la burbuja del nombre de la primera fila.
+	var top_space := MarginContainer.new()
+	top_space.add_theme_constant_override("margin_top", 34)
+	top_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_space.add_child(center)
+	scroll.add_child(top_space)
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 22)
+	grid.add_theme_constant_override("v_separation", 18)
+	center.add_child(grid)
+	_page = clampi(_page, 0, maxi((list.size() - 1) / GRID_PAGE, 0))
+	var first: Button = null
+	for i in range(_page * GRID_PAGE, mini((_page + 1) * GRID_PAGE, list.size())):
+		var tile := _tile(list[i])
+		grid.add_child(tile)
+		if first == null or list[i].identifier == _selected:
+			first = tile
+	if first != null:
+		first.grab_focus.call_deferred()
+	# Barra de abajo: contador, filtro, orden y páginas.
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 14)
+	root.add_child(bar)
 	var seen := 0
 	var caught := 0
 	for species in DexData.all_species():
 		seen += 1 if GameState.is_seen(species.identifier) else 0
 		caught += 1 if GameState.is_caught(species.identifier) else 0
-	left.add_child(MenuStyle.label("Vistos %d · Capturados %d · de 1,025   (%d en la lista)" % [seen, caught, list.size()], 17, MenuStyle.MUTED))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(540, 560)
-	left.add_child(scroll)
-	var rows := VBoxContainer.new()
-	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(rows)
-	_page = clampi(_page, 0, maxi((list.size() - 1) / PAGE, 0))
-	for i in range(_page * PAGE, mini((_page + 1) * PAGE, list.size())):
-		rows.add_child(_row(list[i]))
-	var pager := HBoxContainer.new()
-	var previous := MenuStyle.button("◀ Anterior", 17)
-	previous.disabled = _page == 0
-	previous.pressed.connect(func() -> void:
-		_page -= 1
-		_menu.show_tab(_menu.tab))
-	pager.add_child(previous)
-	pager.add_child(MenuStyle.label("  Página %d de %d  " % [_page + 1, maxi((list.size() + PAGE - 1) / PAGE, 1)], 17))
-	var next := MenuStyle.button("Siguiente ▶", 17)
-	next.disabled = (_page + 1) * PAGE >= list.size()
-	next.pressed.connect(func() -> void:
-		_page += 1
-		_menu.show_tab(_menu.tab))
-	pager.add_child(next)
-	left.add_child(pager)
-	if _selected == "" and not list.is_empty():
-		_selected = list[0].identifier
-	var species := MenuStyle.species(_selected) if _selected != "" else null
-	if species != null:
-		root.add_child(_detail(species))
-	return root
-
-
-func _filters() -> Control:
-	var box := VBoxContainer.new()
+	var counter := PanelContainer.new()
+	counter.add_theme_stylebox_override("panel", UiKit.light_style(UiKit.RED, 16, 2))
+	var counter_box := HBoxContainer.new()
+	counter_box.add_theme_constant_override("separation", 18)
+	counter.add_child(counter_box)
+	counter_box.add_child(UiKit.label("Vistos  %d" % seen, 19, UiKit.TEXT, true))
+	counter_box.add_child(UiKit.label("Capturados  %d" % caught, 19, UiKit.RED_DARK, true))
+	bar.add_child(counter)
 	var search := LineEdit.new()
-	search.placeholder_text = "Buscar por nombre o número…"
+	search.placeholder_text = "🔍  Buscar nombre o número"
 	search.text = _search
+	search.custom_minimum_size.x = 280
 	search.add_theme_font_size_override("font_size", 18)
 	search.text_submitted.connect(func(text: String) -> void:
 		_search = text.strip_edges().to_lower()
 		_page = 0
 		_menu.show_tab(_menu.tab))
-	box.add_child(search)
-	var row := HBoxContainer.new()
-	box.add_child(row)
-	row.add_child(_option(["Todos los tipos"] + MenuStyle.TYPE_NAMES, _type + 1, func(i: int) -> void: _type = i - 1))
-	row.add_child(_option(STATUS_NAMES, _status, func(i: int) -> void: _status = i))
-	row.add_child(_option(["Todo hábitat"] + HABITAT_NAMES, _habitat + 1, func(i: int) -> void: _habitat = i - 1))
-	return box
+	bar.add_child(search)
+	bar.add_child(_option(["Todos los tipos"] + MenuStyle.TYPE_NAMES, _type + 1, func(i: int) -> void: _type = i - 1))
+	bar.add_child(_option(STATUS_NAMES, _status, func(i: int) -> void: _status = i))
+	bar.add_child(_option(SORT_NAMES, _sort, func(i: int) -> void: _sort = i))
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(spacer)
+	var previous := MenuStyle.button("◀", 18)
+	previous.disabled = _page == 0
+	previous.pressed.connect(func() -> void:
+		_page -= 1
+		_menu.show_tab(_menu.tab))
+	bar.add_child(previous)
+	bar.add_child(UiKit.label("%d / %d" % [_page + 1, maxi((list.size() + GRID_PAGE - 1) / GRID_PAGE, 1)], 18, UiKit.TEXT, true))
+	var next := MenuStyle.button("▶", 18)
+	next.disabled = (_page + 1) * GRID_PAGE >= list.size()
+	next.pressed.connect(func() -> void:
+		_page += 1
+		_menu.show_tab(_menu.tab))
+	bar.add_child(next)
+	return root
+
+
+func _sort_name(species: SpeciesData) -> String:
+	return species.display_name.to_lower() if GameState.is_seen(species.identifier) else "~%04d" % species.dex_id
+
+
+func _sort_type(species: SpeciesData) -> String:
+	return ("%02d" % species.types[0]) + ("%04d" % species.dex_id) if GameState.is_seen(species.identifier) and not species.types.is_empty() else "99%04d" % species.dex_id
+
+
+func _tile(species: SpeciesData) -> Button:
+	var id := species.identifier
+	var seen := GameState.is_seen(id)
+	var caught := GameState.is_caught(id)
+	var tile := Button.new()
+	tile.custom_minimum_size = Vector2(104, 104)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0, 0, 0, 0.06) if seen else Color(0, 0, 0, 0.025)
+	normal.set_corner_radius_all(52)
+	var focus := normal.duplicate() as StyleBoxFlat
+	focus.bg_color = Color(1.0, 0.85, 0.25)
+	focus.shadow_color = Color(0, 0, 0, 0.15)
+	focus.shadow_size = 6
+	tile.add_theme_stylebox_override("normal", normal)
+	tile.add_theme_stylebox_override("hover", focus)
+	tile.add_theme_stylebox_override("focus", focus)
+	tile.add_theme_stylebox_override("pressed", focus)
+	if seen:
+		var sprite := UiKit.icon_rect(MenuStyle.front_sprite(species), Vector2(88, 88))
+		sprite.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		sprite.offset_left = -44
+		sprite.offset_right = 44
+		sprite.offset_top = -44
+		sprite.offset_bottom = 44
+		# Visto pero no capturado: silueta gris.
+		if not caught:
+			sprite.modulate = Color(0.0, 0.0, 0.05, 0.42)
+		tile.add_child(sprite)
+		if GameState.dex.get(id, {}).get("shiny", false):
+			var star := UiKit.label("✦", 18, Color(0.95, 0.65, 0.1), true)
+			star.position = Vector2(78, 2)
+			tile.add_child(star)
+	else:
+		# No visto: solo su número, tenue.
+		var number := UiKit.label("%03d" % species.dex_id, 17, Color(0, 0, 0, 0.25), true)
+		number.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		number.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		number.grow_vertical = Control.GROW_DIRECTION_BOTH
+		tile.add_child(number)
+	# Burbuja con el nombre (aparece con el foco).
+	var bubble := PanelContainer.new()
+	var bubble_style := StyleBoxFlat.new()
+	bubble_style.bg_color = Color(1, 1, 1)
+	bubble_style.border_color = Color(1.0, 0.75, 0.2)
+	bubble_style.set_border_width_all(3)
+	bubble_style.set_corner_radius_all(14)
+	bubble_style.content_margin_left = 12
+	bubble_style.content_margin_right = 12
+	bubble_style.content_margin_top = 2
+	bubble_style.content_margin_bottom = 4
+	bubble.add_theme_stylebox_override("panel", bubble_style)
+	bubble.add_child(UiKit.label(species.display_name if seen else "N.º %04d" % species.dex_id, 16, UiKit.TEXT, true))
+	bubble.position = Vector2(0, -26)
+	bubble.visible = false
+	bubble.z_index = 5
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(bubble)
+	tile.focus_entered.connect(func() -> void:
+		bubble.visible = true
+		bubble.reset_size()
+		bubble.position = Vector2((104 - bubble.size.x) * 0.5, -bubble.size.y + 4)
+		_selected = id)
+	tile.focus_exited.connect(func() -> void: bubble.visible = false)
+	tile.mouse_entered.connect(tile.grab_focus)
+	tile.pressed.connect(func() -> void:
+		AudioBus.play_sfx("ui_decide")
+		_selected = id
+		if seen:
+			_view = "detail"
+			_show_shiny = false
+			_menu.show_tab(_menu.tab)
+			_play_cry(species))
+	return tile
+
+
+## Ficha de una especie a pantalla completa, con botón para volver a la cuadrícula.
+func _detail_page(species: SpeciesData) -> Control:
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	var back := MenuStyle.button("◀  Volver a la Pokédex", 18)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	back.pressed.connect(func() -> void:
+		_view = "grid"
+		_menu.show_tab(_menu.tab))
+	root.add_child(back)
+	var detail := _detail(species)
+	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(detail)
+	back.grab_focus.call_deferred()
+	return root
 
 
 func _option(names: Array, selected: int, setter: Callable) -> OptionButton:
@@ -137,29 +270,6 @@ func _filtered() -> Array[SpeciesData]:
 	return result
 
 
-func _row(species: SpeciesData) -> Button:
-	var id := species.identifier
-	var seen := GameState.is_seen(id)
-	var caught := GameState.is_caught(id)
-	var button := Button.new()
-	button.icon = MenuStyle.overworld_icon(species) if seen else null
-	button.expand_icon = false
-	button.add_theme_constant_override("icon_max_width", 40)
-	var marks := ("◓ " if caught else "   ") + ("✦" if GameState.dex.get(id, {}).get("shiny", false) else "")
-	var research := "  Inv. %d" % Research.level(id) if seen else ""
-	button.text = "%s  N.º %04d   %s%s" % [marks, species.dex_id, species.display_name if seen else "???", research]
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.add_theme_font_size_override("font_size", 18)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	MenuStyle.style_button(button, id == _selected)
-	button.pressed.connect(func() -> void:
-		_selected = id
-		_show_shiny = false
-		_menu.show_tab(_menu.tab)
-		_play_cry(species))
-	return button
-
-
 func _detail(species: SpeciesData) -> Control:
 	var id := species.identifier
 	var seen := GameState.is_seen(id)
@@ -168,7 +278,7 @@ func _detail(species: SpeciesData) -> Control:
 	var panel := MenuStyle.panel_container(MenuStyle.ACCENT)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 680)
+	scroll.custom_minimum_size = Vector2(0, 600)
 	panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)

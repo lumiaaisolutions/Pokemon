@@ -1,20 +1,29 @@
 class_name GameMenu
 extends Control
-## Menú del juego (I / Options), estilo Leyendas Z-A: a la izquierda "MENÚ" con las
-## secciones con ícono; a la derecha el encabezado blanco de la sección, su contenido y las
-## ayudas de botones abajo. Pausa el juego. Se cambia de sección con Q / E o L1 / R1, con
-## el mouse o con la cruceta. Se adapta a cualquier tamaño de ventana (escala 1920×1080).
+## Menú del juego (I / Start) al estilo Pokopia (acordado con Fernando el 2026-10-10):
+## - Inicio: el juego sigue visible a la izquierda y a la derecha un panel rojo
+##   redondeado (lente y luces arriba, hora y dinero) con una tarjeta clara y la
+##   cuadrícula de íconos grandes; el elegido tiene halo amarillo y rebota.
+## - Sección: se abre a pantalla completa dentro de un marco rojo con su título en una
+##   píldora arriba. Esc / B regresa al inicio; Q / E cambian de sección; I cierra.
+## Pausa el juego. Escala 1920×1080 (se adapta a la ventana).
 
 const TABS := ["Equipo", "Mochila", "Pokédex", "Caja", "Rotom", "Logros", "Dinero", "Ficha", "Mapa", "Controles", "Opciones", "Guardar"]
 ## Nombre visible de cada sección.
 const TITLES := {"Equipo": "Pokémon", "Caja": "Cajas"}
+const HUB := -1
 
 ## Escena principal (compañero, cambio de acompañante, mapa).
 var main: Node
-var tab := 0
+## Sección abierta (HUB = el inicio con la cuadrícula).
+var tab := HUB
 ## Miembro del equipo que se muestra en la pestaña Equipo.
 var selected_member := 0
-var _sidebar: VBoxContainer
+var _hub: Control
+var _grid: GridContainer
+var _hub_info: Label
+var _section: Control
+var _title_label: Label
 var _header: HBoxContainer
 var _content: Control
 var _footer: HBoxContainer
@@ -22,6 +31,7 @@ var _money: Label
 var _team_tab: TeamTab
 var _bag_tab: BagTab
 var _dex_tab: DexTab
+var _last_section := 0
 
 
 func _ready() -> void:
@@ -29,31 +39,217 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UiKit.theme()
 	visible = false
-	add_child(UiKit.backdrop(0.985))
-	var outer := HBoxContainer.new()
-	outer.add_theme_constant_override("separation", 34)
-	add_child(UiKit.centered_margin(outer, 0.03, 0.035))
-	# Barra lateral.
-	var side := VBoxContainer.new()
-	side.custom_minimum_size.x = 360
-	side.add_theme_constant_override("separation", 14)
-	outer.add_child(side)
-	side.add_child(UiKit.title("Menú", UiIcons.section("Opciones"), 44))
+	_build_hub()
+	_build_section()
+	_team_tab = TeamTab.new(self)
+	_bag_tab = BagTab.new(self)
+	_dex_tab = DexTab.new(self)
+
+
+# --- Inicio: panel rojo con la cuadrícula ------------------------------------------------
+
+func _build_hub() -> void:
+	_hub = Control.new()
+	_hub.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_hub)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.18)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hub.add_child(dim)
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiKit.RED
+	style.set_corner_radius_all(40)
+	style.border_color = UiKit.RED_DARK
+	style.set_border_width_all(6)
+	style.set_content_margin_all(26)
+	style.shadow_color = Color(0, 0, 0, 0.35)
+	style.shadow_size = 16
+	panel.add_theme_stylebox_override("panel", style)
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -700
+	panel.offset_right = -36
+	panel.offset_top = 36
+	panel.offset_bottom = -36
+	_hub.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 18)
+	panel.add_child(column)
+	# Lente y luces (como la Pokédex) más la hora y el dinero.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 14)
+	column.add_child(top)
+	top.add_child(_lens(84, Color(0.35, 0.8, 0.9)))
+	for light_color in [Color(0.95, 0.5, 0.6), Color(0.98, 0.82, 0.25), Color(0.45, 0.82, 0.4)]:
+		var holder := CenterContainer.new()
+		holder.add_child(_lens(30, light_color))
+		top.add_child(holder)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
+	var pill := PanelContainer.new()
+	var pill_style := StyleBoxFlat.new()
+	pill_style.bg_color = Color(1, 1, 1, 0.92)
+	pill_style.set_corner_radius_all(22)
+	pill_style.content_margin_left = 20
+	pill_style.content_margin_right = 20
+	pill_style.content_margin_top = 6
+	pill_style.content_margin_bottom = 8
+	pill.add_theme_stylebox_override("panel", pill_style)
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_hub_info = UiKit.label("", 19, UiKit.TEXT_SOFT, true)
+	pill.add_child(_hub_info)
+	top.add_child(pill)
+	# Tarjeta clara con la cuadrícula.
+	var card := PanelContainer.new()
+	var card_style := UiKit.light_style(Color(0, 0, 0, 0), 30, 0)
+	card_style.set_content_margin_all(24)
+	card.add_theme_stylebox_override("panel", card_style)
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(card)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 14)
+	card.add_child(inner)
+	var heading := UiKit.label("Menú", 28, UiKit.TEXT_SOFT, true)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inner.add_child(heading)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	side.add_child(scroll)
-	_sidebar = VBoxContainer.new()
-	_sidebar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sidebar.add_theme_constant_override("separation", 8)
-	scroll.add_child(_sidebar)
-	_money = UiKit.label("", 20, UiKit.GOLD, true)
-	side.add_child(_money)
-	# Contenido.
+	inner.add_child(scroll)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(center)
+	_grid = GridContainer.new()
+	_grid.columns = 3
+	_grid.add_theme_constant_override("h_separation", 34)
+	_grid.add_theme_constant_override("v_separation", 14)
+	center.add_child(_grid)
+	_money = UiKit.label("", 1, UiKit.TEXT)
+	# Pie con botones.
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_END
+	footer.add_theme_constant_override("separation", 12)
+	column.add_child(footer)
+	footer.add_child(_pill_hint("menu", "Cerrar"))
+	footer.add_child(_pill_hint("interact", "Abrir"))
+
+
+## Círculo brillante (lente de la Pokédex y luces).
+func _lens(diameter: float, color: Color) -> Control:
+	var lens := Control.new()
+	lens.custom_minimum_size = Vector2(diameter, diameter)
+	lens.draw.connect(func() -> void:
+		var c := lens.size * 0.5
+		var r := diameter * 0.5
+		lens.draw_circle(c, r, Color(1, 1, 1, 0.95))
+		lens.draw_circle(c, r * 0.82, color.darkened(0.15))
+		lens.draw_circle(c, r * 0.72, color)
+		lens.draw_circle(c + Vector2(-r * 0.28, -r * 0.3), r * 0.2, Color(1, 1, 1, 0.65)))
+	return lens
+
+
+## Píldora blanca con el glifo del botón y su acción (como "Ⓑ Close" de Pokopia).
+func _pill_hint(action: String, text: String) -> PanelContainer:
+	var pill := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0.94)
+	style.set_corner_radius_all(20)
+	style.content_margin_left = 12
+	style.content_margin_right = 16
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
+	pill.add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	pill.add_child(row)
+	row.add_child(InputGlyph.make(action))
+	row.add_child(UiKit.label(text, 18, UiKit.TEXT, true))
+	return pill
+
+
+func _fill_hub() -> void:
+	for child in _grid.get_children():
+		child.queue_free()
+	for i in TABS.size():
+		var name: String = TABS[i]
+		var tile := Button.new()
+		tile.custom_minimum_size = Vector2(170, 150)
+		tile.focus_mode = Control.FOCUS_ALL
+		var empty := StyleBoxEmpty.new()
+		for state in ["normal", "hover", "pressed", "focus"]:
+			tile.add_theme_stylebox_override(state, empty)
+		var box := VBoxContainer.new()
+		box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		box.alignment = BoxContainer.ALIGNMENT_CENTER
+		box.add_theme_constant_override("separation", 4)
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile.add_child(box)
+		var marker := UiKit.label("▼", 16, Color(1.0, 0.7, 0.15), true)
+		marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		marker.modulate.a = 0.0
+		box.add_child(marker)
+		var icon := MenuIcon.make(name, 96)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(icon)
+		var caption := UiKit.label(TITLES.get(name, name), 19, UiKit.TEXT, true)
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(caption)
+		tile.focus_entered.connect(func() -> void:
+			icon.focused = true
+			marker.modulate.a = 1.0
+			_last_section = i
+			AudioBus.play_sfx("ui_select"))
+		tile.focus_exited.connect(func() -> void:
+			icon.focused = false
+			marker.modulate.a = 0.0)
+		tile.mouse_entered.connect(tile.grab_focus)
+		tile.pressed.connect(func() -> void:
+			AudioBus.play_sfx("ui_decide")
+			show_tab(i))
+		_grid.add_child(tile)
+	(_grid.get_child(clampi(_last_section, 0, TABS.size() - 1)) as Button).grab_focus.call_deferred()
+	var minutes := int(GameState.play_time / 60.0)
+	_hub_info.text = "Día %d · %s   ·   $%s   ·   ⏱ %d h %02d" % [GameState.game_day() + 1, DayNight.clock_text(GameState.clock_hour()), _thousands(GameState.money), minutes / 60, minutes % 60]
+
+
+# --- Sección a pantalla completa con marco rojo ------------------------------------------
+
+func _build_section() -> void:
+	_section = Control.new()
+	_section.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_section.visible = false
+	add_child(_section)
+	var dim := ColorRect.new()
+	dim.color = Color(0.1, 0.05, 0.06, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_section.add_child(dim)
+	var frame := PanelContainer.new()
+	var frame_style := StyleBoxFlat.new()
+	frame_style.bg_color = UiKit.RED
+	frame_style.set_corner_radius_all(40)
+	frame_style.border_color = UiKit.RED_DARK
+	frame_style.set_border_width_all(6)
+	frame_style.content_margin_left = 22
+	frame_style.content_margin_right = 22
+	frame_style.content_margin_top = 64
+	frame_style.content_margin_bottom = 22
+	frame_style.shadow_color = Color(0, 0, 0, 0.35)
+	frame_style.shadow_size = 16
+	frame.add_theme_stylebox_override("panel", frame_style)
+	_section.add_child(UiKit.centered_margin(frame, 0.025, 0.04))
+	var inner := PanelContainer.new()
+	var inner_style := UiKit.light_style(Color(0, 0, 0, 0), 28, 0)
+	inner_style.bg_color = UiKit.CREAM
+	inner_style.set_content_margin_all(24)
+	inner.add_theme_stylebox_override("panel", inner_style)
+	frame.add_child(inner)
 	var column := VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 16)
-	outer.add_child(column)
+	column.add_theme_constant_override("separation", 14)
+	inner.add_child(column)
 	_header = HBoxContainer.new()
 	_header.add_theme_constant_override("separation", 16)
 	column.add_child(_header)
@@ -62,11 +258,34 @@ func _ready() -> void:
 	column.add_child(_content)
 	_footer = HBoxContainer.new()
 	_footer.alignment = BoxContainer.ALIGNMENT_END
-	_footer.add_theme_constant_override("separation", 26)
+	_footer.add_theme_constant_override("separation", 12)
 	column.add_child(_footer)
-	_team_tab = TeamTab.new(self)
-	_bag_tab = BagTab.new(self)
-	_dex_tab = DexTab.new(self)
+	# Título en píldora arriba al centro, sobre el marco (con una Pokéball).
+	var title_holder := CenterContainer.new()
+	title_holder.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	title_holder.offset_top = 52
+	title_holder.offset_bottom = 104
+	title_holder.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	title_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_section.add_child(title_holder)
+	var title_pill := PanelContainer.new()
+	var title_style := StyleBoxFlat.new()
+	title_style.bg_color = Color(1, 0.97, 0.94)
+	title_style.set_corner_radius_all(24)
+	title_style.border_color = UiKit.RED_DARK
+	title_style.set_border_width_all(4)
+	title_style.content_margin_left = 30
+	title_style.content_margin_right = 34
+	title_style.content_margin_top = 6
+	title_style.content_margin_bottom = 8
+	title_pill.add_theme_stylebox_override("panel", title_style)
+	title_holder.add_child(title_pill)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 12)
+	title_pill.add_child(title_row)
+	title_row.add_child(MenuIcon.make("Pokémon", 34))
+	_title_label = UiKit.label("", 26, UiKit.RED_DARK, true)
+	title_row.add_child(_title_label)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -76,7 +295,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("bag") and not _other_overlay_open():
 		get_viewport().set_input_as_handled()
-		if visible and TABS[tab] == "Mochila":
+		if visible and tab >= 0 and TABS[tab] == "Mochila":
 			close()
 		else:
 			tab = TABS.find("Mochila")
@@ -86,11 +305,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		close()
-	elif event.is_action_pressed("menu_prev"):
+		# En una sección, regresa al inicio; en el inicio, cierra.
+		if tab == HUB:
+			close()
+		else:
+			show_tab(HUB)
+	elif tab != HUB and event.is_action_pressed("menu_prev"):
 		get_viewport().set_input_as_handled()
 		show_tab((tab - 1 + TABS.size()) % TABS.size())
-	elif event.is_action_pressed("menu_next"):
+	elif tab != HUB and event.is_action_pressed("menu_next"):
 		get_viewport().set_input_as_handled()
 		show_tab((tab + 1) % TABS.size())
 
@@ -119,45 +342,45 @@ func close() -> void:
 	if visible:
 		AudioBus.play_sfx("ui_close")
 	visible = false
+	tab = HUB
 	_set_hud(true)
 	get_tree().paused = false
 
 
-## El HUD y el minimapa se ocultan mientras el menú está abierto.
+## El HUD se oculta mientras el menú está abierto; el minimapa sigue en el inicio.
 func _set_hud(on: bool) -> void:
 	if main == null:
 		return
-	for path in ["Hud", "MapUi"]:
-		var node := main.get_node_or_null(path) as CanvasLayer
-		if node != null:
-			node.visible = on
+	var hud := main.get_node_or_null("Hud") as CanvasLayer
+	if hud != null:
+		hud.visible = on
+	var map_ui := main.get_node_or_null("MapUi") as CanvasLayer
+	if map_ui != null:
+		map_ui.visible = on or (visible and tab == HUB)
 
 
 func show_tab(index: int) -> void:
-	if visible and index != tab:
+	if visible and index != tab and index != HUB:
 		AudioBus.play_sfx("ui_select")
 	tab = index
+	_hub.visible = tab == HUB
+	_section.visible = tab != HUB
+	_set_hud(not visible)
+	if tab == HUB:
+		_fill_hub()
+		return
+	_last_section = tab
 	var name: String = TABS[tab]
-	# Barra lateral.
-	for child in _sidebar.get_children():
-		child.queue_free()
-	for i in TABS.size():
-		var button := UiKit.side_button(TITLES.get(TABS[i], TABS[i]), UiIcons.section(TABS[i]), i == tab)
-		button.pressed.connect(show_tab.bind(i))
-		_sidebar.add_child(button)
-		if i == tab:
-			button.grab_focus.call_deferred()
-	var minutes := int(GameState.play_time / 60.0)
-	_money.text = "$%s      ⏱ %d h %02d" % [_thousands(GameState.money), minutes / 60, minutes % 60]
-	# Encabezado.
+	_title_label.text = String(TITLES.get(name, name))
+	(_title_label.get_parent().get_child(0) as MenuIcon).icon_name = name
+	(_title_label.get_parent().get_child(0) as MenuIcon).queue_redraw()
+	# Encabezado: guía de la primera vez.
 	for child in _header.get_children():
 		child.queue_free()
-	_header.add_child(UiKit.header_chip(TITLES.get(name, name), UiIcons.section(name)))
 	var guide := _guide(name)
 	if guide != "":
-		var tip := UiKit.wrapped("💡 " + guide, 17, UiKit.MUTED)
+		var tip := UiKit.wrapped("💡 " + guide, 17, UiKit.TEXT_SOFT)
 		tip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_header.add_child(tip)
 	# Contenido.
 	for child in _content.get_children():
@@ -189,12 +412,13 @@ func show_tab(index: int) -> void:
 		"Guardar":
 			page = SaveTab.build(self)
 	_content.add_child(page)
-	# Ayudas de botones.
+	# Ayudas de botones en píldoras.
 	for child in _footer.get_children():
 		child.queue_free()
-	_footer.add_child(UiKit.hint("menu_prev", "Sección anterior"))
-	_footer.add_child(UiKit.hint("menu_next", "Sección siguiente"))
-	_footer.add_child(UiKit.hint("menu", "Cerrar"))
+	_footer.add_child(_pill_hint("menu_prev", "Anterior"))
+	_footer.add_child(_pill_hint("menu_next", "Siguiente"))
+	_footer.add_child(_pill_hint("ui_cancel", "Volver"))
+	_footer.add_child(_pill_hint("menu", "Cerrar"))
 
 
 static func _thousands(value: int) -> String:

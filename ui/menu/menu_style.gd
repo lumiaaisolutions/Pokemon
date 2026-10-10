@@ -13,7 +13,8 @@ const TEMPERAMENT_NAMES := ["Tranquilo", "Curioso", "Tímido", "Agresivo", "Terr
 
 static func panel(border: Color = Color(1, 1, 1, 0.14), background: Color = UiKit.NAVY_SOFT) -> StyleBoxFlat:
 	var style := UiKit.panel_style(false, 14, Color(border.r, border.g, border.b, 0.35) if border != Color(1, 1, 1, 0.14) else border)
-	style.bg_color = background
+	if not UiKit.light or background != UiKit.NAVY_SOFT:
+		style.bg_color = background
 	return style
 
 
@@ -67,6 +68,15 @@ static func style_button(target: Button, selected: bool = false) -> void:
 	target.add_theme_color_override("font_focus_color", UiKit.INK)
 	target.add_theme_color_override("font_pressed_color", UiKit.INK)
 	target.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.3))
+	if UiKit.light:
+		normal.bg_color = Color(0, 0, 0, 0.05) if not selected else Color(1.0, 0.9, 0.78)
+		normal.border_color = UiKit.RED if selected else Color(0, 0, 0, 0.14)
+		hover.bg_color = UiKit.RED
+		hover.border_color = UiKit.GOLD
+		target.add_theme_color_override("font_color", UiKit.TEXT)
+		for state in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
+			target.add_theme_color_override(state, Color.WHITE)
+		target.add_theme_color_override("font_disabled_color", Color(0, 0, 0, 0.3))
 
 
 ## Píldora con el nombre del tipo en su color.

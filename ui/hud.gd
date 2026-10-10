@@ -122,7 +122,37 @@ func _ready() -> void:
 	_build_location_banner()
 
 
+## Estilo claro: los textos dentro de paneles y píldoras del HUD pasan a tinta oscura
+## (se revisa cada medio segundo; los que flotan sobre el mundo se quedan claros).
+var _ink_timer := 0.0
+
+
+func _ink_panels() -> void:
+	if not UiKit.light:
+		return
+	var roots: Array[Control] = [_companion_card, _ball_panel, _tip, _downed_panel, _prompt, _location, _clock]
+	for root in roots:
+		if root == null:
+			continue
+		var labels: Array = root.find_children("*", "Label", true, false)
+		if root is Label:
+			labels.append(root)
+		for node in labels:
+			var label := node as Label
+			var current := label.get_theme_color("font_color")
+			if label.has_meta("inked") and label.get_meta("inked") == current:
+				continue
+			var inked := UiKit.ink(current)
+			label.add_theme_color_override("font_color", inked)
+			label.add_theme_constant_override("outline_size", 0)
+			label.set_meta("inked", inked)
+
+
 func _process(delta: float) -> void:
+	_ink_timer -= delta
+	if _ink_timer <= 0.0:
+		_ink_timer = 0.5
+		_ink_panels()
 	if _player == null:
 		return
 	_time += delta
@@ -775,7 +805,9 @@ func _small_label(text: String, size: int) -> Label:
 ## Panel del kit: azul marino translúcido, esquinas redondeadas y franja de color a la izquierda.
 func _panel_style(border: Color = Color(0.95, 0.95, 0.9)) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.11, 0.24, 0.86)
+	style.bg_color = Color(UiKit.CREAM.r, UiKit.CREAM.g, UiKit.CREAM.b, 0.94) if UiKit.light else Color(0.07, 0.11, 0.24, 0.86)
+	if UiKit.light and border.s < 0.2:
+		border = UiKit.RED
 	style.set_corner_radius_all(14)
 	style.border_color = border
 	style.border_width_left = 6
@@ -789,7 +821,9 @@ func _panel_style(border: Color = Color(0.95, 0.95, 0.9)) -> StyleBoxFlat:
 ## Convierte una etiqueta en píldora del kit que se ajusta al texto (centrada en su ancla).
 func _pill(label: Label, accent: Color, size: int = 0) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.11, 0.24, 0.88)
+	style.bg_color = Color(UiKit.CREAM.r, UiKit.CREAM.g, UiKit.CREAM.b, 0.94) if UiKit.light else Color(0.07, 0.11, 0.24, 0.88)
+	if UiKit.light and accent.s < 0.2:
+		accent = UiKit.RED
 	style.set_corner_radius_all(22)
 	style.border_color = accent
 	style.border_width_bottom = 3

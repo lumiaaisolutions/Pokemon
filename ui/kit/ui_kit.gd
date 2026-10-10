@@ -23,6 +23,10 @@ const RED_DARK := Color(0.68, 0.12, 0.16)
 const TEXT := Color(0.2, 0.2, 0.26)
 const TEXT_SOFT := Color(0.45, 0.45, 0.52)
 
+## Estilo claro en toda la interfaz (Pokopia, acordado con Fernando el 2026-10-10):
+## los colores de texto pensados para fondo oscuro se pasan a tinta (ver ink()).
+static var light := true
+
 static var _font: Font
 static var _font_bold: Font
 static var _theme: Theme
@@ -75,7 +79,91 @@ static func theme() -> Theme:
 		var line_focus := line.duplicate() as StyleBoxFlat
 		line_focus.border_color = MINT
 		_theme.set_stylebox("focus", "LineEdit", line_focus)
+		if light:
+			# Estilo claro: campos blancos con borde, desplegables crema y texto oscuro.
+			line.bg_color = Color(1, 1, 1)
+			line.border_color = Color(0, 0, 0, 0.18)
+			line_focus.bg_color = Color(1, 1, 1)
+			line_focus.border_color = RED
+			var option := StyleBoxFlat.new()
+			option.bg_color = Color(0.95, 0.93, 0.88)
+			option.border_color = Color(0, 0, 0, 0.16)
+			option.set_border_width_all(2)
+			option.set_corner_radius_all(10)
+			option.content_margin_left = 12
+			option.content_margin_right = 12
+			option.content_margin_top = 6
+			option.content_margin_bottom = 6
+			var option_hover := option.duplicate() as StyleBoxFlat
+			option_hover.border_color = RED
+			option_hover.bg_color = Color(1.0, 0.92, 0.82)
+			for state in ["normal", "disabled"]:
+				_theme.set_stylebox(state, "OptionButton", option)
+			for state in ["hover", "pressed", "focus"]:
+				_theme.set_stylebox(state, "OptionButton", option_hover)
+			for type in ["OptionButton", "LineEdit", "Label", "Button", "CheckBox", "CheckButton"]:
+				_theme.set_color("font_color", type, TEXT)
+			for type in ["OptionButton", "Button"]:
+				_theme.set_color("font_hover_color", type, TEXT)
+				_theme.set_color("font_focus_color", type, TEXT)
+			_theme.set_color("font_placeholder_color", "LineEdit", TEXT_SOFT)
+			_theme.set_color("caret_color", "LineEdit", RED)
+			var popup := StyleBoxFlat.new()
+			popup.bg_color = CREAM
+			popup.border_color = RED
+			popup.set_border_width_all(2)
+			popup.set_corner_radius_all(10)
+			popup.set_content_margin_all(6)
+			_theme.set_stylebox("panel", "PopupMenu", popup)
+			_theme.set_color("font_color", "PopupMenu", TEXT)
+			_theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
+			var popup_hover := StyleBoxFlat.new()
+			popup_hover.bg_color = RED
+			popup_hover.set_corner_radius_all(6)
+			_theme.set_stylebox("hover", "PopupMenu", popup_hover)
+			# Deslizadores: riel gris, parte llena roja.
+			var track := StyleBoxFlat.new()
+			track.bg_color = Color(0, 0, 0, 0.12)
+			track.set_corner_radius_all(6)
+			track.content_margin_top = 4
+			track.content_margin_bottom = 4
+			var filled := track.duplicate() as StyleBoxFlat
+			filled.bg_color = RED
+			_theme.set_stylebox("slider", "HSlider", track)
+			_theme.set_stylebox("grabber_area", "HSlider", filled)
+			_theme.set_stylebox("grabber_area_highlight", "HSlider", filled)
+			_theme.set_icon("grabber", "HSlider", _knob(Color.WHITE))
+			_theme.set_icon("grabber_highlight", "HSlider", _knob(Color(1.0, 0.92, 0.6)))
+			# Interruptores: píldora gris (apagado) o roja (encendido).
+			_theme.set_icon("unchecked", "CheckButton", _switch(false))
+			_theme.set_icon("checked", "CheckButton", _switch(true))
+			_theme.set_icon("unchecked", "CheckBox", _switch(false))
+			_theme.set_icon("checked", "CheckBox", _switch(true))
 	return _theme
+
+
+static func _knob(fill: Color) -> Texture2D:
+	var image := Image.create_empty(24, 24, false, Image.FORMAT_RGBA8)
+	for y in 24:
+		for x in 24:
+			var d := Vector2(x - 11.5, y - 11.5).length()
+			if d <= 11.0:
+				image.set_pixel(x, y, RED_DARK if d > 9.0 else fill)
+	return ImageTexture.create_from_image(image)
+
+
+static func _switch(on: bool) -> Texture2D:
+	var image := Image.create_empty(52, 28, false, Image.FORMAT_RGBA8)
+	var track := RED if on else Color(0.75, 0.74, 0.72)
+	for y in 28:
+		for x in 52:
+			var cx := clampf(x, 14.0, 38.0)
+			if Vector2(x - cx, y - 13.5).length() <= 13.0:
+				image.set_pixel(x, y, track)
+			var knob_x := 38.0 if on else 14.0
+			if Vector2(x - knob_x, y - 13.5).length() <= 10.0:
+				image.set_pixel(x, y, Color.WHITE)
+	return ImageTexture.create_from_image(image)
 
 
 # --- Fondo y paneles ---------------------------------------------------------------------
@@ -87,6 +175,8 @@ static func backdrop(alpha: float = 0.93) -> Control:
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([Color(0.04, 0.07, 0.17, alpha), Color(0.1, 0.2, 0.42, alpha), Color(0.05, 0.1, 0.24, alpha)])
+	if light:
+		gradient.colors = PackedColorArray([Color(0.99, 0.95, 0.9, alpha), Color(0.98, 0.88, 0.84, alpha), Color(0.95, 0.8, 0.78, alpha)])
 	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
 	var texture := GradientTexture2D.new()
 	texture.gradient = gradient
@@ -108,7 +198,7 @@ static func backdrop(alpha: float = 0.93) -> Control:
 			var x := size.x * (0.15 + i * 0.17)
 			var width := 40.0 + i * 18.0
 			streaks.draw_colored_polygon(PackedVector2Array([Vector2(x, 0), Vector2(x + width, 0), Vector2(x + width - size.y * 0.45, size.y), Vector2(x - size.y * 0.45, size.y)]),
-					Color(1, 1, 1, 0.025)))
+					Color(1, 1, 1, 0.35) if light else Color(1, 1, 1, 0.025)))
 	root.add_child(streaks)
 	return root
 
@@ -122,6 +212,11 @@ static func panel_style(light: bool = false, radius: int = 14, border: Color = C
 	style.set_content_margin_all(18)
 	style.shadow_color = Color(0, 0, 0, 0.25)
 	style.shadow_size = 8
+	if UiKit.light:
+		style.bg_color = Color(1.0, 0.995, 0.98) if light else PAPER
+		style.border_color = Color(0, 0, 0, 0.08) if border.v > 0.9 and border.s < 0.2 else Color(border.r, border.g, border.b, 0.55)
+		style.shadow_color = Color(0, 0, 0, 0.08)
+		style.shadow_size = 4
 	return style
 
 
@@ -144,15 +239,36 @@ static func card_style(radius: int = 12) -> StyleBoxFlat:
 
 # --- Texto ----------------------------------------------------------------------------------
 
+## Color de texto para el fondo actual: en el estilo claro, blancos y grises claros pasan
+## a tinta oscura y los acentos claros (verde, dorado, rosa) se oscurecen para leerse.
+static func ink(color: Color) -> Color:
+	if not light:
+		return color
+	if color.s < 0.2 and color.v > 0.6:
+		return TEXT if color.v > 0.86 else TEXT_SOFT
+	if color.v > 0.7:
+		return Color.from_hsv(color.h, minf(color.s * 1.15, 1.0), 0.5, color.a)
+	return color
+
+
 static func label(text: String, size: int = 20, color: Color = WHITE, bold: bool = false) -> Label:
+	color = ink(color)
 	var result := Label.new()
 	result.text = text
 	result.add_theme_font_override("font", font(bold))
 	result.add_theme_font_size_override("font_size", size)
 	result.add_theme_color_override("font_color", color)
-	result.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35) if color.v > 0.5 else Color(0, 0, 0, 0))
+	result.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35) if color.v > 0.5 and not light else Color(0, 0, 0, 0))
 	result.add_theme_constant_override("shadow_offset_x", 1)
 	result.add_theme_constant_override("shadow_offset_y", 2)
+	return result
+
+
+## Etiqueta sobre fondo oscuro (aunque el estilo sea claro): sin pasar por ink().
+static func label_on_dark(text: String, size: int = 20, color: Color = WHITE, bold: bool = true) -> Label:
+	var result := label(text, size, Color.BLACK, bold)
+	result.add_theme_color_override("font_color", color)
+	result.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
 	return result
 
 
@@ -168,7 +284,7 @@ static func title(text: String, icon: Texture2D = null, size: int = 46) -> HBoxC
 	row.add_theme_constant_override("separation", 16)
 	if icon != null:
 		row.add_child(icon_rect(icon, Vector2(size, size)))
-	var text_label := label(" ".join(text.to_upper().split("")), size, Color(0.9, 0.94, 1.0), true)
+	var text_label := label(" ".join(text.to_upper().split("")), size, RED_DARK if light else Color(0.9, 0.94, 1.0), true)
 	text_label.add_theme_constant_override("outline_size", 0)
 	row.add_child(text_label)
 	return row
@@ -188,7 +304,7 @@ static func header_chip(text: String, icon: Texture2D = null) -> PanelContainer:
 	chip.add_child(row)
 	if icon != null:
 		row.add_child(icon_rect(icon, Vector2(28, 28)))
-	row.add_child(label(text.to_upper(), 22, INK, true))
+	row.add_child(label(text.to_upper(), 22, RED_DARK if light else INK, true))
 	return chip
 
 
@@ -228,14 +344,20 @@ static func side_button(text: String, icon: Texture2D, selected: bool) -> Button
 	active.border_width_left = 8
 	var hover := normal.duplicate() as StyleBoxFlat
 	hover.bg_color = Color(1, 1, 1, 0.2)
+	if light:
+		normal.bg_color = Color(0, 0, 0, 0.05)
+		hover.bg_color = Color(1.0, 0.92, 0.82)
+		active.bg_color = RED
+		active.border_color = GOLD
 	button.add_theme_stylebox_override("normal", active if selected else normal)
 	button.add_theme_stylebox_override("hover", active if selected else hover)
 	button.add_theme_stylebox_override("focus", active)
 	button.add_theme_stylebox_override("pressed", active)
+	var on_active := Color.WHITE if light else INK
 	for state in ["font_color", "font_hover_color"]:
-		button.add_theme_color_override(state, INK if selected else Color(0.85, 0.9, 1.0))
-	button.add_theme_color_override("font_focus_color", INK)
-	button.add_theme_color_override("font_pressed_color", INK)
+		button.add_theme_color_override(state, on_active if selected else (TEXT if light else Color(0.85, 0.9, 1.0)))
+	button.add_theme_color_override("font_focus_color", on_active)
+	button.add_theme_color_override("font_pressed_color", on_active)
 	_sounds(button)
 	return button
 
@@ -276,6 +398,14 @@ static func slant_button(text: String, accent: Color = Color(1, 1, 1, 0.3), size
 	button.add_theme_color_override("font_hover_color", INK)
 	button.add_theme_color_override("font_focus_color", INK)
 	button.add_theme_color_override("font_pressed_color", INK)
+	if light:
+		normal.bg_color = Color(0.93, 0.91, 0.86) if not selected else Color(1.0, 0.9, 0.78)
+		normal.border_color = ink(accent) if accent.a > 0.5 else Color(0, 0, 0, 0.15)
+		hover.bg_color = RED
+		hover.border_color = GOLD
+		button.add_theme_color_override("font_color", TEXT)
+		for state in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
+			button.add_theme_color_override(state, Color.WHITE)
 	_sounds(button)
 	return button
 
@@ -318,7 +448,7 @@ static func bar(ratio: float, width: float, color: Color = HP_GREEN, height: flo
 	progress.show_percentage = false
 	progress.value = clampf(ratio, 0.0, 1.0) * 100.0
 	var background := StyleBoxFlat.new()
-	background.bg_color = Color(0.05, 0.08, 0.16, 0.7)
+	background.bg_color = Color(0, 0, 0, 0.13) if light else Color(0.05, 0.08, 0.16, 0.7)
 	background.set_corner_radius_all(int(height * 0.5))
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = color
@@ -339,15 +469,15 @@ static func portrait_card(entry: Dictionary, selected: bool, compact: bool = fal
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(118, 150) if not compact else Vector2(96, 96)
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0.82, 0.86, 0.95, 0.92) if not selected else WHITE
+	normal.bg_color = (Color(0.9, 0.89, 0.85) if light else Color(0.82, 0.86, 0.95, 0.92)) if not selected else WHITE
 	normal.set_corner_radius_all(10)
-	normal.border_color = MINT if selected else Color(1, 1, 1, 0.0)
+	normal.border_color = (RED if light else MINT) if selected else Color(1, 1, 1, 0.0)
 	normal.set_border_width_all(4 if selected else 0)
 	normal.shadow_color = Color(0, 0, 0, 0.3)
 	normal.shadow_size = 5
 	var hover := normal.duplicate() as StyleBoxFlat
 	hover.bg_color = WHITE
-	hover.border_color = MINT
+	hover.border_color = RED if light else MINT
 	hover.set_border_width_all(4)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
@@ -381,8 +511,8 @@ static func empty_slot(size: Vector2) -> Panel:
 	var slot := Panel.new()
 	slot.custom_minimum_size = size
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0.05)
-	style.border_color = Color(1, 1, 1, 0.12)
+	style.bg_color = Color(0, 0, 0, 0.05) if light else Color(1, 1, 1, 0.05)
+	style.border_color = Color(0, 0, 0, 0.1) if light else Color(1, 1, 1, 0.12)
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(10)
 	slot.add_theme_stylebox_override("panel", style)

@@ -99,7 +99,10 @@ func _ready() -> void:
 		var cooldown := MenuStyle.label("", 16, MenuStyle.MUTED)
 		line.add_child(cooldown)
 		_moves.append({"panel": panel, "key": key, "name": name, "cooldown": cooldown})
-	_hints = MenuStyle.label("", 16, Color(0.9, 0.92, 1.0))
+	# Sobre el mundo (sin panel): texto claro con contorno.
+	_hints = UiKit.label_on_dark("", 16, Color(0.95, 0.96, 1.0))
+	_hints.add_theme_color_override("font_outline_color", Color(0.08, 0.08, 0.12))
+	_hints.add_theme_constant_override("outline_size", 5)
 	_hints.anchor_left = 0.0
 	_hints.anchor_right = 1.0
 	_hints.anchor_top = 1.0
@@ -120,7 +123,9 @@ func _ready() -> void:
 	_charge_box.offset_bottom = -110
 	_charge_box.visible = false
 	_root.add_child(_charge_box)
-	var charge_label := MenuStyle.label("POTENCIA", 18, Color(1.0, 0.95, 0.7))
+	var charge_label := UiKit.label_on_dark("POTENCIA", 18, Color(1.0, 0.95, 0.7))
+	charge_label.add_theme_color_override("font_outline_color", Color(0.08, 0.08, 0.12))
+	charge_label.add_theme_constant_override("outline_size", 5)
 	charge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_charge_box.add_child(charge_label)
 	_charge = _bar()
@@ -139,6 +144,10 @@ func _card(border: Color) -> PanelContainer:
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.07, 0.09, 0.16, 0.88)
+	if UiKit.light:
+		style.bg_color = Color(UiKit.CREAM.r, UiKit.CREAM.g, UiKit.CREAM.b, 0.95)
+		style.shadow_color = Color(0, 0, 0, 0.25)
+		style.shadow_size = 6
 	style.border_color = border
 	style.set_border_width_all(2)
 	style.border_width_left = 6
@@ -156,7 +165,7 @@ func _bar() -> ProgressBar:
 	bar.custom_minimum_size = Vector2(0, 14)
 	bar.show_percentage = false
 	var background := StyleBoxFlat.new()
-	background.bg_color = Color(0.15, 0.15, 0.2)
+	background.bg_color = Color(0, 0, 0, 0.15) if UiKit.light else Color(0.15, 0.15, 0.2)
 	background.set_corner_radius_all(6)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = Color(0.3, 0.85, 0.4)

@@ -321,9 +321,9 @@ func _title_showcase() -> Control:
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 6)
-	var logo := UiKit.label("MUNDO ABIERTO", 64, UiKit.GOLD, true)
+	var logo := UiKit.label_on_dark("MUNDO ABIERTO", 64, UiKit.GOLD, true)
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.add_theme_color_override("font_outline_color", UiKit.NAVY)
+	logo.add_theme_color_override("font_outline_color", UiKit.RED_DARK)
 	logo.add_theme_constant_override("outline_size", 14)
 	box.add_child(logo)
 	var row := HBoxContainer.new()
