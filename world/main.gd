@@ -92,8 +92,6 @@ func _ready() -> void:
 		GameState.respawn_point = _player.global_position
 	($CameraRig as CameraRig).snap()
 	_warm_up_shaders()
-	# Saludo personal al entrar al mundo (pedido de Fernando).
-	get_tree().create_timer(1.2).timeout.connect(func() -> void: GameState.notice.emit("¡Bienvenido, Fernando Cachondo!"))
 	if starter_ceremony and GameState.party.is_empty():
 		_start_ceremony.call_deferred()
 	else:
