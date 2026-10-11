@@ -53,6 +53,26 @@ Fernando notó que la misma especie solo se repite en las manadas: los sueltos s
 - **Causa:** casi todo el mapa queda fuera de las áreas propias de las especies (×0.12 para todas), así que cada aparición salía de una especie distinta.
 - **Implementación (`wild_spawner.gd`):** `rarity(species)` = (ratio de captura / 255)^1.2 entre 0.05 y 1 (Pidgey 1, Eevee 0.13); cada **parcela de 160 m** sortea con la semilla de 3 a 5 **comunes** (rareza ≥ 0.45, hasta 2.ª etapa) que pesan ×30. Medido en 4 lugares con 40 apariciones: los comunes salen 6–12 veces cada uno y el resto queda como poco común o raro (p. ej. Weedle ×12, Deerling ×10, Bellsprout ×9).
 
+## Hordas (fase 5.8, decidido por Fernando el 2026-10-10 · hecho)
+- **Qué es:** 5 salvajes de la misma especie que te rodean y pelean **a la vez** contra tu compañero (como Rubí Omega). Más raras y fuertes: **2 % de las apariciones, en cualquier lugar**; el **1 %** de las hordas trae un **líder** evolucionado. Shiny ×3 en cada miembro.
+- **Aparición (`WildSpawner.spawn_horde`):** antes de la manada, `spawn_one` saca una horda con `HORDE_CHANCE` (no en agua). Los 5 quedan en círculo (2.6 m), con `meta "horde"` = id, en el grupo `hordes` y con el mismo `group_id`. Solo cuenta para el tope de la zona del primero. `horde_members(id)` devuelve los que siguen vivos.
+- **Combate (`BattleManager`):** fuera de combate, cada 0.5 s, si un miembro está a menos de **12 m** del jugador y se puede pelear, la horda **se lanza** y empieza el combate ("¡Una horda de 5 X te rodea!"). Todos entran al círculo alrededor de tu compañero y lo atacan; no se congelan con el resto del mundo. Al debilitar al rival, el siguiente miembro pasa a ser el rival ("Quedan N"). Al vencer a todos: premio normal más **$150 por miembro y un Caramelo Raro**. Huir saliendo del círculo funciona igual.
+- **Prueba:** `test_battle` sección 3b (5 miembros, se lanza al acercarte, los 5 en la arena, siguen uno tras otro, premio y limpieza).
+
+## Especies de temporada (fase 5.8, decidido por Fernando el 2026-10-10 · hecho)
+- **Estaciones** de 7 días (`Weather.season`, 0 Primavera, 1 Verano, 2 Otoño, 3 Invierno).
+- **Por tipo** (`WildSpawner.SEASON_TYPES`, peso multiplicado por cada tipo): primavera Hada ×2.2, Normal ×1.5, Volador ×1.6; verano Bicho ×2, Planta ×1.6, Fuego ×1.8; otoño Fantasma ×2.5, Siniestro ×2; invierno Hielo ×3, Bicho ×0.3, Planta ×0.4.
+- **Solo en su estación** (`SEASON_ONLY`): Cherubi, Combee (primavera); Volbeat, Illumise, Surskit (verano); Deerling, Phantump, Pumpkaboo (otoño); Snover, Delibird, Cubchoo, Vanillite, Spheal (invierno), con sus evoluciones. `pick_species` nunca las da fuera de su estación.
+- **Prueba:** `test_creatures` (invierno/verano, Snover nunca sale en verano).
+
+## Migraciones (fase 5.8, decidido por Fernando el 2026-10-10 · hecho)
+- **Cada 2–3 días** (`Migrations`, `world/events/migrations.gd`): a las 6:00 el Rotom avisa: "Hoy hacia las HH:00 pasará una bandada de X y aterrizará por <zona>". La especie sale de la lista de la estación (`POOL`: Swablu, Pidove, Hoppip, Cottonee en primavera; Butterfree, Beautifly, Vivillon, Wingull en verano; Starly, Ducklett, Murkrow, Wingull en otoño; Delibird, Pidove, Starly en invierno), cada una con su hora (Wingull 18:00, Murkrow 19:00…).
+- **Puede ser de fuera de la Pokédex regional** (viene de otra región; solo se atrapa ese día).
+- **En el cielo:** a su hora, una V de 9 pasa a 12 m por delante de la cámara rumbo al aterrizaje y **la cámara mira al cielo unos 4 s** sola (`CameraRig.look_at_sky`; mover la cámara lo cancela). Si estás en combate, en un edificio o en un diálogo, espera a que salgas. Las aves proyectan sombra.
+- **Aterrizaje lejos (hay que buscarla):** a 450 m o más del jugador, en tierra y fuera de los pueblos; el Rotom solo dice la zona. Desde su hora y hasta que termina el día, en 70 m salen de esa especie el 75 % de las veces, con **shiny ×3**, sin filtro de clima.
+- Estado en `world_flags["events"]["migration"]` y `migration_next` (se guarda).
+- **Prueba:** `test_town` (aviso, siguiente en 2–3 días, aterriza a su hora, V de 9, cámara al cielo, especie de fuera, apariciones, se va al día siguiente).
+
 ## Pendientes pedidos por Fernando (2026-10-10)
 - **Emboscadas en árboles — tamaño:** algunos voladores y Bicho se ven del tamaño del árbol (o más grandes). Causa: el árbol se elegía sin mirar el tamaño del Pokémon. **Decisión:** primero el Pokémon y luego un árbol que mida **al menos 2.5× su altura**; si no hay, no se posa. **Hecho** (`AmbushManager.spawn_one`, `TREE_RATIO`).
 - **Bicho también en el suelo:** ya salían caminando con los salvajes normales, pero pocos. **Decisión:** de las emboscadas de Bicho, **40 % al pie del árbol** (entre las raíces) y 60 % colgados. **Hecho** (`place_at_foot`, `GROUND_BUG_SHARE`).

@@ -27,6 +27,14 @@ Orden por capas: primero el mundo exterior, luego la vida (NPC, día y noche, cl
 
 ## Fase 5.8 — decisiones (Fernando, 2026-10-10)
 - **Pesca:** hecha con el campamento (ver [jugador](sistemas/jugador.md)).
-- **Hordas de 5 que te rodean** (como Rubí Omega): 5 de la misma especie pelean contra tu compañero a la vez, dan más premios y más probabilidad de shiny.
-- **Migraciones, las dos:** bandadas visibles que cruzan el mapa a ciertas horas y estaciones (Wingull al atardecer, Swablu en primavera, Butterfree en verano…), aterrizan en un lugar y se quedan un día (el Rotom avisa), **y** especies de temporada (solo en ciertas estaciones).
+- **Hordas de 5 que te rodean** (como Rubí Omega): 5 de la misma especie pelean contra tu compañero a la vez, dan más premios y más probabilidad de shiny. **Hecho** (ver [Pokémon salvajes](sistemas/pokemon_salvajes.md#hordas-fase-58-decidido-por-fernando-el-2026-10-10--hecho)).
+- **Migraciones, las dos (hechas, ver [Pokémon salvajes](sistemas/pokemon_salvajes.md)):** bandadas visibles que cruzan el mapa a ciertas horas y estaciones (Wingull al atardecer, Swablu en primavera, Butterfree en verano…), aterrizan en un lugar y se quedan un día (el Rotom avisa), **y** especies de temporada (solo en ciertas estaciones).
 - **Rocas rompibles, ambas:** rocas agrietadas en montañas, cuevas y caminos que tu compañero rompe con un ataque (o Golpe Roca) y sueltan minerales, fósiles, piedras evolutivas o un Pokémon escondido; **y además** tapan entradas de cuevas y atajos que se abren al romperlas.
+- **Detalles (Fernando, 2026-10-10):**
+  - Hordas **más raras y fuertes: 2 % de las apariciones, en cualquier lugar**; el **1 %** de las hordas trae un **líder** evolucionado.
+  - Especies de temporada **por tipo y estación**: invierno más Hielo y menos Bicho/Planta; verano más Bicho, Planta y Fuego; otoño más Fantasma y Siniestro; primavera más Hada, Normal y Volador; algunas especies solo salen en su estación (Deerling, Cherubi, Snover…).
+  - Rocas: las **pequeñas agrietadas las rompe cualquier compañero**; las **grandes que bloquean** cuevas y atajos necesitan un compañero de tipo **Lucha, Roca, Tierra o Acero** (o que sepa Golpe Roca).
+  - Bandadas: en el cielo solo se ven; **al aterrizar se quedan un día** en ese lugar como salvajes normales (más probabilidad de shiny) y luego se van.
+  - Bandadas (2.ª ronda): **pueden traer especies de fuera de la Pokédex regional** (vienen de otra región; solo se atrapan ese día); pasa **1 cada 2–3 días**; aterriza **lejos, hay que buscarla**: el Rotom solo dice la zona.
+  - Bandada en pantalla: como la cámara normal casi no ve el cielo, **la cámara mira arriba unos segundos** al pasar (cancelable moviéndola) y sus sombras cruzan el suelo.
+  - Rocas pequeñas (2.ª ronda): se rompen **atacándolas con tu compañero** (como objetivo de sus ataques, sin menú); **reaparecen a los 3 días**; premios **mezcla equilibrada**: minerales 55 %, Pokémon escondido 15 % (Geodude, Roggenrola, Dwebble, Nosepass…), piedra evolutiva 10 %, fósil 5 %, Pepita/Perla 5 %, nada 10 %.

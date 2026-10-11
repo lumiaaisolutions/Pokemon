@@ -39,7 +39,7 @@ func _run() -> void:
 	var navigation := _main.get_node("Navigation") as WorldNavigation
 	while not navigation.is_baked:
 		await get_tree().physics_frame
-	for node_name in ["Spawner", "Legendaries", "Ambushes", "Events"]:
+	for node_name in ["Spawner", "Legendaries", "Ambushes", "Events", "Migrations"]:
 		(_main.get_node(node_name) as Node).set_process(false)
 	await _frames(10)
 	var start := _world.start_position()
@@ -182,6 +182,53 @@ func _run() -> void:
 			hits += 1
 	_check(hits > 15, "en un brote masivo sale mucho esa especie (%d/40)" % hits)
 	_check(events.outbreak_species_at(outbreak_point + Vector3(500, 0, 0)) == null, "fuera del brote no aplica")
+
+	# Migraciones (fase 5.8): aviso, paso por el cielo en V y aterrizaje de un día, aunque
+	# la especie sea de fuera de la región.
+	var migrations := _main.get_node("Migrations") as Migrations
+	var outsider: SpeciesData = null
+	for id in ["swablu", "pidove", "starly", "wingull", "butterfree", "delibird", "murkrow"]:
+		if not Regions.allows(_species(id)):
+			outsider = _species(id)
+			break
+	var migrant_species: SpeciesData = outsider if outsider != null else _species("swablu")
+	var land_point := _world.start_position() + Vector3(0, 0, 200)
+	var day_now := GameState.game_day()
+	var fly_hour := GameState.clock_hour() + 1.0
+	var migration := migrations.start_migration(migrant_species, land_point, fly_hour)
+	_check(not migration.is_empty() and migrations.current() == migration, "empieza la migración de hoy")
+	var next_day := int(GameState.world_flags["events"].get("migration_next", 0))
+	_check(next_day >= day_now + Migrations.DAYS_MIN and next_day <= day_now + Migrations.DAYS_MAX, "la siguiente migración es en 2–3 días (%d)" % (next_day - day_now))
+	_check(migrations.species_at(land_point) == null, "antes de su hora la bandada no ha aterrizado")
+	GameState.play_time += 61.0
+	_check(migrations.landed(), "a su hora la bandada aterriza")
+	migrations.fly_over()
+	_check(migrations.flock() != null and migrations.flock().get_child_count() == Migrations.FLOCK_SIZE, "la bandada cruza el cielo en V (%d)" % (migrations.flock().get_child_count() if migrations.flock() != null else 0))
+	if migrations.flock() != null:
+		_check(migrations.flock().global_position.y > _player.global_position.y + 5.0, "la bandada va por el cielo")
+		var rig := _main.get_node("CameraRig") as CameraRig
+		migrations._move_flock(Migrations.SKY_LOOK_AT + 0.1)
+		_check(rig.looking_at_sky(), "al acercarse la bandada la cámara mira al cielo")
+		rig.look_at_sky(0.0)
+		migrations._move_flock(Migrations.FLOCK_SECONDS + 1.0)
+		_check(migrations.flock() == null, "la bandada se va del cielo tras pasar")
+	_check(migrations.species_at(land_point + Vector3(20, 0, 0)) == migrant_species, "donde aterrizó sale esa especie%s" % (" (de fuera de la región)" if outsider != null else ""))
+	_check(migrations.species_at(land_point + Vector3(400, 0, 0)) == null, "lejos del aterrizaje no aplica")
+	_player.global_position = Vector3(land_point.x, _world.surface_height_at(land_point.x, land_point.z) + 0.5, land_point.z)
+	var migrant_hits := 0
+	var spawn_total := 0
+	for i in 30:
+		var spawned := spawner.spawn_one()
+		if spawned != null:
+			spawn_total += 1
+		if spawned != null and spawned.species == migrant_species:
+			migrant_hits += 1
+		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+			node.queue_free()
+		await _frames(1)
+	_check(spawn_total > 0 and migrant_hits >= spawn_total * 0.5, "donde aterrizó la bandada salen sobre todo de esa especie (%d/%d)" % [migrant_hits, spawn_total])
+	GameState.play_time += GameState.DAY_SECONDS
+	_check(migrations.current().is_empty() and migrations.species_at(land_point) == null, "al día siguiente la bandada ya se fue")
 
 	# Habitantes con rutina: de día en el pueblo, de noche en casa.
 	_player.respawn_at(_world.start_position() + Vector3.UP * 0.5)

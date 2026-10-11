@@ -48,6 +48,15 @@ const COMMON_MIN_RARITY := 0.45
 ## Proporción de apariciones de una zona que son de sus especies características.
 const FEATURED_SHARE := 0.35
 const PACK_CHANCE := 0.2
+## Hordas (fase 5.8, decisión de Fernando 2026-10-10): 2 % de las apariciones, en cualquier
+## lugar, 5 de la misma especie que te rodean y pelean a la vez; el 1 % de las hordas trae un
+## líder evolucionado. Shiny ×3 en las hordas.
+const HORDE_CHANCE := 0.02
+const HORDE_SIZE := 5
+const HORDE_LEADER_CHANCE := 0.01
+const HORDE_SHINY_BOOST := 3.0
+const HORDE_GROUP := &"hordes"
+var _next_horde_id := 0
 const PACK_SIZE_MIN := 2
 const PACK_SIZE_MAX := 4
 ## Probabilidad de que una manada tenga líder evolucionado.
@@ -285,6 +294,44 @@ func time_factor(species: SpeciesData) -> float:
 	return 0.3 if night_lover else 1.0
 
 
+## Especies de temporada (fase 5.8, decisión de Fernando 2026-10-10): por tipo y estación
+## (Weather: 0 Primavera, 1 Verano, 2 Otoño, 3 Invierno). Multiplicadores por tipo:
+const SEASON_TYPES := [
+	{PokemonTypes.Type.FAIRY: 2.2, PokemonTypes.Type.NORMAL: 1.5, PokemonTypes.Type.FLYING: 1.6},
+	{PokemonTypes.Type.BUG: 2.0, PokemonTypes.Type.GRASS: 1.6, PokemonTypes.Type.FIRE: 1.8},
+	{PokemonTypes.Type.GHOST: 2.5, PokemonTypes.Type.DARK: 2.0},
+	{PokemonTypes.Type.ICE: 3.0, PokemonTypes.Type.BUG: 0.3, PokemonTypes.Type.GRASS: 0.4},
+]
+## Especies que solo salen en su estación (línea completa).
+const SEASON_ONLY := {
+	"cherubi": 0, "cherrim": 0, "combee": 0, "vespiquen": 0,
+	"volbeat": 1, "illumise": 1, "surskit": 1, "masquerain": 1,
+	"deerling": 2, "sawsbuck": 2, "phantump": 2, "trevenant": 2, "pumpkaboo": 2, "gourgeist": 2,
+	"snover": 3, "abomasnow": 3, "delibird": 3, "cubchoo": 3, "beartic": 3,
+	"vanillite": 3, "vanillish": 3, "vanilluxe": 3, "spheal": 3, "sealeo": 3, "walrein": 3,
+}
+
+
+static func current_season() -> int:
+	return Weather.season(GameState.game_day())
+
+
+## ¿Sale species en la estación actual? (las de temporada solo en la suya).
+static func in_season(species: SpeciesData) -> bool:
+	return not SEASON_ONLY.has(species.identifier) or int(SEASON_ONLY[species.identifier]) == current_season()
+
+
+## Peso por la estación: según sus tipos; 0 si es de otra temporada.
+static func season_factor(species: SpeciesData) -> float:
+	if not in_season(species):
+		return 0.0
+	var table: Dictionary = SEASON_TYPES[current_season()]
+	var factor := 1.0
+	for type in species.types:
+		factor *= float(table.get(type, 1.0))
+	return factor
+
+
 ## Peso extra de la especie en point: común en su área, rara fuera.
 ## Rareza de la especie (0.05–1) por su ratio de captura oficial.
 static func rarity(species: SpeciesData) -> float:
@@ -372,6 +419,8 @@ func pick_species(habitat: SpeciesData.Habitat, water_mode: int, zone: Vector2i 
 			species = _weighted_pick(habitat, _rng)
 		if species == null:
 			return null
+		if not in_season(species):
+			continue
 		var is_water_type := species.types.has(PokemonTypes.Type.WATER)
 		if water_mode == 2 and not species.swims:
 			continue
@@ -405,7 +454,7 @@ func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesD
 	for species in candidates:
 		var occupied := 6.0 if ActivityManager.is_occupied(point) and (species.types.has(PokemonTypes.Type.DARK) or species.types.has(PokemonTypes.Type.POISON)) else 1.0
 		var place := _world.type_affinity(species.types, point.x, point.z) * weather_factor(species)
-		total += species.spawn_weight * rarity(species) * common_factor(species, habitat, point) * home_factor(species.identifier, point) * time_factor(species) * occupied * place
+		total += species.spawn_weight * rarity(species) * common_factor(species, habitat, point) * home_factor(species.identifier, point) * time_factor(species) * season_factor(species) * occupied * place
 		weights.append(total)
 	var index := weights.bsearch(_rng.randf() * total)
 	return candidates[mini(index, candidates.size() - 1)]
@@ -479,6 +528,12 @@ func spawn_one() -> PokemonActor:
 			if _world.random_water_point(_rng, point, 6.0, true) != Vector3.INF and _rng.randf() < 0.5:
 				water_mode = 1
 		var habitat := _world.habitat_at(point.x, point.z)
+		# Migración (fase 5.8): donde aterrizó la bandada sale sobre todo esa especie, aunque
+		# sea de fuera de la región, con más probabilidad de shiny.
+		var migrations := get_tree().get_first_node_in_group(&"migrations") as Migrations
+		var migrant := migrations.species_at(point) if migrations != null and water_mode == 0 else null
+		if migrant != null and _rng.randf() < Migrations.LAND_SHARE:
+			return spawn_species(migrant, point, _rng.randf() < shiny_chance() * Migrations.SHINY_BOOST, false)
 		var species := pick_species(habitat, water_mode, zone, point)
 		# Arrecife: en el mar del sur salen nadadores propios del fondo.
 		if water_mode == 2 and _world.region_biome_at(point.x, point.z) == RegionLayout.Biome.SEA and _rng.randf() < 0.4:
@@ -497,6 +552,8 @@ func spawn_one() -> PokemonActor:
 			species = pick_species(habitat, water_mode, Vector2i(9999, 9999), point)
 		if species == null or not climate_ok(species, point):
 			continue
+		if water_mode != 2 and _rng.randf() < HORDE_CHANCE:
+			return spawn_horde(species, point, habitat)
 		if water_mode != 2 and _rng.randf() < PACK_CHANCE and _pack_allowed(point):
 			return _spawn_pack(species, point, habitat)
 		return spawn_species(species, point, _rng.randf() < shiny_chance(), water_mode == 2)
@@ -590,6 +647,48 @@ func _pack_allowed(point: Vector3) -> bool:
 	if nearest >= PACK_SPACING:
 		return true
 	return nearest >= RIVAL_PACK_MIN_DISTANCE and _rng.randf() < RIVAL_PACK_CHANCE
+
+
+## Horda de HORDE_SIZE de la etapa básica de la línea de species, en círculo alrededor de
+## point; a veces (HORDE_LEADER_CHANCE) el primero es un líder evolucionado.
+func spawn_horde(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habitat = -1, force_leader := false) -> PokemonActor:
+	var line: Array[SpeciesData] = (_by_chain.get(species.evolution_chain, [species]) as Array[SpeciesData]).filter(
+			func(s: SpeciesData) -> bool: return s.spawn_weight > 0.0 and (habitat < 0 or s.habitats.has(habitat)))
+	if line.is_empty():
+		line = [species]
+	var lowest: int = line.map(func(s: SpeciesData) -> int: return s.evolution_stage).min()
+	var basic: SpeciesData = line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage == lowest)[0]
+	var evolved := line.filter(func(s: SpeciesData) -> bool: return s.evolution_stage > lowest)
+	var horde_id := _next_horde_id
+	_next_horde_id += 1
+	var group := _next_group_id
+	_next_group_id += 1
+	var first: PokemonActor = null
+	for i in HORDE_SIZE:
+		var angle := TAU * i / HORDE_SIZE
+		var at := _snap_to_walkable(point + Vector3(cos(angle), 0.0, sin(angle)) * 2.6 * maxf(1.0, basic.size_scale))
+		if at == Vector3.INF:
+			at = point
+		var kind := basic
+		if i == 0 and not evolved.is_empty() and (force_leader or _rng.randf() < HORDE_LEADER_CHANCE):
+			kind = evolved[_rng.randi() % evolved.size()]
+		var actor := spawn_species(kind, at, _rng.randf() < shiny_chance() * HORDE_SHINY_BOOST, false)
+		actor.group_id = group
+		actor.set_meta("horde", horde_id)
+		actor.add_to_group(HORDE_GROUP)
+		if first == null:
+			first = actor
+	return first
+
+
+## Miembros vivos de una horda.
+func horde_members(horde_id: int) -> Array[PokemonActor]:
+	var result: Array[PokemonActor] = []
+	for node in get_tree().get_nodes_in_group(HORDE_GROUP):
+		var actor := node as PokemonActor
+		if is_instance_valid(actor) and not actor.is_queued_for_deletion() and int(actor.get_meta("horde", -1)) == horde_id:
+			result.append(actor)
+	return result
 
 
 ## Manada de la línea evolutiva de species: casi todos en etapa básica y, rara vez,

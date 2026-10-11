@@ -35,6 +35,12 @@ func _ready() -> void:
 	events.player_path = NodePath("../Player")
 	events.spawner_path = NodePath("../Spawner")
 	add_child(events)
+	# Migraciones: bandadas que cruzan el cielo y aterrizan un día (fase 5.8).
+	var migrations := Migrations.new()
+	migrations.name = "Migrations"
+	migrations.world_path = NodePath("../World")
+	migrations.player_path = NodePath("../Player")
+	add_child(migrations)
 	# Combate en arena (Fase 3) y música según el lugar.
 	var battle := BattleManager.new()
 	battle.name = "Battle"

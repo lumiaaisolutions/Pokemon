@@ -174,6 +174,24 @@ func _run() -> void:
 		await _frames(2)
 	_check(packs_ok == 6, "las manadas deben ser de una línea con como mucho un líder evolucionado (%d de 6)" % packs_ok)
 
+	# Especies de temporada (fase 5.8): por tipo y estación; las de temporada solo en la suya.
+	var saved_time := GameState.play_time
+	var day_of := func(season: int) -> float: return float(season * Weather.SEASON_DAYS) * GameState.DAY_SECONDS
+	GameState.play_time = day_of.call(3)
+	_check(WildSpawner.current_season() == 3, "el día 21 es invierno")
+	_check(WildSpawner.in_season(_species("snover")) and WildSpawner.season_factor(_species("snover")) > 1.0, "en invierno sale Snover (y el Hielo pesa más)")
+	_check(WildSpawner.season_factor(_species("caterpie")) < 1.0, "en invierno salen menos Bicho")
+	GameState.play_time = day_of.call(1)
+	_check(not WildSpawner.in_season(_species("snover")) and WildSpawner.season_factor(_species("snover")) == 0.0, "en verano no sale Snover")
+	_check(WildSpawner.season_factor(_species("caterpie")) > 1.0, "en verano salen más Bicho")
+	var snover_seen := false
+	for i in 200:
+		var picked := _spawner.pick_species(SpeciesData.Habitat.MOUNTAIN, 0)
+		if picked != null and picked.identifier in ["snover", "abomasnow"]:
+			snover_seen = true
+	_check(not snover_seen, "pick_species nunca da una especie fuera de su estación")
+	GameState.play_time = saved_time
+
 	# Esconderse: al cumplir su tiempo sin interacción desaparece con efecto.
 	var hider := _spawner.spawn_species(_species("bidoof"), _ground(25.0, 0.0), false, false)
 	await _frames(2)

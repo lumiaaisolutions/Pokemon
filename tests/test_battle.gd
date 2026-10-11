@@ -95,6 +95,40 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(5)
 
+	# 3b. Horda (fase 5.8): 5 te rodean, pelean a la vez y al vencerlas hay premio extra.
+	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
+	var horde_leader := _spawner.spawn_horde(_species("patrat"), arena + Vector3(0, 0, -6))
+	await _frames(2)
+	_check(horde_leader != null and horde_leader.has_meta("horde"), "spawn_horde crea una horda")
+	if horde_leader != null:
+		var members := _spawner.horde_members(int(horde_leader.get_meta("horde")))
+		_check(members.size() == WildSpawner.HORDE_SIZE, "la horda tiene %d miembros (%d)" % [WildSpawner.HORDE_SIZE, members.size()])
+		_player.global_position = arena + Vector3(0, 0.5, 2)
+		var wins_before := _results.count("win")
+		var money_before := GameState.money
+		# Se acerca sola: el disparador de proximidad empieza el combate.
+		for i in 40:
+			await get_tree().physics_frame
+			if _battle.active:
+				break
+		_check(_battle.active and _battle.horde_size == WildSpawner.HORDE_SIZE, "acercarse a la horda empieza el combate contra las 5 (activo %s, tamaño %d)" % [_battle.active, _battle.horde_size])
+		var fighting := members.filter(func(m: PokemonActor) -> bool: return m.battle_center != Vector3.INF)
+		_check(fighting.size() == WildSpawner.HORDE_SIZE, "todos los de la horda entran a la arena (%d)" % fighting.size())
+		for k in WildSpawner.HORDE_SIZE:
+			if not _battle.active:
+				break
+			var current := _battle.opponent
+			current.receive_hit(current.hp + 100.0, _main.companion)
+			await _frames(6)
+			if k < WildSpawner.HORDE_SIZE - 1:
+				_check(_battle.active and _battle.opponent != current, "tras debilitar a uno sigue el siguiente de la horda (%d)" % k)
+		await _frames(10)
+		_check(_results.count("win") == wins_before + 1, "vencer a toda la horda gana el combate")
+		_check(GameState.money >= money_before + 150 * WildSpawner.HORDE_SIZE, "la horda da premio extra")
+		_check(_battle.horde.is_empty(), "al terminar se limpia la horda")
+	_clear_wild()
+	await _frames(5)
+
 	# 4. Cambiar de Pokémon (con espera) y megaevolucionar.
 	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
 	var third := _spawner.spawn_species(_species("lillipup"), arena + Vector3(0, 0, -4), false, false)
@@ -247,7 +281,11 @@ func _run() -> void:
 			walker = npcs.travelers()[0]
 			break
 	_check(not walker.is_empty(), "debe aparecer un viajero en los caminos")
-	if not walker.is_empty():
+	# Algunos viajeros quedan junto a agua u obstáculos y no te alcanzan: se prueba con hasta 3.
+	var challenged := false
+	var tried := 0
+	while not walker.is_empty() and not challenged and tried < 3:
+		tried += 1
 		if walker["pet"] == null:
 			walker["pet"] = npcs._make_pet(RandomNumberGenerator.new())
 		walker["mood"] = true
@@ -256,16 +294,18 @@ func _run() -> void:
 		_main.companion.global_position = node.global_position + sprite.facing_world * 7.0 + Vector3(1, 1, 0)
 		_player.global_position = node.global_position + sprite.facing_world * 7.0 + Vector3.UP * 0.5
 		_player.velocity = Vector3.ZERO
-		var challenged := false
 		for i in 400:
 			await get_tree().physics_frame
 			if _battle.active:
-				challenged = true
+				challenged = String(_battle.trainer.get("name", "")).contains(String(walker["name"]))
 				break
-		_check(challenged and String(_battle.trainer.get("name", "")).contains(String(walker["name"])), "el viajero te ve, se acerca y te reta")
 		if _battle.active:
 			_battle.finish("flee")
 		await _frames(10)
+		if not challenged:
+			var others := npcs.travelers().filter(func(t: Dictionary) -> bool: return t != walker and not t.get("mood_used", false))
+			walker = others[0] if not others.is_empty() else {}
+	_check(challenged, "el viajero te ve, se acerca y te reta (%d intentos)" % tried)
 
 	# 11. Héroes: equipo que crece con las medallas, IA lista y reto.
 	var heroes := _main.get_node("Heroes") as Heroes

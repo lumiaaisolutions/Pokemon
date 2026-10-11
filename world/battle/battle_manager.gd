@@ -58,6 +58,12 @@ var _aim_attack := 0.0
 ## money, item, at, on_end: Callable}. Vacío en combates contra salvajes.
 var trainer: Dictionary = {}
 var _dodge_cooldown := 0.0
+## Horda (fase 5.8): los demás miembros que pelean a la vez contra tu compañero; al caer
+## el rival, sigue el siguiente. horde_size: cuántos eran (para el premio).
+var horde: Array[PokemonActor] = []
+var horde_size := 0
+var _horde_check := 0.0
+const HORDE_RUSH_DISTANCE := 12.0
 
 
 func _ready() -> void:
@@ -217,6 +223,16 @@ func _begin(wild: PokemonActor) -> bool:
 	active = true
 	_ending = false
 	opponent = wild
+	# Horda: todos sus miembros entran al combate (y no se congelan).
+	horde.clear()
+	horde_size = 0
+	if wild.has_meta("horde"):
+		var spawner := _main.get_node_or_null("Spawner") as WildSpawner
+		if spawner != null:
+			for member in spawner.horde_members(int(wild.get_meta("horde"))):
+				if member != wild and member.state != PokemonActor.State.STUNNED:
+					horde.append(member)
+			horde_size = horde.size() + 1
 	mega_used = false
 	locked = true
 	_moves_used.clear()
@@ -241,17 +257,30 @@ func _begin(wild: PokemonActor) -> bool:
 	wild.battle_center = center
 	wild.battle_radius = ARENA_RADIUS - 0.5
 	wild.start_fight(c)
+	# La horda te rodea: entran al círculo y atacan a tu compañero a la vez.
+	for k in horde.size():
+		var member := horde[k]
+		var angle := TAU * k / maxf(horde.size(), 1) + 0.6
+		var spot := center + Vector3(cos(angle), 0, sin(angle)) * (ARENA_RADIUS * 0.45)
+		member.global_position = Vector3(spot.x, world.surface_height_at(spot.x, spot.z) + 0.3, spot.z)
+		member.battle_center = center
+		member.battle_radius = ARENA_RADIUS - 0.5
+		member.start_fight(c)
 	var rig := _main.get_node("CameraRig") as CameraRig
 	rig.set_target(c)
 	_ui.visible = true
 	_ui.setup(self)
-	if trainer.is_empty():
+	if horde_size > 1:
+		GameState.notice.emit("¡Una horda de %d %s te rodea!" % [horde_size, wild.species.display_name])
+	elif trainer.is_empty():
 		GameState.notice.emit("¡Combate contra %s! Sal del círculo para huir." % wild.species.display_name)
 	started.emit(wild)
 	return true
 
 
 func _process(delta: float) -> void:
+	if not active:
+		_check_hordes(delta)
 	if not active or _ending:
 		return
 	_switch_cooldown = maxf(_switch_cooldown - delta, 0.0)
@@ -264,6 +293,8 @@ func _process(delta: float) -> void:
 	if opponent.state == PokemonActor.State.STUNNED:
 		if not trainer.is_empty() and int(trainer["index"]) + 1 < (trainer["team"] as Array).size():
 			_next_trainer_pokemon()
+		elif _next_horde_member():
+			pass
 		else:
 			_win()
 		return
@@ -415,11 +446,44 @@ func _restore_mega() -> void:
 
 # --- Final ---------------------------------------------------------------------------
 
+## Horda: si quedan miembros en pie, el siguiente pasa a ser el rival.
+func _next_horde_member() -> bool:
+	horde = horde.filter(func(m: PokemonActor) -> bool: return is_instance_valid(m) and not m.is_queued_for_deletion() and m.state != PokemonActor.State.STUNNED)
+	if horde.is_empty():
+		return false
+	opponent = horde.pop_front()
+	opponent.start_fight(companion())
+	_ui.setup(self)
+	GameState.notice.emit("¡Quedan %d de la horda!" % (horde.size() + 1))
+	return true
+
+
+## Fuera de combate: una horda cercana se lanza sobre ti (te rodea) y empieza el combate.
+func _check_hordes(delta: float) -> void:
+	_horde_check -= delta
+	if _horde_check > 0.0:
+		return
+	_horde_check = 0.5
+	if not ready_to_fight():
+		return
+	for node in get_tree().get_nodes_in_group(WildSpawner.HORDE_GROUP):
+		var actor := node as PokemonActor
+		if is_instance_valid(actor) and actor.state != PokemonActor.State.STUNNED and actor.global_position.distance_to(player().global_position) < HORDE_RUSH_DISTANCE:
+			start(actor)
+			return
+
+
 func _win() -> void:
 	var defeated := opponent
 	var c := companion()
 	var species := defeated.species
 	var lines: Array[String] = ["¡%s ganó!" % (c.species.display_name if c != null else "Tu equipo")]
+	# Horda: premio extra por vencerla completa.
+	if horde_size > 1:
+		var bonus := 150 * horde_size
+		GameState.add_money(bonus, "Horda de %s" % species.display_name)
+		GameState.add_item("rare-candy", 1)
+		lines.append("¡Venciste a la horda de %d! +$%d y un Caramelo Raro." % [horde_size, bonus])
 	# Racha de victorias.
 	var streak := int(GameState.world_flags.get("win_streak", 0)) + 1
 	GameState.world_flags["win_streak"] = streak
@@ -487,6 +551,11 @@ func _end(result: String) -> void:
 			c.set_controlled(false)
 	if opponent != null and is_instance_valid(opponent):
 		opponent.battle_center = Vector3.INF
+	for member in horde:
+		if is_instance_valid(member):
+			member.battle_center = Vector3.INF
+	horde.clear()
+	horde_size = 0
 	_freeze_world(false)
 	if _ring != null and is_instance_valid(_ring):
 		_ring.queue_free()
@@ -534,7 +603,7 @@ func _freeze_world(freeze: bool) -> void:
 				node.set_process(false)
 				_frozen.append(node)
 		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP) + get_tree().get_nodes_in_group(LegendaryManager.LEGENDARY_GROUP):
-			if node != opponent and is_instance_valid(node) and (node as Node).process_mode != Node.PROCESS_MODE_DISABLED:
+			if node != opponent and not horde.has(node) and is_instance_valid(node) and (node as Node).process_mode != Node.PROCESS_MODE_DISABLED:
 				(node as Node).process_mode = Node.PROCESS_MODE_DISABLED
 				_frozen.append(node)
 	else:

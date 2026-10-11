@@ -50,6 +50,12 @@ var _zoom: float = 7.0
 ## Temblor (0–1) de los ataques fuertes; se apaga solo (ver shake()).
 var _shake := 0.0
 var _shake_rng := RandomNumberGenerator.new()
+## Mirar al cielo (bandadas migratorias, decisión de Fernando 2026-10-10): la cámara se
+## levanta sola unos segundos y vuelve; moverla lo cancela (ver look_at_sky()).
+const SKY_PITCH_DEG := -16.0
+const SKY_BLEND_SPEED := 1.6
+var _sky_time := 0.0
+var _sky_blend := 0.0
 
 
 func _ready() -> void:
@@ -75,6 +81,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var motion := event as InputEventMouseMotion
 		var sensitivity := GameOptions.mouse_sensitivity
 		_yaw_deg -= motion.relative.x * sensitivity
+		if motion.relative.length() > 4.0:
+			_sky_time = 0.0
 		_tilt(motion.relative.y * sensitivity * (-1.0 if GameOptions.invert_y else 1.0))
 	elif event.is_action_pressed("zoom_in"):
 		# En el mando solo hay un botón de zoom: al llegar al más cercano vuelve al más lejano.
@@ -91,6 +99,10 @@ func _process(delta: float) -> void:
 	var stick := GameOptions.stick_speed
 	_yaw_deg -= look.x * stick * delta
 	_tilt(look.y * stick * 0.6 * delta * (-1.0 if GameOptions.invert_y else 1.0))
+	if look.length() > 0.3:
+		_sky_time = 0.0
+	_sky_time = maxf(_sky_time - delta, 0.0)
+	_sky_blend = move_toward(_sky_blend, 1.0 if _sky_time > 0.0 and not aiming else 0.0, SKY_BLEND_SPEED * delta)
 	_apply_rotation()
 
 	if aiming and _aim_blend <= 0.0:
@@ -103,6 +115,15 @@ func _process(delta: float) -> void:
 		var shoulder := global_basis.x * aim_shoulder * _aim_blend
 		global_position = global_position.lerp(_focus_point() + shoulder, 1.0 - exp(-follow_smoothing * delta))
 	_update_shake(delta)
+
+
+## La cámara mira al cielo durante seconds (y vuelve sola); moverla lo cancela.
+func look_at_sky(seconds: float) -> void:
+	_sky_time = seconds
+
+
+func looking_at_sky() -> bool:
+	return _sky_time > 0.0
 
 
 ## Temblor de cámara (Terremoto, Llamarada, Hiperrayo, críticos…). strength 0–1.
@@ -154,7 +175,8 @@ func get_pitch_deg() -> float:
 
 func _apply_rotation() -> void:
 	rotation_degrees.y = _yaw_deg
-	_pitch.rotation_degrees.x = -lerpf(_pitch_deg, _aim_pitch_deg, _aim_blend)
+	var pitch := lerpf(_pitch_deg, SKY_PITCH_DEG, smoothstep(0.0, 1.0, _sky_blend))
+	_pitch.rotation_degrees.x = -lerpf(pitch, _aim_pitch_deg, _aim_blend)
 
 
 func _focus_point() -> Vector3:

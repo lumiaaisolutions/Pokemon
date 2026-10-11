@@ -20,12 +20,11 @@
 | 5.6 | Hecha | `b68fe8d` | Entrenadores en los caminos con campo de visión, premio y revancha diaria ([entrenadores](sistemas/entrenadores.md)) |
 | Pulido del mundo | Hecho | `c13a1a9` → `e3858d9` | Plan acordado tras la prueba de Fernando ([plan](plan_pulido_mundo.md)): bugs, interfaz Pokopia, mapa con zoom, tablero de misiones, NPC de BW2 con oficio y diálogo, héroes, profesor, rival, interiores B2W2, biomas, puntos de interés, pueblos con identidad |
 | Regiones | Hecho (Cilan y Volkner con sprite provisional) | 2026-10-10 | 6 regiones, 48 líderes con vida propia, Liga con Alto Mando y héroe Campeón, Pokédex regional, Boleto y viaje en barco o avión ([regiones](sistemas/regiones.md)) |
-| 5.8 | Pendiente | — | Pesca, hordas y migraciones, rocas rompibles |
+| 5.8 | En curso | 2026-10-10 | Pesca, hordas, especies de temporada y migraciones (hechas); rocas rompibles ([catálogo](catalogo_mundo.md)) |
 | 6 | Pendiente | — | Jefe y balance |
 | 7 | Pendiente | — | Pulido y entrega |
 
 ## Por confirmar con Fernando
-- Fase 5.8 (pesca, hordas y migraciones, rocas rompibles): detalles al empezarla.
 - Fase 6: quién es el jefe del bioma y cómo se balancea la dificultad.
 
 ## Pendientes técnicos
