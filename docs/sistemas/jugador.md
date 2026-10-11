@@ -71,3 +71,7 @@
 - **Tienda de campaña:** se arma con una tecla en un lugar plano **fuera de los pueblos**. **De noche** puedes dormir hasta las 7:00: recupera tu vida y la de tu equipo y guarda el punto de reaparición. **Dormir no recupera el hambre.** De día solo sirve para cocinar.
   - **Si no la recoges, se queda ahí:** si te alejas, debes volver por ella o conseguir otra; si tienes más de una, cada una se queda donde la dejaste.
 - **Cocinar:** fogata con olla; eliges ingredientes en un menú, animación corta de remover y **tu equipo sale a comer contigo** (sube su vínculo).
+- **Pesca:** con la Caña en el agua: lanzas, el corcho se hunde ("¡!") y aprietas a tiempo. Sale **pescado crudo** y a veces un **Pokémon de agua** que pelea.
+- **Objetos:** empiezas con **1 tienda de campaña**; más se compran en la Tienda Pokémon ($1,500). La **Caña** te la regala un pescador del pueblo pesquero (o se compra en las ciudades).
+- **Restaurantes y puestos (ambos):** un **restaurante** por ciudad (edificio de B2W2, menú de 3–4 platillos: llena mucho el hambre y da un efecto) y un **puesto de comida** en la plaza de pueblos y ciudades (más barato, **recupera menos**).
+- **Uso de la tienda:** desde la **Mochila o la rueda rápida**; junto a tu tienda, **E** abre su menú: Dormir (de noche), Cocinar o Recoger.
