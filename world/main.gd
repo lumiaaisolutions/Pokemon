@@ -56,6 +56,12 @@ func _ready() -> void:
 	var pois := PointsOfInterest.new()
 	pois.name = "PointsOfInterest"
 	add_child(pois)
+	# Tiendas de campaña del jugador: dormir, cocinar y pescar (Fase de campamento).
+	var camp_manager := CampManager.new()
+	camp_manager.name = "CampManager"
+	camp_manager.world_path = NodePath("../World")
+	camp_manager.player_path = NodePath("../Player")
+	add_child(camp_manager)
 	# Rival (Hugh): te busca tras cada medalla y de vez en cuando en el mundo.
 	var rival := Rival.new()
 	rival.name = "Rival"

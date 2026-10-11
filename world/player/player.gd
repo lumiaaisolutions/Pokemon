@@ -86,6 +86,8 @@ var _swim_time: float = 0.0
 var _swim_bob: float = 0.0
 var _splash_timer: float = 0.0
 var _swim_shader_on := false
+## Hambre vacía: segundos acumulados para el siguiente tic de daño (ver GameState.hunger).
+var _starve_tick: float = 0.0
 
 
 func _ready() -> void:
@@ -174,6 +176,8 @@ func _physics_process(delta: float) -> void:
 	_update_fall(swimming)
 	_update_air(delta)
 	_update_regen(delta)
+	var fighting := battle != null and battle.active
+	_update_hunger(delta, running or (swimming and input.length() > 0.1) or fighting)
 	# Distancia recorrida (logros y estadísticas).
 	var moved := Vector2(velocity.x, velocity.z).length() * delta
 	if moved > 0.001:
@@ -291,6 +295,20 @@ func _update_regen(delta: float) -> void:
 	if _since_damage < config.health_regen_delay or health >= config.health_max or air < config.air_max:
 		return
 	heal(config.health_regen * delta)
+
+
+## Hambre (campamento, comida y hambre; acordado con Fernando el 2026-10-10): se vacía
+## con el tiempo (más rápido corriendo, nadando o peleando) y, vacía del todo, quita
+## vida poco a poco hasta dejarlo sin vida en GameState.STARVE_SECONDS.
+func _update_hunger(delta: float, fast: bool) -> void:
+	GameState.drain_hunger(delta, fast)
+	if GameState.hunger > 0.0:
+		_starve_tick = 0.0
+		return
+	_starve_tick += delta
+	if _starve_tick >= 1.0:
+		_starve_tick -= 1.0
+		take_damage(config.health_max / GameState.STARVE_SECONDS)
 
 
 ## Se pinta de rojo y parpadea un momento al recibir daño (como en Minecraft).

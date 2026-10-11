@@ -9,6 +9,9 @@ extends CanvasLayer
 const HEARTS := 10
 const BUBBLES := 10
 const ICON_SCALE := 3
+## Muslitos de hambre, a la derecha de los corazones (campamento, comida y hambre;
+## acordado con Fernando el 2026-10-10).
+const HUNGER_ICONS := 10
 
 @export var player_path: NodePath
 
@@ -18,6 +21,7 @@ var main: Node
 @onready var _bar: ProgressBar = $Stamina/Bar
 @onready var _panel: Control = $Stamina
 @onready var _hearts_box: HBoxContainer = $Hearts
+@onready var _hunger_box: HBoxContainer = $Hunger
 @onready var _bubbles_box: HBoxContainer = $Bubbles
 @onready var _underwater: ColorRect = $Underwater
 @onready var _blackout: ColorRect = $Blackout
@@ -31,6 +35,9 @@ var _fill: StyleBoxFlat
 var _heart_full: Texture2D
 var _heart_half: Texture2D
 var _heart_empty: Texture2D
+var _drumstick_full: Texture2D
+var _drumstick_half: Texture2D
+var _drumstick_empty: Texture2D
 var _bubble: Texture2D
 var _world: WorldBuilder
 var _companion_card: PanelContainer
@@ -69,9 +76,14 @@ func _ready() -> void:
 	_heart_full = _heart_texture(Color(0.9, 0.15, 0.2), 1.0)
 	_heart_half = _heart_texture(Color(0.9, 0.15, 0.2), 0.5)
 	_heart_empty = _heart_texture(Color(0.25, 0.1, 0.12), 1.0)
+	_drumstick_full = _drumstick_texture(Color(0.82, 0.55, 0.25), 1.0)
+	_drumstick_half = _drumstick_texture(Color(0.82, 0.55, 0.25), 0.5)
+	_drumstick_empty = _drumstick_texture(Color(0.3, 0.22, 0.15), 1.0)
 	_bubble = _bubble_texture()
 	for i in HEARTS:
 		_hearts_box.add_child(_icon(_heart_full))
+	for i in HUNGER_ICONS:
+		_hunger_box.add_child(_icon(_drumstick_full))
 	for i in BUBBLES:
 		_bubbles_box.add_child(_icon(_bubble))
 	_blackout.visible = false
@@ -171,6 +183,12 @@ func _process(delta: float) -> void:
 		var heart_health := _player.health - i * per_heart
 		var rect := _hearts_box.get_child(i) as TextureRect
 		rect.texture = _heart_full if heart_health >= per_heart else (_heart_half if heart_health > 0.0 else _heart_empty)
+	# Muslitos de hambre (10, como los corazones): se vacían con el tiempo.
+	var per_icon := GameState.HUNGER_MAX / HUNGER_ICONS
+	for i in HUNGER_ICONS:
+		var icon_hunger := GameState.hunger - i * per_icon
+		var drumstick := _hunger_box.get_child(i) as TextureRect
+		drumstick.texture = _drumstick_full if icon_hunger >= per_icon else (_drumstick_half if icon_hunger > 0.0 else _drumstick_empty)
 	# Burbujas: en el agua o mientras le falte aire.
 	var air_ratio := _player.air / _player.config.air_max
 	var in_water := _player.mode == Player.Mode.SWIM or _player.mode == Player.Mode.DIVE
@@ -324,6 +342,32 @@ func _icon(texture: Texture2D) -> TextureRect:
 ## Corazón pixel art de 9×9; fill = 0.5 deja vacía la mitad derecha (medio corazón).
 func _heart_texture(color: Color, fill: float) -> Texture2D:
 	var rows := [".XX...XX.", "XooX.XooX", "XoooXoooX", "XoooooooX", ".XoooooX.", "..XoooX..", "...XoX...", "....X....", "........."]
+	var image := Image.create_empty(9, 9, false, Image.FORMAT_RGBA8)
+	for y in rows.size():
+		for x in 9:
+			var c: String = rows[y][x]
+			if c == "X":
+				image.set_pixel(x, y, Color(0.08, 0.02, 0.03))
+			elif c == "o":
+				var filled := x < 4.5 or fill >= 1.0
+				image.set_pixel(x, y, color if filled else Color(0.25, 0.1, 0.12))
+	return ImageTexture.create_from_image(image)
+
+
+## Muslito pixel art de 9×9 (mismo estilo que el corazón); fill = 0.5 deja vacía la
+## mitad derecha (campamento, comida y hambre; acordado con Fernando el 2026-10-10).
+func _drumstick_texture(color: Color, fill: float) -> Texture2D:
+	var rows := [
+		"...XX....",
+		"..XooX...",
+		".XoooX...",
+		"XoooXX...",
+		"XooXXoX..",
+		".XXoooX..",
+		"...XXoX..",
+		"....XX...",
+		".........",
+	]
 	var image := Image.create_empty(9, 9, false, Image.FORMAT_RGBA8)
 	for y in rows.size():
 		for x in 9:

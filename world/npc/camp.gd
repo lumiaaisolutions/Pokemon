@@ -75,6 +75,16 @@ func pitch(actor: Node3D = null) -> void:
 	tween.tween_callback(func() -> void: busy = false)
 
 
+## Deja el campamento armado y la fogata prendida sin animación (al cargar la partida
+## con tiendas de campaña guardadas; ver CampManager).
+func set_lit_instant() -> void:
+	_tent.scale = Vector3.ONE
+	_logs.modulate.a = 1.0
+	_fire.visible = true
+	_lit = true
+	_light.light_energy = 1.5
+
+
 ## Recoge el campamento y se borra al terminar.
 func pack(actor: Node3D = null) -> void:
 	busy = true

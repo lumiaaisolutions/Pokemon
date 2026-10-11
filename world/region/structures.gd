@@ -52,6 +52,8 @@ func build(builder: WorldBuilder) -> void:
 			buildings.add_child(_building(settlement, building))
 		# Identidad del pueblo: monumento, plaza y objetos de su tema.
 		TownIdentity.decorate(self, buildings, settlement)
+		# Restaurante (uno por ciudad) y puesto de comida (en todo pueblo y ciudad).
+		_food_places(settlement, buildings)
 	var landmarks := Node3D.new()
 	landmarks.name = "Landmarks"
 	add_child(landmarks)
@@ -382,6 +384,63 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		"tower_small":
 			add_point(door_world + Vector3.UP * 0.5, "Subir a la torre (vista del mapa)", services.reveal_area.bind(root.position, 600.0))
 	return root
+
+
+## Restaurante (uno por ciudad) y puesto de comida (en la plaza de todo pueblo y
+## ciudad): venden platillos que se comen ahí mismo y llenan el hambre (campamento,
+## comida y hambre; acordado con Fernando el 2026-10-10). El puesto es más barato y
+## llena menos; el restaurante tiene 3-4 platillos y da un efecto extra.
+## Simplificación: caseta de piezas simples en vez de un modelo de B2W2 completo
+## (propuesta por confirmar con Fernando); posición fija cerca del centro de la plaza.
+func _food_places(settlement: Dictionary, parent: Node3D) -> void:
+	var cx := float(settlement["x"])
+	var cz := float(settlement["z"])
+	var y := float(settlement["height"]) - 0.05
+	var stall := Node3D.new()
+	stall.name = "FoodStall_" + String(settlement["name"]).replace(" ", "")
+	stall.position = Vector3(cx - 9.0, y, cz + 6.0)
+	parent.add_child(stall)
+	_box(stall, Vector3(2.0, 0.9, 1.0), Vector3(0, 0.45, 0), Color(0.62, 0.45, 0.28))
+	_box(stall, Vector3(2.4, 0.1, 1.6), Vector3(0, 2.0, 0), Color(0.95, 0.65, 0.25))
+	for side: float in [-1.0, 1.0]:
+		_box(stall, Vector3(0.1, 2.0, 0.1), Vector3(side * 1.1, 1.0, 0.7), Color(0.45, 0.3, 0.2))
+	_collider(stall, Vector3(2.0, 1.0, 1.0), Vector3(0, 0.5, 0))
+	_sign(stall, "Puesto de comida", Vector3(0, 2.4, 0.6))
+	add_point(stall.position + Vector3(0, 0.6, 1.3), "Comprar en el puesto de comida", _open_food_stall, 2.6)
+	if String(settlement.get("kind", "")) != "city":
+		return
+	var restaurant := Node3D.new()
+	restaurant.name = "Restaurant_" + String(settlement["name"]).replace(" ", "")
+	restaurant.position = Vector3(cx + 9.0, y, cz - 6.0)
+	parent.add_child(restaurant)
+	_box(restaurant, Vector3(4.0, 2.6, 3.0), Vector3(0, 1.3, 0), Color(0.94, 0.88, 0.8))
+	_roof(restaurant, 4.0, 3.0, 2.0, 2.6, Color(0.75, 0.3, 0.25))
+	_box(restaurant, Vector3(1.6, 2.0, 0.12), Vector3(0, 1.0, 1.56), Color(0.4, 0.26, 0.16))
+	_collider(restaurant, Vector3(4.0, 2.8, 3.0), Vector3(0, 1.3, 0))
+	_sign(restaurant, "Restaurante", Vector3(0, 3.1, 1.8))
+	add_point(restaurant.position + Vector3(0, 0.6, 2.2), "Entrar: Restaurante", _open_restaurant.bind(settlement), 2.6)
+
+
+func _open_food_stall() -> void:
+	var layer := world.get_node_or_null("../MenuLayer") as CanvasLayer
+	if layer == null or layer.has_node("FoodStall"):
+		return
+	var ui := FoodStallUI.new()
+	ui.name = "FoodStall"
+	layer.add_child(ui)
+	ui.open()
+
+
+func _open_restaurant(settlement: Dictionary) -> void:
+	var layer := world.get_node_or_null("../MenuLayer") as CanvasLayer
+	if layer == null or layer.has_node("Restaurant"):
+		return
+	var ui := RestaurantUI.new()
+	ui.name = "Restaurant"
+	ui.settlement_name = String(settlement.get("name", "la ciudad"))
+	ui.player = _player as Player
+	layer.add_child(ui)
+	ui.open()
 
 
 ## Decoración alrededor de un edificio (estilo B2W2): flores a los lados de la puerta,

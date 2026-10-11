@@ -54,7 +54,7 @@ func save_slot(slot: int, main: Node) -> bool:
 		"gender": GameState.gender, "difficulty": GameState.difficulty,
 		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "regions": GameState.regions, "region_index": GameState.region_index, "money": GameState.money,
 		"party": GameState.party, "box": GameState.box, "companion_index": GameState.companion_index,
-		"bag": GameState.bag, "selected_ball": GameState.selected_ball,
+		"bag": GameState.bag, "selected_ball": GameState.selected_ball, "hunger": GameState.hunger,
 		"dex": GameState.dex, "legendary_caught": GameState.legendary_caught,
 		"tips_seen": GameState.tips_seen, "rewards_claimed": GameState.rewards_claimed,
 		"professor": GameState.professor, "rival": GameState.rival, "villain_team": GameState.villain_team,
@@ -97,6 +97,7 @@ func load_slot(slot: int) -> bool:
 	for id: String in GameState.bag.keys():
 		GameState.bag[id] = int(GameState.bag[id])
 	GameState.selected_ball = data.get("selected_ball", "poke-ball")
+	GameState.hunger = float(data.get("hunger", GameState.HUNGER_MAX))
 	GameState.dex = data.get("dex", {})
 	GameState.legendary_caught = data.get("legendary_caught", {})
 	GameState.tips_seen = data.get("tips_seen", {})

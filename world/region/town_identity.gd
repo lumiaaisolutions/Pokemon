@@ -116,6 +116,8 @@ static func _monument(structures: Structures, root: Node3D, theme: String) -> vo
 			for side in [-1.0, 1.0]:
 				structures._cylinder(root, 0.35, 0.5, Vector3(side * 1.6, 0.85, 1.2), Color(0.95, 0.4, 0.3))
 			structures._collider(root, Vector3(2.4, 3.6, 2.4), Vector3(0, 1.8, 0))
+			# El pescador del pueblo regala la Caña Vieja (una vez por partida; pesca).
+			structures.add_point(root.global_position + Vector3(2.6, 0.5, 0), "Hablar con el pescador", Callable(TownIdentity, "_give_rod"), 3.0)
 		"mining":
 			# Vagoneta con piedras brillantes sobre rieles.
 			for side in [-0.5, 0.5]:
@@ -152,6 +154,18 @@ static func _monument(structures: Structures, root: Node3D, theme: String) -> vo
 			structures._collider(root, Vector3(2.8, 0.8, 2.8), Vector3(0, 0.4, 0))
 		_:
 			_statue(structures, root, Color(0.7, 0.7, 0.72))
+
+
+## Regalo del pescador del pueblo pesquero: la Caña Vieja, una vez por partida (pesca;
+## acordado con Fernando el 2026-10-10). Se guarda en GameState.world_flags.
+static func _give_rod() -> void:
+	if GameState.world_flags.get("fisherman_rod_given", false):
+		GameState.notice.emit("Ya te regalé mi caña, ¡que tengas buena pesca!")
+		return
+	GameState.world_flags["fisherman_rod_given"] = true
+	GameState.add_item("old-rod", 1)
+	AudioBus.play_jingle("me_item")
+	GameState.notice.emit("El pescador del pueblo te regala una Caña Vieja. ¡A pescar!")
 
 
 static func _statue(structures: Structures, root: Node3D, color: Color) -> void:
