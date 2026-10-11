@@ -15,6 +15,10 @@ extends Node3D
 @export_range(0.0, 1.0) var bug_ratio: float = 0.55
 
 const AMBUSH_GROUP := &"ambushers"
+## El árbol mide al menos esto veces la altura del Pokémon posado o colgado.
+const TREE_RATIO := 2.5
+## Bicho al pie del árbol en vez de colgado (decisión de Fernando, 2026-10-10).
+const GROUND_BUG_SHARE := 0.4
 const TREE_PREFIXES := ["Tree", "EdgeTree", "ShoreTree"]
 
 var _trees: Array[Node3D] = []
@@ -42,16 +46,42 @@ func _process(delta: float) -> void:
 
 
 ## Cuelga o posa un emboscador en un árbol cercano. Devuelve null si no encontró.
+## Primero el Pokémon y luego un árbol al menos TREE_RATIO veces más alto que él (pedido
+## de Fernando, 2026-10-10: el árbol siempre más grande). Parte de los Bicho salen al pie
+## del tronco en vez de colgados.
 func spawn_one() -> PokemonActor:
-	var tree := _pick_tree()
-	if tree == null:
+	var near := _pick_tree()
+	if near == null:
 		return null
 	var as_bird := _rng.randf() >= bug_ratio
-	var habitat := _world.habitat_at(tree.global_position.x, tree.global_position.z)
+	var habitat := _world.habitat_at(near.global_position.x, near.global_position.z)
 	var species := _pick_species(habitat, as_bird)
 	if species == null:
 		return null
+	var tree := _pick_tree(pokemon_height(species) * TREE_RATIO)
+	if tree == null:
+		return null
+	if not as_bird and _rng.randf() < GROUND_BUG_SHARE:
+		return place_at_foot(species, tree)
 	return place(species, tree, as_bird)
+
+
+## Altura visible del Pokémon (m): su celda de sprite a su tamaño.
+static func pokemon_height(species: SpeciesData) -> float:
+	return PokemonActor.PIXEL_SIZE * 32.0 * species.size_scale
+
+
+static func tree_height(tree: Node3D) -> float:
+	var sprite := tree.get_node_or_null("Sprite") as Sprite3D
+	return sprite.texture.get_height() * sprite.pixel_size if sprite != null and sprite.texture != null else 0.0
+
+
+## Bicho al pie del tronco (entre las raíces), como salvaje normal.
+func place_at_foot(species: SpeciesData, tree: Node3D) -> PokemonActor:
+	var angle := _rng.randf() * TAU
+	var at := tree.global_position + Vector3(cos(angle), 0.0, sin(angle)) * _rng.randf_range(1.4, 2.4)
+	at.y = _world.surface_height_at(at.x, at.z)
+	return _spawner.spawn_species(species, at, _rng.randf() < _spawner.shiny_chance(), false)
 
 
 ## Crea el emboscador de species en tree (lo usan también las pruebas).
@@ -63,17 +93,19 @@ func place(species: SpeciesData, tree: Node3D, as_bird: bool) -> PokemonActor:
 	return actor
 
 
-func _pick_tree() -> Node3D:
+func _pick_tree(min_height: float = 0.0) -> Node3D:
 	# Los árboles de las zonas cercanas cargadas.
 	_trees.assign(get_tree().get_nodes_in_group(WorldBuilder.TREES_GROUP))
 	if _trees.is_empty():
 		return null
-	for attempt in 20:
+	for attempt in 40:
 		var tree := _trees[_rng.randi() % _trees.size()]
 		var distance := tree.global_position.distance_to(_player.global_position)
 		if distance < min_distance or distance > max_distance:
 			continue
 		if tree.has_meta("ambusher") and is_instance_valid(tree.get_meta("ambusher")):
+			continue
+		if tree_height(tree) < min_height:
 			continue
 		return tree
 	return null

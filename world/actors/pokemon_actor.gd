@@ -954,6 +954,7 @@ func perch_on(tree: Node3D, as_bird: bool) -> void:
 		_thread = MeshInstance3D.new()
 		_thread.mesh = line
 		_thread.position.y = head + maxf(thread_length, 0.2) * 0.5
+		_thread.set_meta("base_y", _thread.position.y)
 		add_child(_thread)
 	_exclaim = _make_exclamation()
 	add_child(_exclaim)
@@ -1000,27 +1001,34 @@ func _process_perched(delta: float) -> void:
 ## El árbol y el Pokémon son billboards en el mismo punto: sin separarlos se
 ## pelean por la profundidad y parpadean. Adelanta el sprite (y el hilo) hacia la
 ## cámara para que siempre quede delante de la copa.
+## El sprite de los árboles se inclina hacia atrás desde su base al mirar desde arriba
+## (shader sprite_billboard); el posado sigue esa misma inclinación en cada cuadro para
+## quedar pegado a su rama desde cualquier ángulo (pedido de Fernando, 2026-10-10), y un
+## poco hacia la cámara para dibujarse delante de la copa.
 func _in_front_of_canopy() -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return
-	var to_camera := camera.global_position - global_position
-	to_camera.y = 0.0
-	if to_camera.length() < 0.01:
-		return
-	var offset := to_camera.normalized() * PERCH_FRONT_OFFSET
-	_sprite.position.x = offset.x
-	_sprite.position.z = offset.z
+	var back := camera.global_basis.z
+	var flat_back := Vector3(back.x, 0.0, back.z)
+	flat_back = flat_back.normalized() if flat_back.length() > 0.0001 else Vector3.BACK
+	# Misma fórmula que el shader (tilt_start 25°, tilt_amount 0.9, máximo 50°).
+	var pitch := rad_to_deg(asin(clampf(back.y, -1.0, 1.0)))
+	var tilt := deg_to_rad(clampf((pitch - 25.0) * 0.9, 0.0, 50.0))
+	var height := global_position.y - perch_tree.global_position.y if perch_tree != null and is_instance_valid(perch_tree) else 0.0
+	var offset := Vector3(0.0, height * (cos(tilt) - 1.0), 0.0) - flat_back * height * sin(tilt) + flat_back * PERCH_FRONT_OFFSET
+	_sprite.position = Vector3(offset.x, offset.y, offset.z)
 	if _thread != null:
-		_thread.position.x = offset.x
-		_thread.position.z = offset.z
+		_thread.position = Vector3(offset.x, float(_thread.get_meta("base_y", _thread.position.y)) + offset.y, offset.z)
+		# El hilo se inclina como el árbol (cuelga de la rama inclinada).
+		_thread.rotation = Vector3.ZERO
+		_thread.rotate(flat_back.cross(Vector3.UP).normalized(), tilt)
 
 
 ## Aterriza: si cae sobre Nate lo golpea y empieza la pelea; si no, lo persigue.
 func _land() -> void:
 	perched = false
-	_sprite.position.x = 0.0
-	_sprite.position.z = 0.0
+	_sprite.position = Vector3.ZERO
 	global_position = _drop_target
 	collision_layer = 4
 	collision_mask = 3
