@@ -52,7 +52,7 @@ func pitch_tent(near: Vector3) -> Dictionary:
 
 
 func _spawn(at: Vector3, animate: bool) -> void:
-	var camp := Camp.create(self, at, _tents.size())
+	var camp := Camp.create(self, at, _tents.size(), true)
 	var entry := {"camp": camp, "pos": at}
 	entry["point"] = world.structures.add_point(at + Vector3(0, 0.5, 1.6), "Usar la tienda de campaña", _open_menu.bind(entry), 2.6)
 	_tents.append(entry)

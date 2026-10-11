@@ -96,6 +96,10 @@ func load_slot(slot: int) -> bool:
 	GameState.bag = data.get("bag", {})
 	for id: String in GameState.bag.keys():
 		GameState.bag[id] = int(GameState.bag[id])
+	# Partidas viejas: el Kit Explorador pasó a ser la Tienda de Campaña (2026-10-10).
+	if GameState.bag.has("explorer-kit"):
+		GameState.bag["tent"] = int(GameState.bag.get("tent", 0)) + int(GameState.bag["explorer-kit"])
+		GameState.bag.erase("explorer-kit")
 	GameState.selected_ball = data.get("selected_ball", "poke-ball")
 	GameState.hunger = float(data.get("hunger", GameState.HUNGER_MAX))
 	GameState.dex = data.get("dex", {})

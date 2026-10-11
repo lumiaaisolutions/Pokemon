@@ -260,11 +260,18 @@ func _box(parent: Node3D, size: Vector3, center: Vector3, color: Color) -> void:
 func _build(node: Node3D, poi: Dictionary) -> void:
 	match String(poi["kind"]):
 		"camp":
-			_sprite(node, Camp._tent_texture(Color(0.55, 0.5, 0.42)), Vector3(-1.5, 0, -1.0))
-			_sprite(node, Camp._logs_texture(), Vector3(1.2, 0, 0.2))
-			_sprite(node, PoiArt.chest(), Vector3(0, 0, 0.6), 1.2)
-			_sprite(node, PropArt.texture("log"), Vector3(2.4, 0, -1.2))
-			_solid(node, Vector3(2.2, 1.6, 1.6), Vector3(-1.5, 0.8, -1.0))
+			# Campamento abandonado en 3D: tienda deslavada y fogata apagada (ver Camp).
+			var tent := Camp.tent_model(Color(0.55, 0.5, 0.42))
+			tent.position = Vector3(-1.5, 0, -1.4)
+			tent.rotation.y = 0.3
+			node.add_child(tent)
+			var pit := Camp.firepit()
+			pit.position = Vector3(1.4, 0, 0.4)
+			for flame in pit.find_children("Flame*", "MeshInstance3D", true, false):
+				(flame as Node3D).visible = false
+			node.add_child(pit)
+			_sprite(node, PoiArt.chest(), Vector3(0, 0, 0.9), 1.2)
+			_sprite(node, PropArt.texture("log"), Vector3(2.6, 0, -1.4))
 		"well":
 			_sprite(node, PoiArt.well(), Vector3.ZERO, 1.3)
 			_solid(node, Vector3(1.8, 1.4, 1.8), Vector3(0, 0.7, 0))
