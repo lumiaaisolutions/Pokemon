@@ -47,6 +47,9 @@ var _yaw_deg: float = 0.0
 var _pitch_deg: float = 30.0
 var _aim_pitch_deg: float = 6.0
 var _zoom: float = 7.0
+## Temblor (0–1) de los ataques fuertes; se apaga solo (ver shake()).
+var _shake := 0.0
+var _shake_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
@@ -99,6 +102,26 @@ func _process(delta: float) -> void:
 		# Sobre el hombro derecho al apuntar.
 		var shoulder := global_basis.x * aim_shoulder * _aim_blend
 		global_position = global_position.lerp(_focus_point() + shoulder, 1.0 - exp(-follow_smoothing * delta))
+	_update_shake(delta)
+
+
+## Temblor de cámara (Terremoto, Llamarada, Hiperrayo, críticos…). strength 0–1.
+func shake(strength: float) -> void:
+	_shake = clampf(maxf(_shake, strength), 0.0, 1.0)
+
+
+func _update_shake(delta: float) -> void:
+	var camera := _arm.get_child(0) as Camera3D if _arm.get_child_count() > 0 else null
+	if camera == null:
+		return
+	if _shake <= 0.0:
+		camera.h_offset = 0.0
+		camera.v_offset = 0.0
+		return
+	var amount := _shake * _shake * 0.35
+	camera.h_offset = _shake_rng.randf_range(-amount, amount)
+	camera.v_offset = _shake_rng.randf_range(-amount, amount)
+	_shake = maxf(_shake - delta * 1.6, 0.0)
 
 
 ## Inclina la cámara: al apuntar mueve la mira (libre), si no la vista normal.

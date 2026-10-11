@@ -1315,6 +1315,15 @@ func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> vo
 		"damage":
 			if target != null:
 				_sprite.look_at_point(target.global_position)
+			# Animación propia del ataque (familias de MoveFx); Mordisco y similares embisten.
+			var family := MoveFamilies.family(id)
+			if family != "" and target != null:
+				if family == "bite":
+					var lunge := target.global_position - global_position
+					lunge.y = 0.0
+					velocity += lunge.normalized() * 6.0
+				MoveFx.play(self, target, id, hit)
+				return
 			if move["class"] == "physical":
 				var direction := (target.global_position - global_position) if target != null else _sprite.facing_world
 				direction.y = 0.0
@@ -1349,6 +1358,26 @@ func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> vo
 			_flash(Color(1.4, 1.4, 1.8))
 
 
+## Texto que sube y se desvanece sobre el Pokémon (avisos de eficacia, crítico).
+func float_text(text: String, color: Color, extra_height: float = 0.0) -> void:
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = 40
+	label.pixel_size = 0.01
+	label.outline_size = 10
+	label.modulate = color
+	label.outline_modulate = Color(0.1, 0.08, 0.12)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.fixed_size = false
+	get_parent().add_child(label)
+	label.global_position = global_position + Vector3.UP * (1.6 * species.size_scale + 0.4 + extra_height)
+	var tween := label.create_tween()
+	tween.tween_property(label, "global_position:y", label.global_position.y + 0.8, 1.1)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.1).set_delay(0.5)
+	tween.tween_callback(label.queue_free)
+
+
 func _size_of(node: Node3D) -> float:
 	return (node as PokemonActor).species.size_scale if node is PokemonActor else 1.0
 
@@ -1362,13 +1391,22 @@ func _apply_move_hit(node: Node3D, id: String, style: int) -> bool:
 		var amount := Moves.damage(species, target.species, id, move_rank, style, _rng, party_entry.get("training", {}))
 		if GameState.play_time < _buff_until:
 			amount *= 1.3
+		var critical := false
 		if int(party_entry.get("bond", 1)) >= 8 and _rng.randf() < 0.1:
 			amount *= 1.5
+			critical = true
 		target.receive_hit(amount, self)
-		# Sonido del golpe según la efectividad (solo si pasa cerca del jugador).
+		# Sonido del golpe y aviso de eficacia según el tipo (solo si pasa cerca del jugador).
 		if player != null and global_position.distance_to(player.global_position) < 30.0:
 			var effectiveness := TypeChart.effectiveness(int(Moves.get_move(id)["type"]), target.species.types)
 			AudioBus.play_sfx("hit_super" if effectiveness > 1.0 else ("hit_weak" if effectiveness < 1.0 else "hit_normal"))
+			if effectiveness > 1.0:
+				target.float_text("¡Es muy eficaz!", Color(1.0, 0.55, 0.2))
+			elif effectiveness < 1.0 and effectiveness > 0.0:
+				target.float_text("No es muy eficaz…", Color(0.7, 0.75, 0.85))
+			if critical:
+				target.float_text("¡Golpe crítico!", Color(1.0, 0.9, 0.3), 0.5)
+				PixelBurst.spawn(target.get_parent(), target.global_position + Vector3.UP * 0.8, PixelBurst.Kind.HEAL, 0.8)
 		var drain := int(Moves.get_move(id).get("drain", 0))
 		if drain > 0:
 			_heal_to(minf((hp + amount * drain / 100.0) / hp_max, 1.0))

@@ -25,6 +25,22 @@ var on_hit: Callable
 var targets: Array[Node3D] = []
 var _direction := Vector3.FORWARD
 var _travelled := 0.0
+## Forma propia (ver MoveFx): cuadros que se alternan (p. ej. el shuriken que gira),
+## velocidad y efecto al impactar (recibe la posición).
+var frames: Array[Texture2D] = []
+var frame_fps := 16.0
+var speed := SPEED
+var on_impact: Callable
+var _frame_time := 0.0
+var _orb: Sprite3D
+
+
+## Cambia el orbe por una forma pixel art (y su tamaño de píxel).
+func set_look(texture_frames: Array[Texture2D], pixel_size: float) -> void:
+	frames = texture_frames
+	if _orb != null and not frames.is_empty():
+		_orb.texture = frames[0]
+		_orb.pixel_size = pixel_size
 
 
 static func launch(parent: Node, from: Vector3, to: Vector3, type: PokemonTypes.Type, attacker_actor: PokemonActor, hit_targets: Array[Node3D], hit: Callable) -> AttackProjectile:
@@ -47,6 +63,7 @@ static func launch(parent: Node, from: Vector3, to: Vector3, type: PokemonTypes.
 	orb.shaded = false
 	orb.layers = 2
 	projectile.add_child(orb)
+	projectile._orb = orb
 	parent.add_child(projectile)
 	projectile.global_position = from
 	var flat := to - from
@@ -55,7 +72,10 @@ static func launch(parent: Node, from: Vector3, to: Vector3, type: PokemonTypes.
 
 
 func _physics_process(delta: float) -> void:
-	var step := SPEED * delta
+	if frames.size() > 1:
+		_frame_time += delta * frame_fps
+		_orb.texture = frames[int(_frame_time) % frames.size()]
+	var step := speed * delta
 	global_position += _direction * step
 	_travelled += step
 	# El atacante ya no existe (capturado o se fue): el ataque se desvanece.
@@ -66,8 +86,11 @@ func _physics_process(delta: float) -> void:
 		if not is_instance_valid(target):
 			continue
 		var center := target.global_position + Vector3.UP * 0.6
-		if global_position.distance_to(center) <= HIT_RADIUS and on_hit.call(target):
-			PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.DUST, 0.6)
+		if global_position.distance_to(center) <= HIT_RADIUS * maxf(1.0, scale.x) and on_hit.call(target):
+			if on_impact.is_valid():
+				on_impact.call(global_position)
+			else:
+				PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.DUST, 0.6)
 			queue_free()
 			return
 	if _travelled >= MAX_DISTANCE:

@@ -1,6 +1,6 @@
-# Animaciones de ataques (pedido de Fernando, 2026-10-10 · por hacer)
+# Animaciones de ataques (pedido de Fernando, 2026-10-10 · en curso)
 
-[← Índice](../README.md) · Estado: **en diseño**.
+[← Índice](../README.md) · Estado: **lote 1 hecho** (base + los 6 pedidos); lotes 2 y 3 en curso.
 
 ## Hoy
 - 744 movimientos (`creatures/data/moves.json`), 358 de daño. Los físicos son una embestida con polvo (`PixelBurst.DUST`); los especiales, un orbe de 5×5 píxeles del color del tipo (`world/effects/attack_projectile.gd`). La animación no depende del ataque (`world/actors/pokemon_actor.gd`, `use_move`).
@@ -39,3 +39,8 @@
   24. **Definitivos de iniciales:** Planta Feroz (raíces gigantes), Anillo Ígneo (columna de fuego), Hidrocañón (cañonazo de agua), con temblor.
   25. **Bajar estadísticas y copias:** Malicioso (mirada), Gruñido (ondas), Encanto (corazones); Doble Equipo (clones), Sustituto (muñeco), Transformación.
 - **Propuesta por confirmar:** los ataques que no entren en una familia usan la animación de su tipo y clase (como hoy, pero con la forma del tipo).
+
+## Implementación
+- **Base (lote 1, 2026-10-10):** `world/effects/move_fx/pixel_shapes.gd` (formas pixel art por código: shuriken en 4 cuadros de giro, estrella de fuego, llama, gota, liana, hoja, mandíbulas con colmillos de color, montículo, roca, estrella, orbe y marcas de suelo: grieta, quemadura, charco), `move_families.gd` (qué familia usa cada ataque) y `move_fx.gd` (reproduce la familia y llama al daño en el momento del impacto). `PokemonActor.use_move` llama a `MoveFx.play`; los ataques sin familia usan la animación de siempre.
+- **Extras de impacto** (ataques de potencia 90+): temblor de cámara (`CameraRig.shake`), destello del golpeado (`instance uniform flash` del shader de sprites) y marca en el suelo 5 s. **Avisos de eficacia:** "¡Es muy eficaz!", "No es muy eficaz…" y "¡Golpe crítico!" flotan sobre el rival (`PokemonActor.float_text`).
+- **Lote 1:** Excavar/Buceo/Vuelo/Bote/Golpe Fantasma (se oculta, avanza como montículo, burbujas o sombra y sale bajo el rival), Shuriken de Agua (3 shurikens girando), Llamarada (estrella que crece y estalla), proyectiles con forma (Bola Sombra, Esfera Aural…), chorros (Lanzallamas, Hidrobomba, Pistola Agua… gotas seguidas que crecen), lianas (Látigo Cepa, Latigazo) y mordidas (Mordisco, Triturar, Colmillos de tipo). Capturas: `~/Desktop/Pokemon_ataques_lote1.png`.
