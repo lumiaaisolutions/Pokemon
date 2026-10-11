@@ -242,3 +242,11 @@ Defectos encontrados en una revisión de capturas tras la fase 6, corregidos en 
 
 Pruebas (`tests/test_battle.tscn`, `tests/test_interiors.tscn`, `tests/test_world.tscn`, `tests/test_camping.tscn`, `tests/test_town.tscn`): sin fallos. Verificación visual: sondas QA con el renderizador real (`--display-driver macos --rendering-driver opengl3_angle`, el `--headless` normal de este entorno usa el controlador `dummy` sin salida de píxeles) confirmaron el muro de entrada sin vacío, el fondo cálido y la textura de roca en las laderas; la captura exacta de "cámara sumergida" del pantano tóxico no se logró encuadrar bien con la sonda rápida (quedó mirando por encima del agua), así que ese punto se verificó solo por el cambio del shader, no con una captura que muestre la cámara ya debajo del agua.
 - **Completar lo simplificado del mundo (Fernando, 2026-10-11):** niño perdido que te sigue de verdad hasta su casa (si te alejas, espera); decorar la casa comprada con muebles 3D colocables (cama, mesa, plantas, pósters, peluches); pueblo que crece de verdad en el momento (vecinos y tiendas nuevas sin recargar); clima extremo real (tormentas eléctricas, ventiscas, sequías que cambian el clima, lo que aparece y lo que puedes hacer).
+
+### Errores de la prueba del 2026-10-11 (mañana)
+- Tras la cinemática del profesor el jugador aparecía bajo el suelo (sin aire, se desmayaba). En arreglo (rama bugs-prueba).
+- Al elegir el inicial, el profesor se hundía y encogía al despedirse: debe irse caminando.
+- La ayuda de "Saltar" se ve pequeña y desfasada en la esquina inferior derecha (texto encimado).
+- Centro Pokémon: pared invisible a mitad del cuarto y zona negra junto a la máquina.
+- Los árboles no se ven estilo BW2 (en arreglo con el follaje 3D).
+- Pendientes que Fernando pidió terminar: esquina del núcleo visible tras el techo en 5 modelos, unificar los dos estilos de botón píldora, medir FPS con calidad alta, verificar caminando las escaleras de la Tienda y el Centro; al final, limpiar "Por preguntar" del plan y nota del cerebro + bitácora con BRÚJULA.
