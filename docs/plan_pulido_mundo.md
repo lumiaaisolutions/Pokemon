@@ -83,11 +83,11 @@ En la hoja de BW2 reconozco con certeza a Brock, Misty, Lt. Surge, Whitney, Braw
 Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 1. **Calem con huecos blancos** en su sprite: la herramienta borraba el contorno negro y el blanco de los ojos como fondo. **Hecho** (`tools/protagonist_sheets.py`, `alpha_only`).
 2. **Avisos del Rotom con etiqueta "MISIÓN"**: tarjeta propia "ROTOM" para brotes, bandadas, lluvia de estrellas…; las misiones siguen como "MISIÓN". **Hecho** (`NoticeCards.rotom_category`).
-3. **Inicio y elección del inicial:**
-   - Mucha gente se atraviesa en medio de la zona del inicial.
-   - No debe dejarte salir de la zona hasta elegir inicial.
-   - Instrucciones claras de qué hacer (lanzar la Poké Ball a tu inicial).
-   - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. Detalles por preguntar a Fernando.
+3. **Inicio y elección del inicial: Hecho** (`world/starter/intro_cinematic.gd`, `world/starter/starter_ceremony.gd`) → [inicio](sistemas/inicio.md).
+   - Mucha gente se atraviesa en medio de la zona del inicial. **Hecho:** `TownNPCs.set_exclusion_zone`/`clear_exclusion_zone`, pared de exclusión que empuja a los vecinos fuera de la plaza mientras no eliges.
+   - No debe dejarte salir de la zona hasta elegir inicial. **Hecho:** pared invisible de `StarterCeremony` (16 m alrededor de la plaza) que regresa al jugador y, cada pocos segundos, el profesor lo detiene en la caja de diálogo.
+   - Instrucciones claras de qué hacer (lanzar la Poké Ball a tu inicial). **Hecho:** tarjeta de tutorial ("Mantén para apuntar") y la tarjeta general de lanzar (ya existente) se encadenan paso a paso con `InputHints` reales (teclado/mouse o mando).
+   - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. **Hecho:** `IntroCinematic` (4 lugares reales del mundo generado, un candidato por lugar) + `StarterCeremony` (llegada a la plaza, comentarios al acercarte, elección y despedida).
 4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial"). **Hecho** (`world/npc/speech_bubbles.gd`, ver [habitantes](sistemas/habitantes.md#burbujas-contexto-y-charlas-2026-10-10)).
 5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas. **Hecho** (`Structures._collider`/`_cylinder_collider`, `Structures.furniture`, `TownNPCs._avoid_furniture`) → [pueblos e interiores](sistemas/pueblos_e_interiores.md#física-del-mobiliario-y-cámara-2026-10-10-noche).
 6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia. **Hecho** (`world/actors/pokemon_actor.gd`, `_think_wild_fight`) → [combate](sistemas/combate.md).
@@ -202,7 +202,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 **Meta (Fernando):** el loop sigue hasta terminar el juego completo (fases 6 y 7 incluidas) y sin detalles como los reportados (ver [reglas_calidad.md](reglas_calidad.md)); al final, una revisión general con capturas de todo el juego buscando esos defectos.
 1. Integrar lo de los agentes en curso (IA salvaje y Poké Ball en mano; interiores base) con la batería completa.
 2. Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios.
-3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso).
+3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso). **Hecho.**
 4. Faroles más fuertes de noche y el molino que cambiaba de color; Cilan y Volkner con sus sprites definitivos.
 5. Túneles-desfiladero tapados por rocas grandes.
 6. Campamento animado y extras; botones nuevos en todas las interfaces.

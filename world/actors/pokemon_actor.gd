@@ -1298,11 +1298,28 @@ func _think_wild_fight(target_pos: Vector3, distance: float) -> Array:
 ## Táctica según sus estadísticas: veloz o frágil de defensa → KITE; fuerte cuerpo a
 ## cuerpo (ataque claramente mayor que el especial) → BRUISER; el resto, BALANCED.
 func _compute_tactic() -> Tactic:
-	if species.speed >= 90 or species.defense <= 55:
+	return tactic_for(species)
+
+
+## Misma regla que _compute_tactic, pero estática: la usa la cinemática del inicio y la
+## ceremonia del inicial para describir el carácter de un candidato antes de crearlo.
+static func tactic_for(data: SpeciesData) -> Tactic:
+	if data.speed >= 90 or data.defense <= 55:
 		return Tactic.KITE
-	if species.attack >= species.sp_attack + 10 and species.attack >= 75:
+	if data.attack >= data.sp_attack + 10 and data.attack >= 75:
 		return Tactic.BRUISER
 	return Tactic.BALANCED
+
+
+## Descripción corta del carácter de pelea para la caja de diálogo (el profesor comenta
+## tipo y carácter de cada candidato, acordado con Fernando el 2026-10-10).
+static func tactic_label(data: SpeciesData) -> String:
+	match tactic_for(data):
+		Tactic.KITE:
+			return "ágil, prefiere mantener la distancia"
+		Tactic.BRUISER:
+			return "fuerte y directo, entra sin miedo"
+	return "de carácter equilibrado"
 
 
 ## Punto para acercarse en curva (no en línea recta), como si rodeara al llegar.

@@ -5,11 +5,10 @@
 ## Sin niveles
 - Las estadísticas son fijas por especie. Se progresa con victorias, vínculo, investigación, dominio de movimientos y Puntos de Entrenamiento.
 
-## Inicial (Fase 5)
-- Al empezar, **5 huevos al azar** de cualquier básico (`basic_pool.tres`: 423, sin legendarios, singulares, Ultraentes ni paradojas), sin repetir. Cada huevo lleva el patrón de color de su Pokémon.
-- **Hecho (2026-10-09), decidido así por Fernando:** los 5 eclosionan a la vez frente al jugador y eliges lanzándole una Pokéball al que quieras (captura segura); los demás se van y no se vuelven a ver. Detalle en [historia y mundo](historia_y_mundo_aleatorio.md).
-- Cuando exista el pueblo inicial (capa 2.6), la ceremonia pasará al laboratorio del profesor.
-- Mientras tanto, el compañero es un básico al azar.
+## Inicial (Fase 5, rehecho 2026-10-10 noche)
+- Antes de la ceremonia, una **cinemática** (`IntroCinematic`) muestra al profesor viajando por 4 lugares reales del mundo generado (pradera, bosque, costa, montaña) y conociendo en cada uno a un candidato básico de ese hábitat (`basic_pool.tres`, Pokédex regional, sin repetir); se puede saltar.
+- Llegan los 4 a la plaza del pueblo inicial (`StarterCeremony`): pared invisible mientras no eliges, el profesor comenta tipo y carácter al acercarte y el tutorial indica apuntar y lanzar paso a paso. Lanzas una Pokéball al que quieras (captura segura); los demás se van y no se vuelven a ver. Detalle completo en [sistemas/inicio.md](inicio.md).
+- Mientras `starter_ceremony` esté apagado (pruebas), el compañero es un básico al azar, sin cinemática ni ceremonia.
 
 ## Evolución sin niveles (Fase 5.5)
 Código: `core/evolution.gd`, `world/effects/evolution_scene.gd`; datos en `creatures/data/evolutions.json` (484 caminos de PokeAPI, `tools/build_evolutions.py`).

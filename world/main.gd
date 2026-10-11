@@ -135,7 +135,7 @@ func _ready() -> void:
 		var welcome := "¡Bienvenido a la %s! El Prof. %s te espera en su laboratorio." % [Regions.region_name(), GameState.professor]
 		get_tree().create_timer(1.5).timeout.connect(func() -> void: GameState.notice.emit(welcome))
 	if starter_ceremony and GameState.party.is_empty():
-		_start_ceremony.call_deferred()
+		_start_intro.call_deferred()
 	else:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
@@ -238,9 +238,25 @@ func _create_companion(species: SpeciesData, shiny: bool, at: Vector3) -> void:
 			companion.recover.call_deferred(ratio)
 
 
-## Los 5 huevos eclosionan; sin salvajes cerca mientras eliges.
-func _start_ceremony() -> void:
+## Cinemática del profesor (viaja por el mundo y conoce a 4 candidatos) seguida de la
+## ceremonia del inicial en la plaza; sin salvajes cerca mientras eliges.
+func _start_intro() -> void:
 	($Spawner as Node).set_process(false)
+	var cinematic := IntroCinematic.new()
+	cinematic.name = "IntroCinematic"
+	cinematic.player = _player
+	cinematic.world = $World
+	cinematic.camera_rig = $CameraRig
+	cinematic.hud = $Hud
+	cinematic.music = $Music
+	add_child(cinematic)
+	var candidates := await cinematic.play()
+	cinematic.queue_free()
+	await _start_ceremony(candidates)
+
+
+## Los 4 candidatos de la cinemática llegan con el profesor a la plaza.
+func _start_ceremony(candidates: Array[SpeciesData]) -> void:
 	var ceremony := StarterCeremony.new()
 	ceremony.name = "StarterCeremony"
 	ceremony.player = _player
@@ -253,7 +269,7 @@ func _start_ceremony() -> void:
 		($Hud as Hud).show_toast("¡%s será tu compañero de viaje!" % species.display_name)
 		($Spawner as Node).set_process(true)
 		ceremony.queue_free())
-	await ceremony.start()
+	await ceremony.start(candidates)
 
 
 ## Estado del compañero para el HUD.
