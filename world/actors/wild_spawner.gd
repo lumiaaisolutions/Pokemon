@@ -678,6 +678,7 @@ func spawn_horde(species: SpeciesData, point: Vector3, habitat: SpeciesData.Habi
 		actor.add_to_group(HORDE_GROUP)
 		if first == null:
 			first = actor
+	_react_nearby(point, ["¡Una horda!", "¡Mira cuántos Pokémon!"])
 	return first
 
 
@@ -743,4 +744,13 @@ func spawn_species(species: SpeciesData, point: Vector3, shiny: bool, swimming: 
 	actor.add_to_group(LegendaryManager.LEGENDARY_GROUP if legendary else WILD_GROUP)
 	actor.contact_with_player.connect(func(a: PokemonActor) -> void: wild_contact.emit(a))
 	add_child(actor)
+	if shiny and not legendary:
+		_react_nearby(point, ["¡Un shiny!", "¡Qué suerte, un shiny!"])
 	return actor
+
+
+## Si hay vecinos cerca de pos, comentan el suceso (burbujas: horda, shiny...).
+func _react_nearby(pos: Vector3, lines: Array) -> void:
+	var npcs := get_parent().get_node_or_null("TownNPCs") as TownNPCs
+	if npcs != null:
+		npcs.react(pos, lines)

@@ -229,6 +229,7 @@ func _challenge(trainer: Dictionary) -> void:
 		return
 	var info := team_for(spot)
 	info["at"] = node.global_position + (_player.global_position - node.global_position).normalized() * 3.0
+	info["node"] = node
 	info["on_end"] = func(result: String) -> void:
 		if not is_instance_valid(node):
 			return

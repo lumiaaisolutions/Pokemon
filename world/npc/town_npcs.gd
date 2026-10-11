@@ -41,6 +41,20 @@ const ROLES := ["vecino", "vendedor", "enfermera", "investigador", "entrenador",
 const PET_POOL := preload("res://creatures/data/basic_pool.tres")
 const TRAVELERS := 2
 const TRAVELER_SPEED := 1.8
+## Charlas entre vecinos (burbujas, acordado con Fernando el 2026-10-10): intercambios de
+## 2–3 frases alternadas sobre temas variados (clima, Pokémon, el gimnasio, la hora, chismes).
+const CHATS := [
+	["¿Viste el clima de hoy?", "Sí, raro para esta época del año."],
+	["¿Ya fuiste al gimnasio?", "Voy después, ahorita entreno."],
+	["¿Qué hora es?", "Ya casi es hora de comer.", "¡Se me hace tarde!"],
+	["Dicen que hay Pokémon nuevos por aquí.", "¡Quiero atrapar uno!"],
+	["¿Supiste el chisme del pueblo?", "¡No! Cuéntame todo.", "Luego te digo, shh."],
+	["Mi Pokémon aprendió un movimiento.", "¡Qué envidia, el mío no!"],
+	["¿Entrenas para el gimnasio?", "Sí, pero me falta mucho todavía."],
+	["Hoy se ve bonito el cielo.", "Sí, perfecto para salir a pasear."],
+]
+## Qué tan cerca deben estar dos vecinos para charlar.
+const CHAT_RADIUS := 3.5
 
 @export var world_path: NodePath
 @export var player_path: NodePath
@@ -56,6 +70,9 @@ var _travelers: Array = []
 ## Combate de práctica en curso: {"a", "b", "time", "center"} o {}.
 var _practice := {}
 var _practice_timer := 25.0
+## Charlas en curso: cada una {"a", "b", "lines", "index", "timer"}.
+var _chats: Array = []
+var _chat_timer := 5.0
 
 
 func _ready() -> void:
@@ -80,6 +97,7 @@ func _process(delta: float) -> void:
 	for traveler: Dictionary in _travelers:
 		_update_traveler(traveler, hour, delta)
 	_update_practice(delta)
+	_update_chats(delta)
 
 
 ## Crea o libera los habitantes según la distancia del jugador a cada pueblo.
@@ -570,6 +588,116 @@ func practice_active() -> bool:
 	return not _practice.is_empty()
 
 
+# --- Burbujas: charlas entre vecinos y comentarios del clima o la hora -----------------
+
+## Avanza las charlas en curso (una burbuja por turno) y, de vez en cuando, intenta
+## empezar una nueva (entre dos vecinos juntos en la plaza, o un comentario suelto).
+func _update_chats(delta: float) -> void:
+	for chat: Dictionary in _chats.duplicate():
+		chat["timer"] = float(chat["timer"]) - delta
+		if float(chat["timer"]) > 0.0:
+			continue
+		var lines: Array = chat["lines"]
+		var index: int = chat["index"]
+		if index >= lines.size():
+			_chats.erase(chat)
+			continue
+		var speaker: Dictionary = chat["a"] if index % 2 == 0 else chat["b"]
+		var node := speaker["node"] as Node3D
+		if is_instance_valid(node) and node.visible and not speaker.get("talking", false) and not speaker.get("battling", false) and not speaker.get("battling_player", false):
+			SpeechBubbles.say(node, lines[index])
+		chat["index"] = index + 1
+		chat["timer"] = _rng.randf_range(2.6, 3.2)
+	_chat_timer -= delta
+	if _chat_timer > 0.0:
+		return
+	_chat_timer = _rng.randf_range(5.0, 9.0)
+	if _rng.randf() < 0.4:
+		_try_solo_comment()
+	else:
+		_try_start_chat()
+
+
+## Dos vecinos libres, cerca entre sí y del jugador, cambian unas frases.
+func _try_start_chat() -> void:
+	for index: int in _towns:
+		var ready: Array = (_towns[index] as Array).filter(func(n: Dictionary) -> bool:
+			return n["goal"] == "plaza" and (n["node"] as Node3D).visible and not n.get("battling", false) \
+					and not n.get("talking", false) and not n.get("battling_player", false) and not _in_chat(n))
+		for a: Dictionary in ready:
+			if not SpeechBubbles.near_player(a["node"], _player):
+				continue
+			for b: Dictionary in ready:
+				if b != a and (a["node"] as Node3D).global_position.distance_to((b["node"] as Node3D).global_position) < CHAT_RADIUS:
+					_chats.append({"a": a, "b": b, "lines": CHATS[_rng.randi() % CHATS.size()], "index": 0, "timer": 0.0})
+					return
+
+
+func _in_chat(npc: Dictionary) -> bool:
+	return _chats.any(func(c: Dictionary) -> bool: return c["a"] == npc or c["b"] == npc)
+
+
+## Un vecino cercano comenta la hora o el clima (sin necesitar pareja de charla).
+func _try_solo_comment() -> bool:
+	var lines := _weather_time_lines()
+	if lines.is_empty():
+		return false
+	for index: int in _towns:
+		for npc: Dictionary in _towns[index]:
+			var node := npc["node"] as Node3D
+			if node.visible and not npc.get("talking", false) and not npc.get("battling", false) and not npc.get("battling_player", false) and SpeechBubbles.near_player(node, _player):
+				return SpeechBubbles.say(node, lines[_rng.randi() % lines.size()])
+	return false
+
+
+func _weather_time_lines() -> Array:
+	match Weather.current:
+		Weather.Kind.RAIN, Weather.Kind.STORM:
+			return ["Está empezando a llover.", "¡Qué lluvia tan fuerte!"]
+		Weather.Kind.SNOW, Weather.Kind.BLIZZARD:
+			return ["¡Qué frío! Hoy sí hace fresco.", "Con este frío mejor abrígate."]
+		Weather.Kind.SAND:
+			return ["¡Esta arena no deja ver nada!"]
+	var hour := GameState.clock_hour()
+	if hour >= 21.0 or hour < 6.0:
+		return ["Ya es tarde, me voy a casa.", "Se me hizo de noche ya."]
+	if WildSpawner.current_season() == 1 and hour >= 11.0 and hour < 17.0:
+		return ["¡Qué calor hace!", "Hoy sí que aprieta el sol."]
+	return []
+
+
+## Si hay alguien visible cerca de pos (y del jugador), reacciona con una frase al azar
+## (sucesos: elegir inicial, horda, shiny, migración...).
+func react(pos: Vector3, lines: Array) -> void:
+	if lines.is_empty() or _player == null:
+		return
+	var candidates: Array = []
+	for index: int in _towns:
+		for npc: Dictionary in _towns[index]:
+			var node := npc["node"] as Node3D
+			if node.visible and not npc.get("talking", false) and not npc.get("battling", false) and not npc.get("battling_player", false) \
+					and node.global_position.distance_to(pos) < SpeechBubbles.RANGE and SpeechBubbles.near_player(node, _player):
+				candidates.append(node)
+	for traveler: Dictionary in _travelers:
+		var node := traveler["node"] as Node3D
+		if not traveler.get("talking", false) and not traveler.get("battling_player", false) \
+				and node.global_position.distance_to(pos) < SpeechBubbles.RANGE and SpeechBubbles.near_player(node, _player):
+			candidates.append(node)
+	if candidates.is_empty():
+		return
+	SpeechBubbles.say(candidates[_rng.randi() % candidates.size()], lines[_rng.randi() % lines.size()])
+
+
+## Hay al menos una charla de vecinos en curso (pruebas).
+func chats_active() -> int:
+	return _chats.size()
+
+
+## Fuerza una charla entre a y b ya mismo (pruebas).
+func force_chat(a: Dictionary, b: Dictionary) -> void:
+	_chats.append({"a": a, "b": b, "lines": CHATS[0], "index": 0, "timer": 0.0})
+
+
 ## Lo que dice al hablarle: saludo por hora, comentario del clima y algo de su oficio.
 func _talk(npc: Dictionary) -> void:
 	var hour := GameState.clock_hour()
@@ -766,6 +894,7 @@ func _challenge_person(person: Dictionary, role: String) -> void:
 	if own != null:
 		(info["team"] as Array)[0] = own
 	info["at"] = node.global_position + (_player.global_position - node.global_position).normalized() * 2.5
+	info["node"] = node
 	person["battling_player"] = true
 	pet.visible = false
 	info["on_end"] = func(_result: String) -> void:

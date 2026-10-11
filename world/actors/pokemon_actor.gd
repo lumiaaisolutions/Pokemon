@@ -11,6 +11,8 @@ signal contact_with_player(actor: PokemonActor)
 signal vanished(actor: PokemonActor)
 ## Quedó debilitado (aturdido): durante STUN_TIME se le puede capturar.
 signal stunned(actor: PokemonActor)
+## Usó un movimiento (burbujas de combate: su entrenador, si tiene, da la orden).
+signal move_used(actor: PokemonActor, move_id: String, style: int)
 
 enum Role { WILD, COMPANION }
 enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY, FIGHT, STUNNED, PERCHED, AMBUSH, DROP }
@@ -1308,6 +1310,7 @@ func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> vo
 	_move_cooldowns[id] = Moves.cooldown(id, move_rank, style)
 	_attack_cooldown = maxf(_attack_cooldown, GLOBAL_MOVE_COOLDOWN)
 	_show_move_name(move["name"] + ("" if style == Moves.Style.NORMAL else " (%s)" % Moves.STYLE_NAMES[style]))
+	move_used.emit(self, id, style)
 	if not party_entry.is_empty():
 		Moves.register_use(party_entry, id)
 	var hit := func(node: Node3D) -> bool: return _apply_move_hit(node, id, style)

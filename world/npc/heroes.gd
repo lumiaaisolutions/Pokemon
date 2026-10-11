@@ -262,7 +262,7 @@ func _challenge(hero: Dictionary) -> void:
 	var info := {"id": "hero:" + id, "name": PlayerCharacters.find(id)["name"], "team": team_for(id, badges),
 			"money": 1500 + 600 * badges, "item": ["rare-candy", "star-piece", "ultra-ball", "nugget"][badges % 4],
 			"smart": true, "heals": 2, "mega": TEAMS[id]["mega"] if badges >= 6 else "",
-			"at": node.global_position + (_player.global_position - node.global_position).normalized() * 3.0}
+			"at": node.global_position + (_player.global_position - node.global_position).normalized() * 3.0, "node": node}
 	hero["battling"] = true
 	info["on_end"] = func(_result: String) -> void:
 		hero["battling"] = false
