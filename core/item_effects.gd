@@ -152,6 +152,8 @@ static func use(id: String, main: Node) -> String:
 			return ""
 		if main.get_node_or_null("Fishing") != null:
 			return "Ya tienes el anzuelo en el agua."
+		if player != null and player.mode != Player.Mode.WALK:
+			return "Sal del agua para pescar (desde la orilla)."
 		if _nearby_water_depth(player) < 0.15:
 			return "Necesitas estar junto al agua para pescar."
 		var fishing := FishingMinigame.new()
