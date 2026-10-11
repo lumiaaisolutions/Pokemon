@@ -13,7 +13,7 @@ const STATIC_TOWN := {"city": ["bw1_city_castelia", "bw1_city_nimbasa", "bw1_cit
 		"town": ["bw2_town_aspertia", "bw1_town_accumula", "bw1_city_striaton", "bw1_city_nacrene", "bw2_town_floccesy"],
 		"village": ["bw1_village_lacunosa", "bw1_village_anville", "bw2_town_floccesy"],
 		"cabins": ["bw2_town_floccesy", "bw1_village_anville"]}
-const INTERIOR := {"center": "bw1_pokecenter", "mart": "bw1_pokecenter", "lab": "bw1_lab", "gym": "bw1_gym", "league": "bw1_league",
+const INTERIOR := {"center": "bw1_pokecenter", "mart": "bw2_pokemart", "lab": "bw1_lab", "gym": "bw1_gym", "league": "bw1_league",
 		"contest": "bw1_city_nimbasa", "sewer": "bw2_sewers", "cave": "bw1_cave_chargestone", "mine": "bw2_underground_ruins",
 		"tower": "bw1_tower_dragonspiral", "mansion": "bw2_strange_house", "power_plant": "bw2_plasma_frigate", "lab_ruins": "bw2_black_tower",
 		"villain_base": "bw1_villain_base", "distortion": "bw2_white_treehollow", "shipwreck": "bw1_undersea", "victory_road": "bw1_victory_road"}

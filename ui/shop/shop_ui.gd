@@ -14,9 +14,25 @@ var title := "Tienda Pokémon"
 ## Surtido propio (comerciante viajero) y multiplicador de precio de compra.
 var custom_stock: Array[String] = []
 var price_factor := 1.0
+## Existencias limitadas por día (Tienda Pokémon, 2026-10-10): id -> unidades que quedan
+## hoy. Si un id no aparece aquí, se puede comprar sin límite (comerciante viajero,
+## restaurante...). Vacío por defecto para no afectar a quien ya usaba ShopUI.
+var stock_limits: Dictionary = {}
+## Precio de venta por id (vender lo recolectado al precio del día, Tienda Pokémon): si
+## un id aparece aquí se usa este precio en vez de la mitad del precio de compra.
+var sell_price_overrides: Dictionary = {}
+## Descuento en un solo id (oferta del día): factor (0.8 = 20 % menos), "" = ninguno.
+var discount_id := ""
+var discount_factor := 0.8
+## Texto de la tarjeta de puntos (Tienda Pokémon); "" = no se muestra.
+var loyalty_text := ""
+## Se llama tras una compra válida con (id, cantidad): tarjeta de puntos, compañero que
+## reacciona al estante, ruleta diaria...
+var on_bought: Callable = Callable()
 var _selling := false
 var _list: VBoxContainer
 var _money: Label
+var _loyalty: Label
 var _tabs: Array[Button] = []
 
 
@@ -43,6 +59,9 @@ func open() -> void:
 	header.add_child(spacer)
 	_money = MenuStyle.label("", 22)
 	header.add_child(_money)
+	if loyalty_text != "":
+		_loyalty = MenuStyle.label("", 18, MenuStyle.ACCENT)
+		box.add_child(_loyalty)
 	var tabs := HBoxContainer.new()
 	box.add_child(tabs)
 	for i in 2:
@@ -116,8 +135,24 @@ static func sell(id: String, amount: int) -> bool:
 	return true
 
 
+## Precio de venta de id: su propio precio del día (vender lo recolectado) si lo trae,
+## si no la mitad del precio de compra de siempre.
+func _sell_price_of(id: String) -> int:
+	return int(sell_price_overrides[id]) if sell_price_overrides.has(id) else sell_price(id)
+
+
+## Precio de compra de id con el factor del puesto, la reputación y la oferta del día.
+func _buy_price_of(id: String) -> int:
+	var factor := price_factor
+	if id == discount_id:
+		factor *= discount_factor
+	return int(Items.get_item(id).get("price", 0) * factor * reputation_factor())
+
+
 func _refresh() -> void:
 	_money.text = "Dinero: $%d" % GameState.money
+	if _loyalty != null:
+		_loyalty.text = loyalty_text
 	for i in _tabs.size():
 		MenuStyle.style_button(_tabs[i], (i == 1) == _selling)
 	for child in _list.get_children():
@@ -125,7 +160,7 @@ func _refresh() -> void:
 	var ids: Array[String] = []
 	if _selling:
 		for id: String in GameState.bag:
-			if GameState.item_count(id) > 0 and sell_price(id) > 0 and Items.get_item(id).get("pocket", "") != "clave":
+			if GameState.item_count(id) > 0 and _sell_price_of(id) > 0 and Items.get_item(id).get("pocket", "") != "clave":
 				ids.append(id)
 	else:
 		ids = custom_stock if not custom_stock.is_empty() else stock()
@@ -133,20 +168,28 @@ func _refresh() -> void:
 		_list.add_child(MenuStyle.label("No tienes nada que vender." if _selling else "Sin surtido.", 18, MenuStyle.MUTED))
 	var first: Button
 	for id in ids:
+		var left_today: int = int(stock_limits[id]) if stock_limits.has(id) else -1
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		row.add_child(MenuStyle.texture_rect(Items.icon(id), Vector2(32, 32)))
-		var name := MenuStyle.label("%s  (tienes %d)" % [Items.display_name(id), GameState.item_count(id)], 18)
+		var stock_note := "  (quedan %d hoy)" % left_today if left_today >= 0 else ""
+		var name := MenuStyle.label("%s%s  %s  (tienes %d)" % [Items.display_name(id), " ⭐ oferta" if id == discount_id and not _selling else "",
+				stock_note, GameState.item_count(id)], 18)
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name.tooltip_text = str(Items.get_item(id).get("desc", ""))
 		name.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(name)
-		var price := sell_price(id) if _selling else int(Items.get_item(id).get("price", 0) * price_factor * reputation_factor())
+		var price := _sell_price_of(id) if _selling else _buy_price_of(id)
 		row.add_child(MenuStyle.label("$%d" % price, 18))
 		for amount in [1, 10]:
-			var button := MenuStyle.button(("Vender ×%d" if _selling else "Comprar ×%d") % amount, 16)
+			if not _selling and left_today == 0:
+				break
+			var capped_amount: int = mini(amount, left_today) if left_today >= 0 else amount
+			if not _selling and capped_amount <= 0:
+				continue
+			var button := MenuStyle.button(("Vender ×%d" if _selling else "Comprar ×%d") % capped_amount, 16)
 			button.pressed.connect(func() -> void:
-				var ok := sell(id, amount) if _selling else buy(id, amount, price_factor)
+				var ok := _do_sell(id, capped_amount) if _selling else _do_buy(id, capped_amount)
 				if not ok:
 					GameState.notice.emit("No alcanza." if not _selling else "No tienes suficientes.")
 				_refresh())
@@ -156,6 +199,29 @@ func _refresh() -> void:
 		_list.add_child(row)
 	if first != null:
 		first.grab_focus.call_deferred()
+
+
+func _do_buy(id: String, amount: int) -> bool:
+	if stock_limits.has(id) and int(stock_limits[id]) < amount:
+		return false
+	var factor := price_factor * (discount_factor if id == discount_id else 1.0)
+	if not buy(id, amount, factor):
+		return false
+	if stock_limits.has(id):
+		stock_limits[id] = int(stock_limits[id]) - amount
+	if on_bought.is_valid():
+		on_bought.call(id, amount)
+	return true
+
+
+func _do_sell(id: String, amount: int) -> bool:
+	if sell_price_overrides.has(id):
+		if GameState.item_count(id) < amount:
+			return false
+		GameState.use_item(id, amount)
+		GameState.add_money(_sell_price_of(id) * amount, "Venta: %s × %d" % [Items.display_name(id), amount])
+		return true
+	return sell(id, amount)
 
 
 func _unhandled_input(event: InputEvent) -> void:

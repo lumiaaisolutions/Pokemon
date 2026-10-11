@@ -111,6 +111,23 @@ func play_sfx(key: String, pitch: float = 1.0) -> void:
 			return
 
 
+## Ambiente en bucle (ruido de gente en la Tienda y el Centro, acordado con Fernando el
+## 2026-10-10): un AudioStreamPlayer listo para añadir y reproducir, o null si no existe
+## el archivo (no truena nada: simplemente no hay sonido de ambiente todavía).
+func ambient_player(key: String) -> AudioStreamPlayer:
+	var stream := _stream(SFX_DIR, key)
+	if stream == null:
+		return null
+	if stream is AudioStreamMP3:
+		(stream as AudioStreamMP3).loop = true
+	elif stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.volume_db = linear_to_db(maxf(GameOptions.effects_volume * 0.5, 0.0005))
+	return player
+
+
 func _target_db() -> float:
 	return linear_to_db(maxf(GameOptions.music_volume * 0.8 * _duck, 0.0005))
 

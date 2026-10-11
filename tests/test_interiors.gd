@@ -63,6 +63,15 @@ func _run() -> void:
 		var gym: Dictionary = (gym_city["buildings"] as Array).filter(func(b: Dictionary) -> bool: return b["kind"] == "gym")[0]
 		await _check_room("gym", gym_city, gym)
 
+	# Funciones nuevas de la Tienda y el Centro Pokémon (2026-10-10 noche): horario,
+	# existencias, tarjeta de puntos, recordador, intercambio, curación animada y
+	# guardería con huevo.
+	_check_schedule()
+	_check_mart_systems(start_settlement)
+	_check_center_systems()
+	await _check_animated_heal()
+	_check_daycare()
+
 
 ## Entra a un interior y revisa luz, cámara y (en tienda/Centro) el personal.
 func _check_room(kind: String, settlement: Dictionary, building: Dictionary) -> void:
@@ -116,6 +125,9 @@ func _check_room(kind: String, settlement: Dictionary, building: Dictionary) -> 
 		_check(_has_look(root, "enfermera"), "el Centro debe tener a la enfermera humana en el mostrador")
 		_check(_has_pet(root, "chansey") or _has_pet(root, "blissey"), "el Centro debe tener a un Chansey o Blissey de mascota, con su hoja de caminar de mundo")
 
+	if kind in ["mart", "center"]:
+		await _check_stairs(kind, interiors)
+
 	interiors.exit_to(interiors.current.get("return", _player.global_position))
 	await _wait_interior(interiors, false)
 	await _frames(5)
@@ -160,3 +172,128 @@ func _frames(count: int) -> void:
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
+
+
+## Las escaleras reales del modelo (tienda y Centro, de dos pisos) llevan al segundo
+## piso: se pregunta a la navegación horneada (de la colisión real del modelo, con la
+## misma malla que camina el jugador) si hay un camino desde la entrada hasta un punto
+## del segundo piso que detectó _model_room()/_ceiling_info(). Un intento de caminar de
+## verdad con move_and_slide() (en vez de preguntar a la navegación) no encontró un
+## trayecto fijo que sirviera para los dos modelos reales (sus escaleras no quedan en el
+## mismo lugar relativo); anotado en docs/decisiones_sin_preguntar.md.
+func _check_stairs(kind: String, interiors: Interiors) -> void:
+	if not interiors.has_upper_floor():
+		return
+	var ceiling_y: float = interiors.current.get("ceiling_y", 0.0)
+	var spawn: Vector3 = interiors.current.get("spawn", Vector3.ZERO)
+	var target := Interiors.ORIGIN + interiors.upper_point(Vector3(0, 0.3, 0))
+	await _frames(10)
+	var map := _player.get_world_3d().navigation_map
+	var path := NavigationServer3D.map_get_path(map, spawn, target, true)
+	var reached_height := 0.0
+	for point: Vector3 in path:
+		reached_height = maxf(reached_height, point.y - spawn.y)
+	_check(not path.is_empty() and reached_height >= ceiling_y - 1.6,
+			"%s: la navegación horneada de la sala (misma colisión que las escaleras) debe llegar al segundo piso (subió %.1f de %.1f m, %d puntos)" % [kind, reached_height, ceiling_y, path.size()])
+
+
+## Horario de la tienda (9:00–21:00, decisión de Fernando 2026-10-10): cerrada antes y
+## después de esas horas; el Centro sigue abierto 24 h.
+func _check_schedule() -> void:
+	_check(not TownNPCs.is_open("mart", 8.5), "la tienda debe estar cerrada a las 8:30")
+	_check(TownNPCs.is_open("mart", 9.5), "la tienda debe estar abierta a las 9:30")
+	_check(not TownNPCs.is_open("mart", 21.5), "la tienda debe estar cerrada a las 21:30")
+	_check(TownNPCs.is_open("center", 2.0), "el Centro Pokémon debe estar abierto 24 h (incluso de madrugada)")
+
+
+## Existencias limitadas por día (se reabastecen cada mañana) y tarjeta de puntos
+## (Premier Ball por cada 10 Balls), decisiones de Fernando del 2026-10-10 noche.
+func _check_mart_systems(settlement: Dictionary) -> void:
+	var mart := _services.mart
+	GameState.world_flags.erase("mart")
+	GameState.money = 50000
+	var id: String = MartServices.GENERAL_SHELVES[0]
+	_check(mart.remaining(settlement, id) == MartServices.STOCK_PER_DAY, "las existencias del día deben empezar completas (%d)" % MartServices.STOCK_PER_DAY)
+	_check(mart.buy_from_shelf(settlement, id, 2), "debe poder comprarse del estante si hay dinero y existencias")
+	_check(mart.remaining(settlement, id) == MartServices.STOCK_PER_DAY - 2, "las existencias deben bajar tras comprar (quedan %d)" % mart.remaining(settlement, id))
+	# Tarjeta de puntos: 10 Balls compradas dan una Premier Ball y los puntos vuelven a 0.
+	var before_premier := GameState.item_count("premier-ball")
+	mart._on_bought(settlement, "poke-ball", MartServices.LOYALTY_PER_PREMIER)
+	_check(GameState.item_count("premier-ball") == before_premier + 1, "10 Balls compradas deben dar una Premier Ball")
+	_check(int(mart.loyalty()["points"]) == 0, "los puntos de la tarjeta vuelven a 0 tras ganar la Premier Ball")
+	# Reabasto: al pasar al día siguiente, las existencias vuelven a estar completas.
+	GameState.play_time += GameState.DAY_SECONDS
+	_check(mart.remaining(settlement, id) == MartServices.STOCK_PER_DAY, "las existencias se reabastecen al día siguiente")
+
+
+## Recordador de movimientos (Escama Corazón o dinero) e intercambio del día del Centro
+## Pokémon (decisiones de Fernando del 2026-10-10 noche).
+func _check_center_systems() -> void:
+	var center := _services.center_services
+	GameState.world_flags.erase("center")
+	GameState.party.clear()
+	var entry := {"species": "pikachu", "moves": ["thunder-shock", "growl", "tail-whip"],
+			"unlocked": ["thunder-shock", "growl", "tail-whip", "quick-attack"], "mastery": {}, "move_uses": 0, "hp_ratio": 1.0, "bond": 1}
+	GameState.party.append(entry)
+	GameState.companion_index = 0
+	var forgotten := center._forgotten_moves(entry)
+	_check(forgotten == ["quick-attack"], "debe detectar el movimiento desbloqueado que no está en la lista actual (%s)" % str(forgotten))
+	GameState.add_item("heart-scale", 1)
+	center._do_remind(entry, "quick-attack", true)
+	_check((entry["moves"] as Array).has("quick-attack"), "el recordador debe enseñar de vuelta el movimiento elegido")
+	_check(GameState.item_count("heart-scale") == 0, "pagar con la Escama Corazón debe gastarla")
+	# Intercambio del día: especies válidas en ambos lados y el cambio se completa.
+	var offer := center.daily_trade(GameState.world_seed)
+	_check(MenuStyle.species(offer["want"]) != null and MenuStyle.species(offer["give"]) != null, "el intercambio del día debe ofrecer especies que existan en el juego")
+	GameState.party.append({"species": offer["want"], "moves": [], "unlocked": [], "mastery": {}, "hp_ratio": 1.0, "bond": 1})
+	var index := center._find_species(offer["want"])
+	_check(index >= 0, "debe encontrar en el equipo la especie que pide el mostrador")
+	if index >= 0:
+		center._do_trade(offer, index)
+		var has_given: bool = GameState.party.any(func(e: Dictionary) -> bool: return String(e["species"]) == offer["give"]) \
+				or GameState.box.any(func(e: Dictionary) -> bool: return String(e["species"]) == offer["give"])
+		_check(has_given, "tras el intercambio debe recibirse la especie prometida")
+
+
+## Curación clásica animada: entregas el equipo, las Balls se encienden una a una y
+## también cura al jugador y el veneno (decisión de Fernando, 2026-10-10 noche).
+func _check_animated_heal() -> void:
+	GameState.party.clear()
+	GameState.party.append({"species": "bulbasaur", "moves": [], "unlocked": [], "mastery": {}, "hp_ratio": 0.2, "bond": 1})
+	GameState.companion_index = 0
+	GameState.poison_until = GameState.play_time + 999.0
+	_player.health = 1.0
+	var center := _services.center_services
+	center.animated_heal(_player.global_position)
+	await _frames(2)
+	var anim := _main.get_node_or_null("MenuLayer/HealAnim")
+	_check(anim != null, "debe aparecer la animación de curación con las Balls")
+	if anim != null:
+		await anim.finished
+	await _frames(5)
+	_check(float(GameState.party[0].get("hp_ratio", 0.0)) >= 0.999, "la curación debe dejar al equipo con toda su vida")
+	_check(not GameState.is_poisoned(), "la curación del Centro también cura el veneno")
+
+
+## Guardería (ya existía, world_flags "daycare"): sigue dando Puntos de Entrenamiento
+## por día; revisado que la posibilidad de huevo (2026-10-10) no rompió esa cuenta y que
+## las especies de huevo existen en el juego.
+func _check_daycare() -> void:
+	GameState.world_flags.erase("daycare")
+	GameState.party = [
+		{"species": "eevee", "moves": [], "unlocked": [], "mastery": {}, "hp_ratio": 1.0, "bond": 1, "training": {}},
+		{"species": "ditto", "moves": [], "unlocked": [], "mastery": {}, "hp_ratio": 1.0, "bond": 1, "training": {}},
+	]
+	GameState.companion_index = 0
+	var start_day := GameState.game_day()
+	_services.daycare({})
+	_check((GameState.world_flags.get("daycare", {}) as Dictionary).has("entry"), "la guardería debe quedarse con el segundo Pokémon")
+	_check(GameState.party.size() == 1, "el Pokémon que se queda en la guardería sale del equipo")
+	(GameState.world_flags["daycare"] as Dictionary)["day"] = start_day - 3
+	_services.daycare({})
+	_check(GameState.party.size() == 2, "al volver por él, la guardería debe devolver al Pokémon")
+	if GameState.party.size() == 2:
+		var returned: Dictionary = GameState.party[1]
+		_check(int(returned.get("training_free", 0)) >= TownServices.DAYCARE_POINTS_PER_DAY * 3, "debe ganar Puntos de Entrenamiento por los días que pasó en la guardería")
+	for id: String in TownServices.DAYCARE_EGG_SPECIES:
+		_check(MenuStyle.species(id) != null, "la especie de huevo %s debe existir en el juego" % id)
