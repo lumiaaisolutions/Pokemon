@@ -74,7 +74,6 @@ const TERRITORY_RADIUS := 7.0
 const FOLLOW_DISTANCE := 2.2
 const FOLLOW_TELEPORT := 30.0
 const COMPANION_WATCH_RADIUS := 8.0
-const SPARKLE_INTERVAL := 2.5
 ## Distancia que debe moverse el destino para recalcular el camino.
 const REPATH_DISTANCE := 1.5
 const COMPANION_GROUP := &"companion"
@@ -145,7 +144,6 @@ var _idle_duration: float = 1.0
 var _rng := RandomNumberGenerator.new()
 ## Segundos durante los que ignora al jugador (curioso aburrido o perseguidor que se rindió).
 var _ignore_player: float = 0.0
-var _sparkle_time: float = 0.0
 var _sparkles: CPUParticles3D
 var _swim_target := Vector3.ZERO
 ## Último destino pedido a la navegación (INF = ninguno todavía).
@@ -1737,11 +1735,13 @@ func _make_sparkles() -> CPUParticles3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_texture = ImageTexture.create_from_image(image)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	# Transparencia suave (con recorte salían estrellas negras al aparecer y apagarse).
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.no_depth_test = false
 	var quad := QuadMesh.new()
-	quad.size = Vector2.ONE * 7.0 * PIXEL_SIZE
+	quad.size = Vector2.ONE * 7.0 * PIXEL_SIZE * maxf(1.4, species.size_scale)
 	quad.material = material
 	var particles := CPUParticles3D.new()
 	particles.name = "ShinySparkles"
@@ -1749,18 +1749,14 @@ func _make_sparkles() -> CPUParticles3D:
 	# Siempre encendidas: estrellitas que aparecen y se apagan alrededor.
 	particles.emitting = true
 	particles.one_shot = false
-	particles.amount = 5
+	particles.amount = 8
 	particles.lifetime = 1.1
 	particles.explosiveness = 0.0
-	var fade := Gradient.new()
-	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 0.8, 1), Color(1, 1, 1, 0)])
-	fade.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
-	particles.color_ramp = fade
-	material.vertex_color_use_as_albedo = true
+	# Aparecen y se apagan por tamaño (un degradado de color pintaba estrellas negras).
 	var pop := Curve.new()
-	pop.add_point(Vector2(0.0, 0.3))
+	pop.add_point(Vector2(0.0, 0.0))
 	pop.add_point(Vector2(0.4, 1.2))
-	pop.add_point(Vector2(1.0, 0.2))
+	pop.add_point(Vector2(1.0, 0.0))
 	particles.scale_amount_curve = pop
 	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 0.6 * species.size_scale
@@ -1772,15 +1768,13 @@ func _make_sparkles() -> CPUParticles3D:
 	return particles
 
 
-func _update_sparkles(delta: float) -> void:
+## Shiny (decisión de Fernando, 2026-10-10): sin destello del cuerpo; se ve con sus
+## colores y las estrellitas brillan alrededor siempre, también de noche (sin luz).
+func _update_sparkles(_delta: float) -> void:
 	if _sparkles == null:
 		return
-	_sparkle_time += delta
-	if _sparkle_time >= SPARKLE_INTERVAL:
-		# Destello de todo el sprite, como al aparecer un shiny en los juegos.
-		_sparkle_time = 0.0
-		if state != State.STUNNED and not _faded:
-			_flash(Color(1.8, 1.8, 1.5))
+	# Siguen al Pokémon aunque se esconda y vuelva a salir.
+	_sparkles.emitting = visible
 
 
 # --- Captura --------------------------------------------------------------------

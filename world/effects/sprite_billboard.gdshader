@@ -25,6 +25,8 @@ uniform float glow = 0.0;
 uniform float seasonal = 0.0;
 instance uniform float cut_bottom = -1000.0;
 instance uniform float extra_tilt = 0.0;
+// Por instancia: destello blanco (0–1) que se ve igual de día y de noche (shiny, golpes).
+instance uniform float flash = 0.0;
 
 varying float local_y;
 
@@ -58,6 +60,6 @@ void fragment() {
 	}
 	vec3 season = mix(vec3(1.0), season_tint.rgb, seasonal);
 	vec3 color = texel.rgb * COLOR.rgb * tint.rgb * season;
-	ALBEDO = color * mix(time_tint.rgb, vec3(1.0), glow);
+	ALBEDO = mix(color * mix(time_tint.rgb, vec3(1.0), glow), vec3(1.0, 1.0, 0.9), flash);
 	EMISSION = color * glow * 0.6;
 }

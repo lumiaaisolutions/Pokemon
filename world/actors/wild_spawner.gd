@@ -36,6 +36,15 @@ const ZONE_QUOTA := {
 	SpeciesData.Habitat.FRESHWATER: 1, SpeciesData.Habitat.SEA: 1, SpeciesData.Habitat.SWAMP: 2,
 }
 const FEATURED_PER_ZONE := 2
+## Comunes y raros (pedido de Fernando, 2026-10-10): cada parcela de 160 m tiene de 3 a 5
+## especies comunes que se ven varias veces sueltas; la rareza sale de la especie (ratio de
+## captura oficial: Pidgey 255 común, Eevee o Dratini 45 raros), igual en todas las regiones.
+const COMMON_PATCH := 160.0
+const COMMONS_MIN := 3
+const COMMONS_MAX := 5
+const COMMON_BOOST := 30.0
+## Solo pueden ser comunes las especies fáciles de ver (rareza mínima).
+const COMMON_MIN_RARITY := 0.45
 ## Proporción de apariciones de una zona que son de sus especies características.
 const FEATURED_SHARE := 0.35
 const PACK_CHANCE := 0.2
@@ -106,7 +115,7 @@ func _index_species() -> void:
 			var cumulative: PackedFloat32Array = entry.cumulative
 			var total: float = cumulative[-1] if cumulative.size() > 0 else 0.0
 			(entry.species as Array[SpeciesData]).append(species)
-			cumulative.append(total + species.spawn_weight)
+			cumulative.append(total + species.spawn_weight * rarity(species))
 			# Los Packed*Array se copian al asignarse: hay que guardarlo de vuelta.
 			entry.cumulative = cumulative
 	for chain: int in _by_chain:
@@ -127,9 +136,16 @@ func zone_quota(zone: Vector2i) -> int:
 ## Grupos vivos por zona (una manada cuenta como un grupo).
 func groups_per_zone() -> Dictionary:
 	var groups := {}
+	# Una manada cuenta solo en la zona de su primer miembro (el líder), aunque los demás
+	# queden al otro lado del borde.
+	var group_zone := {}
 	for node in get_tree().get_nodes_in_group(WILD_GROUP):
 		var actor := node as PokemonActor
 		var zone := zone_of(actor.home)
+		if actor.group_id >= 0:
+			if not group_zone.has(actor.group_id):
+				group_zone[actor.group_id] = zone
+			zone = group_zone[actor.group_id]
 		if not groups.has(zone):
 			groups[zone] = {}
 		(groups[zone] as Dictionary)[actor.group_id if actor.group_id >= 0 else -actor.get_instance_id()] = true
@@ -270,6 +286,37 @@ func time_factor(species: SpeciesData) -> float:
 
 
 ## Peso extra de la especie en point: común en su área, rara fuera.
+## Rareza de la especie (0.05–1) por su ratio de captura oficial.
+static func rarity(species: SpeciesData) -> float:
+	return clampf(pow(species.capture_rate / 255.0, 1.2), 0.05, 1.0)
+
+
+var _commons := {}
+
+
+## Especies comunes de la parcela (fijas por semilla): las que más se repiten ahí.
+func commons_at(habitat: SpeciesData.Habitat, point: Vector3) -> Array[SpeciesData]:
+	var key := Vector3i(floori(point.x / COMMON_PATCH), floori(point.z / COMMON_PATCH), habitat)
+	if _commons.has(key):
+		return _commons[key]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key) ^ (_world.config.seed + 271)
+	var wanted := rng.randi_range(COMMONS_MIN, COMMONS_MAX)
+	var picked: Array[SpeciesData] = []
+	for attempt in 60:
+		if picked.size() >= wanted:
+			break
+		var species := _weighted_pick(habitat, rng)
+		if species != null and not picked.has(species) and rarity(species) >= COMMON_MIN_RARITY and species.evolution_stage <= 2:
+			picked.append(species)
+	_commons[key] = picked
+	return picked
+
+
+func common_factor(species: SpeciesData, habitat: SpeciesData.Habitat, point: Vector3) -> float:
+	return COMMON_BOOST if commons_at(habitat, point).has(species) else 1.0
+
+
 func home_factor(identifier: String, point: Vector3) -> float:
 	for area: Vector3 in _home_areas.get(identifier, []):
 		if Vector2(point.x - area.x, point.z - area.y).length() <= area.z:
@@ -358,7 +405,7 @@ func _weighted_pick_at(habitat: SpeciesData.Habitat, point: Vector3) -> SpeciesD
 	for species in candidates:
 		var occupied := 6.0 if ActivityManager.is_occupied(point) and (species.types.has(PokemonTypes.Type.DARK) or species.types.has(PokemonTypes.Type.POISON)) else 1.0
 		var place := _world.type_affinity(species.types, point.x, point.z) * weather_factor(species)
-		total += species.spawn_weight * home_factor(species.identifier, point) * time_factor(species) * occupied * place
+		total += species.spawn_weight * rarity(species) * common_factor(species, habitat, point) * home_factor(species.identifier, point) * time_factor(species) * occupied * place
 		weights.append(total)
 	var index := weights.bsearch(_rng.randf() * total)
 	return candidates[mini(index, candidates.size() - 1)]
@@ -423,6 +470,10 @@ func spawn_one() -> PokemonActor:
 		else:
 			point = _snap_to_walkable(point)
 			if point == Vector3.INF:
+				continue
+			# Al ajustarse al suelo caminable puede caer en otra zona: se revisa su cupo.
+			zone = zone_of(point)
+			if counts.get(zone, 0) >= zone_quota(zone):
 				continue
 			# Junto al agua: mitad de las veces sale uno de tipo Agua en la orilla.
 			if _world.random_water_point(_rng, point, 6.0, true) != Vector3.INF and _rng.randf() < 0.5:

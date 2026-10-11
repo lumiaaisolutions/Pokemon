@@ -55,3 +55,9 @@
 
 ## Ayudas de botones (detalle)
 - `InputHints` (autoload) detecta el último dispositivo y nombra cada acción ("Q" o "△"). El HUD muestra ayudas según el contexto (explorar, apuntar, nadar, bucear, desmayado) y la tarjeta del compañero (vida, si está fuera, guardado o debilitado).
+
+## Campamento, comida y hambre (pedido de Fernando, 2026-10-10 · por diseñar)
+- Sacar la **tienda de campaña** y **descansar hasta el día** (solo de noche): repone la vida del jugador y de sus Pokémon.
+- Sacar el campamento para **cocinar comida**; la comida se **compra o se consigue en el mapa** y recupera vida.
+- **Indicador de hambre** como en Minecraft: si se vacía, el jugador pierde vida con el tiempo; tiene **10 minutos** para conseguir comida (lo que dura su vida con hambre).
+- Detalles por preguntar a Fernando antes de hacerlo (recetas, cuánto baja el hambre, dónde se ve el indicador…).

@@ -14,7 +14,7 @@
 ## Aparición (`WildSpawner`)
 - En **cualquier lugar transitable** (ajustado a la navegación: nunca dentro de árboles, rocas ni agua), en la orilla o dentro del agua, entre 15 y 70 m del jugador; se retiran a más de 100 m.
 - **Zonas de 40 × 40 m** con cupo de grupos según el hábitat (pradera 3, bosque 4, montaña 2, agua dulce 2, mar 2, pantano 3) y 2 especies características por zona (35 % de las apariciones de esa zona).
-- **Shiny:** 1 % (antes 2 %, bajado a pedido de Fernando), con la paleta variocolor y un destello de estrellas cada 2.5 s.
+- **Shiny:** 1 % (antes 2 %, bajado a pedido de Fernando), con la paleta variocolor y estrellitas que brillan alrededor siempre (sin destello del cuerpo, ver abajo).
 - **Manadas (30 %):** de 3 a 6 de una línea evolutiva, solo con especies que viven en ese hábitat. Casi todos básicos; en el 25 % de las manadas hay un líder evolucionado. Siguen al líder en formación y huyen, persiguen o se esconden juntos. Están separadas 60 m, salvo un 5 % de manadas rivales a 15 m.
 
 - **Clima** (`WildSpawner.climate_ok`): cerca o arriba de la línea de nieve no aparecen Pokémon de tipo Fuego, Planta ni Bicho (salvo que también sean de Hielo), y los de Hielo solo aparecen en la nieve o el mar. Se reintenta la especie hasta 8 veces. Corrige, por ejemplo, un Torchic junto a la nieve.
@@ -45,8 +45,16 @@
 - Un básico al azar te sigue con navegación (hasta que exista la selección con huevos, Fase 5): corre si te alejas, reaparece si se queda a más de 30 m, mira al salvaje más cercano y te espera en la orilla si nadas.
 - Te defiende y hace guardia si te desmayas (ver [peleas.md](peleas.md)).
 
-## Comunes y raros (pedido de Fernando, 2026-10-10 · por hacer)
+## Comunes y raros (pedido de Fernando, 2026-10-10 · hecho)
 Fernando notó que la misma especie solo se repite en las manadas: los sueltos salen todos distintos y al azar.
 - **Decisión:** cada zona tiene **3–5 especies comunes** que se ven varias veces sueltas, algunas poco comunes y **raras que cuesta encontrar** (muchos Pidgey, pocos Eevee).
 - **Rareza por la especie** (igual en todas las regiones): básicos comunes salen mucho; evolucionados, pseudolegendarios y especies raras (Eevee, Dratini, Larvitar) salen poco.
 - Las especies de cada región siguen siendo al azar por partida (Pokédex regional, ver [regiones](regiones.md)); no hay especies fijas por región.
+- **Causa:** casi todo el mapa queda fuera de las áreas propias de las especies (×0.12 para todas), así que cada aparición salía de una especie distinta.
+- **Implementación (`wild_spawner.gd`):** `rarity(species)` = (ratio de captura / 255)^1.2 entre 0.05 y 1 (Pidgey 1, Eevee 0.13); cada **parcela de 160 m** sortea con la semilla de 3 a 5 **comunes** (rareza ≥ 0.45, hasta 2.ª etapa) que pesan ×30. Medido en 4 lugares con 40 apariciones: los comunes salen 6–12 veces cada uno y el resto queda como poco común o raro (p. ej. Weedle ×12, Deerling ×10, Bellsprout ×9).
+
+## Pendientes pedidos por Fernando (2026-10-10)
+- **Emboscadas en árboles — tamaño:** algunos voladores y Bicho se ven del tamaño del árbol (o más grandes). Pedido: el árbol **siempre más grande** que el Pokémon; los grandes, en árboles más grandes. **Por hacer.**
+- **Bicho también en el suelo**, no solo colgados de los árboles. **Por hacer.**
+- **Desfase con la cámara desde arriba:** al girar la cámara 360° y verlos desde arriba, algunos voladores "se salen" del árbol. Fernando pidió una solución (se le propone antes de hacerla). **Por hacer.**
+- **Destello de los shiny:** **hecho (2026-10-10).** El destello del cuerpo (blanco cada 2.5 s) casi no se veía y de noche se volvía blanco; Fernando decidió **solo estrellitas, siempre**: el shiny se ve con sus colores y 8 estrellas pixel brillan alrededor de día y de noche (sin luz propia del cuerpo). Se quitó el degradado de color de las partículas, que pintaba estrellas negras. El shader de sprites ganó `instance uniform flash` (para destellos de golpe en los ataques).
