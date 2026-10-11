@@ -830,7 +830,7 @@ func _place(place: Dictionary) -> Node3D:
 		"giant_tree":
 			var texture: Texture2D = world.config.forest.tree_textures[0] if not world.config.forest.tree_textures.is_empty() else null
 			if texture != null:
-				root.add_child(world._obstacle("GiantTree", texture, 7.0, 0.4, Vector3(0, -0.3, 0), Color(0.9, 1.05, 0.9)))
+				root.add_child(world._obstacle("GiantTree", texture, 7.0, 0.4, Vector3(0, -0.3, 0), Color(0.9, 1.05, 0.9), true, "forest"))
 			add_point(root.position + Vector3(0, 0.5, 4.5), "Tocar el Árbol Milenario", services.giant_tree.bind(place))
 		"league":
 			_box(root, Vector3(40, 3, 30), Vector3(0, -1.0, 0), stone.lightened(0.1))
@@ -958,7 +958,7 @@ func _place(place: Dictionary) -> Node3D:
 				var px := cos(angle) * rng.randf_range(16.0, 22.0)
 				var pz := sin(angle) * rng.randf_range(16.0, 22.0)
 				var base := world.ground_base_height(x + px, z + pz, 1.0)
-				root.add_child(world._obstacle("Palm%d" % i, PropArt.texture("palm"), 1.0, 0.4, Vector3(px, base - y - 0.1, pz), Color.WHITE))
+				root.add_child(world._obstacle("Palm%d" % i, PropArt.texture("palm"), 1.0, 0.4, Vector3(px, base - y - 0.1, pz), Color.WHITE, true))
 		"volcano":
 			var top := Vector3(0, world.layout.base_height(x, z) - y + 2.0, 0)
 			var smoke := _steam(Color(0.35, 0.32, 0.3, 0.7))

@@ -325,11 +325,12 @@ func _sprite(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: floa
 	return sprite
 
 
-## Objeto del punto de interés en 3D: cruz de 2 planos con su textura pixel, de pie en at
-## (pie en el suelo). Sigue la luz y, si es follaje (seasonal), el tinte de estación.
-func _prop(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: float = 1.0, seasonal: bool = true) -> MeshInstance3D:
+## Objeto del punto de interés en 3D: follaje 3D de verdad (tronco + copa) con su textura
+## pixel, de pie en at (pie en el suelo). Sigue la luz y, si es follaje (seasonal), el tinte
+## de estación. `shape` fuerza una forma (PropModels3D.foliage_mesh); por defecto se deduce.
+func _prop(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: float = 1.0, seasonal: bool = true, shape: String = "") -> MeshInstance3D:
 	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.mesh = PropModels3D.cross_mesh(texture, _world.config.pixel_size * scale_factor)
+	mesh_instance.mesh = PropModels3D.foliage_mesh(texture, _world.config.pixel_size * scale_factor, shape)
 	mesh_instance.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, seasonal, false)
 	mesh_instance.position = at
 	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -422,8 +423,8 @@ func _build(node: Node3D, poi: Dictionary) -> void:
 			_plaque(node, PoiArt.tablet(), Vector3(0, 0, 0), 1.2)
 			_rock_prop(node, Vector3(1.4, 0, 1.6), Vector3(0.45, 0.3, 0.45), Color(0.5, 0.56, 0.46), "poi:" + String(poi["id"]) + ":ruins_rock")
 		"big_tree":
-			var tree := load("res://art/world/b2w2/tree_round.png") as Texture2D
-			_prop(node, tree, Vector3(0, 0, -0.6), 2.6)
+			var tree := load("res://art/world/b2w2_leaf/puff_forest_dark.png") as Texture2D
+			_prop(node, tree, Vector3(0, 0, -0.6), 2.6, true, "forest")
 			for i in 6:
 				var berry := _sprite(node, Items.icon(TREE_BERRIES[i % TREE_BERRIES.size()]), Vector3(-1.6 + i * 0.65, 3.2 + (i % 3) * 0.7, -0.2), 0.8)
 				berry.offset = Vector2.ZERO

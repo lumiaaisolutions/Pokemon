@@ -20,7 +20,7 @@
 | `copy_item_icons.py` | Íconos de los objetos del catálogo (`creatures/data/items.json`) |
 | `build_moves.py` | Movimientos (nombre en español, tipo, potencia, clase, efecto) y la lista oficial de cada especie |
 | `build_megas.py` | Catálogo de las 97 megas (`creatures/data/megas/`, `all_megas.tres`) y sus sprites de combate Gen 5 |
-| `snapshot.tscn` | Captura de pantalla con el render real. Opciones: `desmayo`, `arriba`, `borde`, `cima`, `ayuda`, `surf`, `barra`, `menu:N`, `hora:H`, `pueblo`, `vuelo`, `interior:<tipo>` (center, mart, cave, sewer…), `clima:N`, `lugar:<tipo>` (ranch, league, grotto…) y `bioma:<NOMBRE>` (enum `RegionLayout.Biome`, p. ej. `FOREST`, `SWAMP`, `TOXIC_SWAMP`, `TUNDRA`; opcional `giro:N` grados de yaw) |
+| `snapshot.tscn` | Captura de pantalla con el render real. Opciones: `desmayo`, `arriba`, `borde`, `cima`, `ayuda`, `surf`, `barra`, `menu:N`, `hora:H`, `pueblo`, `vuelo`, `interior:<tipo>` (center, mart, cave, sewer…), `clima:N`, `lugar:<tipo>` (ranch, league, grotto…) y `bioma:<NOMBRE>` (enum `RegionLayout.Biome`, p. ej. `FOREST`, `SWAMP`, `TOXIC_SWAMP`, `TUNDRA`; opcional `giro:N` grados de yaw, `pitch:N` grados de pitch y `zoom:N` distancia de cámara (4-11), 2026-10-11) |
 | `extract_b2w2_props.gd` | Explora los mapas de B2W2 (`art/models/b2w2_nature/b2w2map_*`) y guarda piezas sueltas reales en `art/models/b2w2_props/`; solo sirve para objetos no animados por hueso (ver docs/sistemas/arte.md, "Todo el mundo en 3D") |
 
 ## Pruebas (`tests/`, en headless)

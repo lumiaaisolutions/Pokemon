@@ -68,10 +68,12 @@ texturas pixel que ya tenía el juego (no sprites nuevos).
   centrados igual que `BuildingModels` (escala 0.08, materiales con filtro de píxel y
   recorte de alfa). Los troncos muertos del pantano, pantano tóxico, bosque oscuro y
   volcán alternan entre los dos árboles muertos reales.
-- **Follaje en cruz** (`cross_mesh`): 2 planos cruzados con la textura existente (como el
-  follaje de Minecraft): pocas caras, volumen real, se lee desde cualquier ángulo
-  horizontal. Lo usan los árboles, arbustos, flores, cactus, palmeras, hongos, juncos,
-  nenúfares (`pad_mesh`, horizontal con grosor) y la hierba alta.
+- **Follaje 3D de verdad** (`foliage_mesh`, antes `cross_mesh` — reemplazado 2026-10-11, ver
+  detalle más abajo): tronco + copa de volúmenes reales (pocas caras, perfil distinto por
+  tipo/bioma), nunca plano desde ningún ángulo (ni siquiera desde arriba, el problema de la
+  antigua cruz de 2 planos). Lo usan los árboles, arbustos, flores, cactus, palmeras,
+  hongos, juncos y la hierba alta; los nenúfares siguen con `pad_mesh` (horizontal con
+  grosor, no necesitaba el cambio).
 - **Rocas** (`rock_mesh`): la misma malla irregular de `BreakableRock.rock_mesh` (pocas
   caras, octaedro con vértices al azar) con color plano en vez de textura; 10 formas fijas
   reusadas en todo el mundo (no una malla nueva por roca: en un mundo de 4×4 km con miles
@@ -93,20 +95,101 @@ troncos usan `StandardMaterial3D` con color plano (no son follaje, no cambian co
 estación).
 
 ### Hierba alta (`world/terrain/tall_grass_3d.gdshader`)
-Reemplaza `tall_grass.gdshader` (billboard): la mata ahora es una malla de cruz real
-(`PropModels3D.cross_mesh`) en el mismo `MultiMeshInstance3D` de antes. El viento y el
-empuje de los actores cercanos siguen igual (mismos uniformes `actors[16]`,
-`push_strength`), solo que el desplazamiento se aplica directo sobre los vértices reales en
-vez de reconstruir un plano orientado a cámara.
+Reemplaza `tall_grass.gdshader` (billboard): la mata es un mechón de hojas en V con grosor
+real (`PropModels3D.foliage_mesh(..., "tuft")`, ver más abajo) en el mismo
+`MultiMeshInstance3D` de antes. El viento y el empuje de los actores cercanos siguen igual
+(mismos uniformes `actors[16]`, `push_strength`), solo que el desplazamiento se aplica
+directo sobre los vértices reales en vez de reconstruir un plano orientado a cámara.
+
+### Follaje 3D de verdad (2026-10-11, rama `follaje`)
+Revisión de Fernando tras probar el mundo en 3D: la "cruz de 2 planos" del follaje (dos
+planos perpendiculares con la textura del árbol/arbusto/flor completo) se veía bien desde
+los lados pero **plana desde arriba** (cada plano tiene grosor 0 en su propio eje; mirando
+en picada solo se ve una cruz delgada, sin relleno) — justo lo que pide evitar la regla 1.
+Se reemplaza por `PropModels3D.foliage_mesh` (antes `cross_mesh`): tronco + copa de
+volúmenes reales, pocas caras, con un perfil distinto por tipo/bioma.
+
+**Segunda vuelta (mismo día):** la primera versión envolvía la textura completa del árbol
+(un dibujo de frente, como `tree_round.png`) alrededor de un tambor facetado — eso corta la
+imagen en tajadas verticales que, unidas, no se parecen al dibujo original (Fernando: "los
+árboles actuales NO tienen estilo BW2"). La solución real, mirando cómo arma B2W2 sus
+propios árboles (`tools/extract_b2w2_props.gd` sobre los mapas .dae): el árbol completo NO
+es una sola imagen envuelta, es un **tronco corto marrón liso + varias burbujas de hoja
+("puffs") casi redondas superpuestas**, cada una con su propio sprite pequeño y
+razonablemente parecido desde cualquier lado — eso sí se puede envolver sin que se note el
+corte.
+
+- **Texturas reales de B2W2 extraídas de los mapas** (`art/world/b2w2_leaf/`, créditos ya
+  cubiertos en `CREDITS.md` como "Models Resource, mapas de B2W2"): `tree_round_real.png`
+  (ki03ax, Floccesy Ranch) y `tree_pine_real.png` (ki02ax, Pinwheel Forest) son el árbol
+  completo de referencia (para comparar); los que de verdad se usan como puffs son
+  `puff_round_dark/light.png` (ki03bx/ki03dx) y `puff_forest_dark/light.png`
+  (ki02bx/ki02dx) — cada uno, una sola burbuja de hoja redonda. Lienzo 32×64 (no 32×32):
+  el dibujo real ocupa solo la mitad de abajo, para que el tamaño del árbol (que sale del
+  tamaño en píxeles de la textura, igual que el resto del follaje) salga alto como
+  ki03ax/ki02ax y no cuadrado. Cada textura trae además un parche de 4×4 px en la esquina
+  (siempre transparente en un blob redondo) con un marrón de tronco a ojo — así
+  `PropModels3D._sample_uv` puede sacar un color de tronco real sin necesitar una segunda
+  textura/material.
+- **Tronco:** prisma corto de 6 caras (`_revolve`), con un solo color plano sacado de ese
+  parche (`solid_uv`, no envuelve nada — un tronco liso no tiene "lados" que cortar).
+- **Copa ("puffs"):** `PropModels3D._puff` es una burbuja achatada de pocas caras
+  (`PUFF_PROFILE`, revolución que se abre y cierra en punta) con el sprite de hoja
+  envuelto. Varias burbujas superpuestas (una grande + 2-3 chicas alrededor, más una extra
+  en bosque) arman la copa en capas/bloques, regordeta (ancho ≈ alto) como el árbol de
+  pradera de B2W2. `_puff_uv_range` calcula, una vez por textura, qué franja vertical tiene
+  dibujo real (cada sprite deja un margen transparente distinto): si una burbuja llegara a
+  muestrear ese margen, el recorte de alfa del shader la volvía invisible — el "hueco" que
+  separaba la copa del tronco en una vuelta intermedia de este cambio.
+- **Perfil por tipo** (`_tree_shape` en `world_builder.gd`, decide por bioma porque el mismo
+  slot de textura de `BiomeConfig` se reusa en varios biomas): **pradera** (`round`, una
+  burbuja grande + 3 chicas, regordeta), **bosque** (`forest`, igual pero más densa/alta,
+  con una 4.ª burbuja), **pino/nevado** (`pine`, 4 burbujas achatadas apiladas en el mismo
+  eje, cada una más chica que la de abajo — silueta cónica por capas como ki02ax), **jungla**
+  (mezcla de `forest` + palmeras), **pantano** (mezcla de `forest` + troncos secos),
+  **árbol seco** (`dead`, tronco alto + ramas finas en abanico, `_branch_cluster`),
+  **palmera** (`palm`, tronco curvo + 7 pencas en V reales que salen de la copa,
+  `_palm_fronds`/`_blade` — hojas arqueadas de verdad), **acacia** (`acacia`, copa ancha y
+  achatada), **hongo gigante** (`mushroom_giant`, tallo + sombrero ancho, bioma hongos).
+- **Cactus, acacia, hongos, arbustos y flores:** siguen con `_revolve`/`_branch`, pero ahora
+  con `solid_uv` (color plano sacado de la textura real, no envuelto): son dibujos de frente
+  sin la simetría redonda de un puff, así que envolverlos seguía cortándolos en tajadas; el
+  color sí sale de la textura real (`_sample_uv`), igual que rocas/troncos/conchas ya hacían.
+- **Hierba alta, juncos/cattails, coral, cristal y hongos chicos:** mechones/ramitas en V
+  con grosor real (`_blade`/`_blade_cluster`/`_branch_cluster`): cada hoja es un "libro
+  abierto" de 2 caras que se encuentran en un filo desplazado hacia adelante — con volumen
+  real desde cualquier ángulo, no un plano. (Pendiente para una siguiente pasada: usar
+  también el sprite real `tuft_real.png`/`flower_real.png` extraído de B2W2, ver "Qué
+  quedó fuera" más abajo.)
+- Los árboles lejanos (`FarTrees`, sin colisión) usan una versión barata de muy pocas caras
+  (`cheap = true`, ahora también con `solid_uv`) en vez de la forma completa, para no subir
+  el costo por instancia en el `MultiMesh` que más se repite.
+- Todo sigue usando `FoliageMaterials`/`foliage_material.gdshader` sin tocar (luz normal,
+  `season_tint`, `glow`): lo único nuevo es la malla, no el material.
+- Las posiciones, semillas (`props_seed`), colisiones (`StaticBody3D` + `CylinderShape3D`,
+  sin cambios), el tinte de estación y los Pokémon posados (`AmbushManager`/
+  `PokemonActor._in_front_of_canopy`, que solo lee `obstacle_height` del meta, no la forma
+  de la malla) quedan exactamente igual que antes.
+- `tests/test_no_flat_vegetation.gd` se amplió con `_check_volume`: ninguna malla de
+  vegetación (árboles, rocas, decoración, hierba alta, árboles lejanos, bases de
+  recolección) puede tener una caja local con grosor ~0 en algún eje.
+- Herramienta de revisión: `tools/snapshot.tscn` ganó `pitch:N` y `zoom:N` como argumentos
+  de `bioma:NOMBRE` (antes solo `giro:N`), y `tests/_tmp/tree_preview.tscn` (no se
+  versiona) arma un solo `PropModels3D.foliage_mesh` de cerca, sin el resto del mundo, para
+  comparar contra las texturas/mapas de B2W2 sin ruido.
 
 ### Rendimiento
 Los árboles/rocas individuales (con colisión propia) siguen siendo un `StaticBody3D` por
 pieza, igual que antes (mismo costo). La decoración, la hierba y los árboles lejanos (LOD)
 siguen en `MultiMeshInstance3D` con `visibility_range_end`, igual que antes — el cambio es
-la malla que dibuja cada instancia (una cruz de ~8 triángulos o una malla fundida en vez de
-un plano de 2 triángulos), no la cantidad de llamadas de dibujo. Las mallas de
-`PropModels3D` se cachean por textura/forma (no por instancia) para no multiplicar el uso
-de memoria con miles de copias del mundo.
+la malla que dibuja cada instancia (un tronco+copa de unas pocas decenas de triángulos, o
+una versión barata de ~15 triángulos para los árboles lejanos, en vez de la cruz de 8
+triángulos o el plano de 2), no la cantidad de llamadas de dibujo. Las mallas de
+`PropModels3D` se cachean por forma/textura/tamaño de píxel (no por instancia) para no
+multiplicar el uso de memoria con miles de copias del mundo. Medido con
+`tests/_tmp/fps_probe.gd` (no se versiona) en bosque (denso en árboles/hierba nuevos) en
+esta Mac M1: ver la nota de la siguiente revisión de rendimiento en
+[plan_pulido_mundo.md](../plan_pulido_mundo.md).
 
 ### Pokémon posados en árboles (`world/actors/ambush_manager.gd`, `pokemon_actor.gd`)
 Los árboles ya no son billboards que se inclinan al mirar desde arriba
@@ -147,3 +230,11 @@ instancia pero el mismo número de objetos y de MultiMesh).
   `tests/test_no_flat_vegetation.gd` los excluye a propósito.
 - Capturas de los biomas que faltan (ver arriba) y una medición de FPS sin otros agentes
   corriendo a la vez, para un número comparable de verdad.
+- Hierba alta/matas de piso y flores siguen con la textura actual (`tuft.png`/PropArt),
+  no con los sprites reales extraídos `tuft_real.png`/`flower_real.png` (ya en
+  `art/world/b2w2_leaf/`, sin usar todavía): Fernando pidió aplicar el estilo BW2 "lo mismo"
+  a hierba/flores, pero el tiempo de esta pasada se fue en el rediseño de los árboles
+  (que era lo explícitamente roto). Cactus, acacia y hongo gigante tampoco tienen un sprite
+  real de B2W2 equivalente (son arte propio generado por código, ver `PropArt`): se
+  arregló que ya no se cortan en tajadas (`solid_uv`), pero su silueta/estilo no se revisó
+  a fondo contra una referencia BW2.

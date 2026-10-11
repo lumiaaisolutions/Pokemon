@@ -15,8 +15,8 @@ const ROCK_KINDS := ["boulder", "mossy_rock", "lava_rock", "snow_pile"]
 const LOG_KINDS := ["log", "mossy_log", "driftwood"]
 const BONES_KINDS := ["bones"]
 const SHELL_KINDS := ["shell", "shell_blue"]
-## El resto (follaje, flores, hierba, cactus, hongos, coral, cristal...) usa la cruz de
-## 2 planos con su textura pixel (PropModels3D.cross_mesh).
+## El resto (follaje, flores, hierba, cactus, hongos, coral, cristal...) usa follaje 3D de
+## verdad (PropModels3D.foliage_mesh: tronco/copa, montículo, mechón de hojas en V...).
 
 
 static func kind_of(texture_to_check: Texture2D) -> String:
