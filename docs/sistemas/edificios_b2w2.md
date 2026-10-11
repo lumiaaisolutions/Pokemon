@@ -34,3 +34,10 @@ Fernando probó el juego y reportó, con capturas: la Tienda Pokémon sin puerta
 - **Pendiente menor:** en 4-5 modelos con un ala más alta al fondo (`aspertia_house`, `house6`, `gym_aspertia`, `gym_mistralton`, `humilau_house`) todavía se asoma una esquina plana del núcleo por detrás del techo, visible solo si el jugador rodea el edificio por un lado; no tapa la puerta ni estorba el paso. Ajustarlo requeriría una entrada en `CORE_SHAPES` por modelo (no se hizo por tiempo).
 - **Laboratorio:** no hay otro modelo de "laboratorio" en `art/models/b2w2/` sin usar (se revisó la carpeta completa). Con el arreglo del núcleo, tanto `lab` como `lab2` ya muestran el edificio real (ventanas, tubería, puerta) y no se descartó ninguno.
 - **Cámara pegada al mobiliario:** de paso, se separó la capa de colisión del mobiliario pequeño (bancas, macetas, cercas, faroles, puestos, cajas) de la capa de edificios grandes: ver [pueblos e interiores](pueblos_e_interiores.md#física-del-mobiliario-y-cámara-2026-10-10-noche).
+
+## Parte trasera con diseño (2026-10-11)
+Pedido de Fernando: la caja que tapa la parte de atrás de los modelos (en la DS nunca se veía) era de un color liso. Ahora (`BuildingModels._dominant_textures`, `_back_details`):
+- La caja usa la **textura real de pared** del modelo (la de más área en caras verticales), repetida en triplanar (`BACK_TILE`), solo si se repite bien (`_tiles_well`: bordes que empatan, sin transparencia ni muchas zonas negras).
+- Encima, una losa con la **textura del techo** del modelo; y **ventanas** del propio modelo en la pared de atrás.
+- Si no hay textura que sirva, **tablones pixel** del color de la pared (`_plank_texture`); el color nunca sale casi negro (se descartan texturas con transparencia y se aclara si queda oscuro).
+- Verificado con capturas por detrás de los 27 modelos de edificio (tienda, centro, casas, cabañas, laboratorios, concursos, restaurante, gimnasios, torres, mansión, faro, invernadero).

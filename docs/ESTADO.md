@@ -27,7 +27,7 @@
 
 ## Pendientes técnicos
 - Aviso de Godot "edge error" de navegación en las esquinas donde se juntan 4 zonas: inofensivo (las regiones sí se conectan).
-- Medir FPS en el mundo grande en la Mac con calidad alta.
+- FPS medidos (2026-10-11, M1, 1920×1080, sin vsync, MSAA 2×): 119–125 en pueblo, bosque y pradera.
 
 ## Pantalla de carga (2026-10-11)
 Código: `ui/loading/loading_screen.gd`, enganchada en `world/main.gd` (`LoadingScreen`), con `WorldNavigation.baked_near_count()` para la barra. Tapa el mundo al iniciar o cargar la partida y al llegar de un viaje entre regiones, hasta que las zonas cercanas están construidas, la navegación horneada y el jugador en el suelo (`WorldNavigation.is_baked` + `Player.is_on_floor()`). Detalle: [interfaz.md](sistemas/interfaz.md#pantalla-de-carga-2026-10-11). Prueba: `tests/test_loading.tscn`.

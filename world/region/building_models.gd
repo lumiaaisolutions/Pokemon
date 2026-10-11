@@ -103,13 +103,29 @@ static func instance(kind: String, variant: int) -> Dictionary:
 		cube.size = Vector3(size.x * float(shape[1]), size.y * float(shape[3]), size.z * float(shape[2]))
 		core.mesh = cube
 		core.position = Vector3(size.x * float(shape[0]), cube.size.y * 0.5, size.z * float(shape[4]))
+		# Parte trasera con diseño (Fernando, 2026-10-11): la caja usa la textura real de las
+		# paredes del modelo (no un color liso), con su techo y ventanas.
+		var textures := _dominant_textures(node)
 		var material := StandardMaterial3D.new()
-		material.albedo_color = Color.html(String(CORE_SHAPES[name][5])) if CORE_SHAPES.has(name) else _wall_color(name)
+		material.albedo_color = Color.html(String(CORE_SHAPES[name][5])) if CORE_SHAPES.has(name) else Color.WHITE
+		var wall_texture: Texture2D = textures.get("wall")
+		if wall_texture != null and not CORE_SHAPES.has(name):
+			material.albedo_texture = wall_texture
+			material.uv1_triplanar = true
+			material.uv1_scale = Vector3.ONE * BACK_TILE
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+		elif not CORE_SHAPES.has(name):
+			# Sin textura que sirva: el color de sus paredes con un patrón pixel de tablones.
+			material.albedo_texture = _plank_texture(_wall_color(name))
+			material.uv1_triplanar = true
+			material.uv1_scale = Vector3.ONE * BACK_TILE
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 		material.roughness = 1.0
 		material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		core.material_override = material
 		core.visibility_range_end = 520.0
 		holder.add_child(core)
+		_back_details(holder, core, cube.size, textures)
 	return {"node": holder, "size": size, "front": size.z * 0.5}
 
 
@@ -132,6 +148,10 @@ static func _wall_color(name: String) -> Color:
 			continue
 		var texture := load(ROOT + name + "/" + file) as Texture2D
 		var image := texture.get_image() if texture != null else null
+		# La textura con transparencia (rejas, marcos) no es pared: en su promedio pesa el
+		# hueco y el color salía casi negro (tienda shop3, invernadero).
+		if image != null and image.detect_alpha() != Image.ALPHA_NONE:
+			continue
 		if image != null and (best == null or image.get_width() * image.get_height() > best.get_width() * best.get_height()):
 			best = image
 	var color := Color(0.6, 0.58, 0.55)
@@ -143,6 +163,9 @@ static func _wall_color(name: String) -> Color:
 		color = small.get_pixel(0, 0)
 		color.a = 1.0
 	color = color.darkened(0.15)
+	# Nunca una pared casi negra: si salió muy oscuro, se aclara.
+	if color.get_luminance() < 0.18:
+		color = color.lightened(0.45)
 	_wall_colors[name] = color
 	return color
 
@@ -231,3 +254,164 @@ static func is_window_texture(path: String) -> bool:
 	var regex := RegEx.new()
 	regex.compile("(^|_)win[0-9]")
 	return regex.search(file) != null
+
+
+## Repeticiones de la textura de pared por metro en la parte trasera.
+const BACK_TILE := 0.32
+
+
+## Texturas que más área ocupan en el modelo: "wall" (caras verticales), "roof" (caras que
+## miran hacia arriba en lo alto) y "window" (ventanas), sin contar las sombras pintadas.
+static func _dominant_textures(node: Node3D) -> Dictionary:
+	var wall_area := {}
+	var roof_area := {}
+	var window: Texture2D = null
+	for mesh_node in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := mesh_node as MeshInstance3D
+		if mesh_instance.mesh == null or not mesh_instance.visible:
+			continue
+		var top := mesh_instance.mesh.get_aabb().end.y
+		for surface in mesh_instance.mesh.get_surface_count():
+			var material := mesh_instance.get_active_material(surface) as BaseMaterial3D
+			if material == null or material.albedo_texture == null:
+				continue
+			var texture := material.albedo_texture
+			var path := texture.resource_path.to_lower()
+			if path.contains("kage") or path.contains("shadow"):
+				continue
+			if is_window_texture(path):
+				window = texture
+				continue
+			# Las texturas con transparencia (rejas, marcos) no sirven de pared ni techo:
+			# en la caja se verían sus huecos (magenta) repetidos.
+			var image := texture.get_image()
+			if image != null and image.detect_alpha() != Image.ALPHA_NONE:
+				continue
+			# Solo texturas que se repiten bien (bordes que empatan): las que son una pieza
+			# grande (puertas, letreros, techos con dibujo) se ven como parches al repetirse.
+			if image != null and not _tiles_well(image):
+				continue
+			var arrays := mesh_instance.mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var count := indices.size() if not indices.is_empty() else vertices.size()
+			for t in range(0, count - 2, 3):
+				var a := vertices[indices[t] if not indices.is_empty() else t]
+				var b := vertices[indices[t + 1] if not indices.is_empty() else t + 1]
+				var c := vertices[indices[t + 2] if not indices.is_empty() else t + 2]
+				var cross := (b - a).cross(c - a)
+				var area := cross.length() * 0.5
+				if area <= 0.0:
+					continue
+				var normal := cross / (area * 2.0)
+				if absf(normal.y) < 0.3:
+					wall_area[texture] = float(wall_area.get(texture, 0.0)) + area
+				elif absf(normal.y) > 0.5 and (a.y + b.y + c.y) / 3.0 > top * 0.55:
+					roof_area[texture] = float(roof_area.get(texture, 0.0)) + area
+	return {"wall": _largest(wall_area), "roof": _largest(roof_area), "window": window}
+
+
+static func _largest(areas: Dictionary) -> Texture2D:
+	var best: Texture2D = null
+	var best_area := 0.0
+	for texture: Texture2D in areas:
+		if float(areas[texture]) > best_area:
+			best_area = float(areas[texture])
+			best = texture
+	return best
+
+
+## Techo con su textura encima de la caja trasera y ventanas en la pared de atrás.
+static func _back_details(holder: Node3D, core: MeshInstance3D, size: Vector3, textures: Dictionary) -> void:
+	var roof_texture: Texture2D = textures.get("roof")
+	if roof_texture != null:
+		var roof := MeshInstance3D.new()
+		roof.name = "BackRoof"
+		var slab := BoxMesh.new()
+		slab.size = Vector3(size.x * 1.04, maxf(size.y * 0.06, 0.12), size.z * 1.04)
+		roof.mesh = slab
+		var material := StandardMaterial3D.new()
+		material.albedo_texture = roof_texture
+		material.uv1_triplanar = true
+		material.uv1_scale = Vector3.ONE * BACK_TILE
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+		material.roughness = 1.0
+		roof.material_override = material
+		roof.position = core.position + Vector3(0, size.y * 0.5 + slab.size.y * 0.5, 0)
+		roof.visibility_range_end = 520.0
+		holder.add_child(roof)
+	var window_texture: Texture2D = textures.get("window")
+	if window_texture == null or size.x < 2.0 or size.y < 1.6:
+		return
+	var count := clampi(int(size.x / 2.2), 1, 4)
+	for i in count:
+		var pane := MeshInstance3D.new()
+		pane.name = "BackWindow%d" % i
+		var quad := QuadMesh.new()
+		quad.size = Vector2(minf(1.1, size.x / (count + 1)), minf(0.9, size.y * 0.3))
+		pane.mesh = quad
+		var material := StandardMaterial3D.new()
+		material.albedo_texture = window_texture
+		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		material.roughness = 1.0
+		pane.material_override = material
+		pane.position = core.position + Vector3(-size.x * 0.5 + size.x * (i + 1) / (count + 1), size.y * 0.15, -size.z * 0.5 - 0.02)
+		pane.rotation.y = PI
+		holder.add_child(pane)
+
+
+## ¿El borde izquierdo empata con el derecho y el de arriba con el de abajo? (textura que
+## se repite sin que se note el corte).
+static func _tiles_well(image: Image) -> bool:
+	var w := image.get_width()
+	var h := image.get_height()
+	if w < 8 or h < 8:
+		return false
+	var diff := 0.0
+	var samples := 0
+	for y in range(0, h, maxi(h / 16, 1)):
+		var a := image.get_pixel(0, y)
+		var b := image.get_pixel(w - 1, y)
+		diff += absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+		samples += 1
+	for x in range(0, w, maxi(w / 16, 1)):
+		var a := image.get_pixel(x, 0)
+		var b := image.get_pixel(x, h - 1)
+		diff += absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+		samples += 1
+	if diff / maxf(samples, 1) >= 0.35:
+		return false
+	# Muchas zonas negras (marcos de ventanas con hueco): no sirve de pared.
+	var dark := 0
+	var total := 0
+	for y in range(0, h, maxi(h / 12, 1)):
+		for x in range(0, w, maxi(w / 12, 1)):
+			total += 1
+			if image.get_pixel(x, y).get_luminance() < 0.08:
+				dark += 1
+	return float(dark) / maxf(total, 1) < 0.12
+
+
+static var _planks := {}
+
+
+## Tablones pixel de 16×16 en el color dado (pared trasera sin textura propia).
+static func _plank_texture(color: Color) -> ImageTexture:
+	var key := color.to_html()
+	if _planks.has(key):
+		return _planks[key]
+	var image := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	for y in 16:
+		for x in 16:
+			var c := color
+			if y % 4 == 3:
+				c = color.darkened(0.25)
+			elif (x + (y / 4) * 5) % 8 == 0:
+				c = color.darkened(0.15)
+			elif (x * 7 + y * 3) % 11 == 0:
+				c = color.lightened(0.06)
+			image.set_pixel(x, y, c)
+	var texture := ImageTexture.create_from_image(image)
+	_planks[key] = texture
+	return texture
