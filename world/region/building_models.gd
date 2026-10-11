@@ -22,6 +22,16 @@ const MODELS := {
 	"food_stall": ["shop"],
 	"gym": ["gym_aspertia", "gym_mistralton", "gym_humilau", "gym_opelucid"],
 	"tower_small": ["aspertia_building1", "driftveil_building1"],
+	# Edificio único por tema de cada pueblo (pueblos ×2 con identidad; antes se veían
+	# como cajas lisas porque "landmark" no tenía modelo propio, reportado por Fernando):
+	# el que mejor encaja de B2W2 para cada sub_kind (ver TownIdentity.LANDMARK_OF).
+	"landmark_aquarium": ["gym_humilau"],
+	"landmark_factory": ["driftveil_building1"],
+	"landmark_market_hall": ["shop1", "shop2", "shop3"],
+	"landmark_library": ["aspertia_building2"],
+	"landmark_museum": ["gym_castelia"],
+	"landmark_observatory": ["celestial_tower"],
+	"landmark_casino": ["gym_nimbasa"],
 	# Decoración.
 	"lamp": ["lamp1", "lamp3"],
 	# Lugares especiales.

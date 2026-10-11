@@ -198,6 +198,91 @@ func _run() -> void:
 	_check(hits > 15, "en un brote masivo sale mucho esa especie (%d/40)" % hits)
 	_check(events.outbreak_species_at(outbreak_point + Vector3(500, 0, 0)) == null, "fuera del brote no aplica")
 
+	# Clima extremo real (completar lo simplificado del mundo, 2026-10-11): tormenta,
+	# ventisca o sequía fuerte, determinista por semilla + día, que de verdad fuerza el
+	# clima de Weather en su bioma y cambia lo que aparece y lo que puedes hacer ahí.
+	var day_for_extreme := GameState.game_day()
+	GameState.world_flags["events"] = {}
+	events._new_day(day_for_extreme)
+	var extreme_a: Dictionary = GameState.world_flags["events"]["extreme_weather"]
+	GameState.world_flags["events"] = {}
+	events._new_day(day_for_extreme)
+	var extreme_b: Dictionary = GameState.world_flags["events"]["extreme_weather"]
+	_check(extreme_a == extreme_b, "el clima extremo del día es determinista por semilla y día")
+	GameState.world_flags["events"] = {"extreme_weather": {"day": GameState.game_day(), "kind": WorldEvents.ExtremeKind.BLIZZARD, "biome": RegionLayout.Biome.TUNDRA}}
+	_check(events.extreme_kind_at(RegionLayout.Biome.TUNDRA) == WorldEvents.ExtremeKind.BLIZZARD, "extreme_kind_at ve el clima extremo de hoy en su bioma")
+	_check(events.extreme_kind_at(RegionLayout.Biome.VOLCANO) == WorldEvents.ExtremeKind.NONE, "fuera de su bioma, extreme_kind_at no aplica")
+	_check(events.extreme_weather_name_today() == "Ventisca", "nombre del clima extremo de hoy")
+	GameState.world_flags["events"] = {}
+	Weather.current = Weather.Kind.SAND
+	Weather.drought_active = true
+	_check(weather.type_factor([PokemonTypes.Type.FIRE]) >= 2.0, "sequía extrema: también salen más Pokémon de Fuego (además de Tierra/Roca)")
+	Weather.drought_active = false
+	Weather.current = Weather.Kind.CLEAR
+	var hunger_before := GameState.hunger
+	GameState.cold_hunger_multiplier = 3.0
+	GameState.drain_hunger(2.0)
+	GameState.cold_hunger_multiplier = 1.0
+	_check(GameState.hunger < hunger_before - (GameState.HUNGER_MAX / GameState.HUNGER_EMPTY_SECONDS) * 2.0 * 1.5, "con frío extremo (ventisca) el hambre baja más rápido")
+	GameState.hunger = GameState.HUNGER_MAX
+
+	# Pueblo que crece de verdad en el momento (completar lo simplificado del mundo,
+	# 2026-10-11): el puesto nuevo y el vecino llegan ya mismo, sin recargar el mundo.
+	# Primero, de vuelta junto al pueblo inicial (algunas pruebas de arriba movieron al
+	# jugador lejos) y suficientes cuadros reales para que TownNPCs ya lo haya poblado.
+	_player.respawn_at(start + Vector3.UP * 0.5)
+	await _frames(90)
+	var grow_settlement: Dictionary = _world.layout.settlements[0]
+	var buildings_node := _world.structures.get_node("Buildings") as Node3D
+	var kiosk_name := "Growth_" + String(grow_settlement["name"]).replace(" ", "")
+	_check(not buildings_node.has_node(kiosk_name), "todavía no hay puesto de crecimiento (antes de ayudar)")
+	_world.structures.spawn_growth_now(grow_settlement)
+	_check(buildings_node.has_node(kiosk_name), "el puesto de crecimiento aparece ya mismo, sin recargar")
+	var growth_npcs := _main.get_node("TownNPCs") as TownNPCs
+	_check(growth_npcs.all_npcs().any(func(n: Dictionary) -> bool: return n.get("town_index", -1) == 0), "el pueblo inicial ya debe estar poblado para esta prueba")
+	var before_count := growth_npcs.all_npcs().filter(func(n: Dictionary) -> bool: return n.get("town_index", -1) == 0).size()
+	growth_npcs.add_grown_npc(0, grow_settlement)
+	var after_count := growth_npcs.all_npcs().filter(func(n: Dictionary) -> bool: return n.get("town_index", -1) == 0).size()
+	_check(after_count == before_count + 1, "llega un vecino más ya mismo, con casa y rutina")
+
+	# Niño perdido que te sigue de verdad (completar lo simplificado del mundo,
+	# 2026-10-11): camina detrás de ti; si te alejas mucho se detiene y te llama; al
+	# llegar a una casa del pueblo, su familia te agradece.
+	var escort_root := Node3D.new()
+	var escort_sprite := DirectionalSprite.new()
+	escort_sprite.name = "Sprite"
+	escort_root.add_child(escort_sprite)
+	_main.add_child(escort_root)
+	escort_root.global_position = start + Vector3(40, 0, 40)
+	escort_sprite.setup(NpcLooks.sheet("joven_d"), 3, 8, 0.057)
+	var arrived := [false]
+	_world.structures.start_child_escort("test:lost_child", escort_root, "joven_d", func() -> void: arrived[0] = true)
+	_check(_world.structures.escort_active("test:lost_child"), "la escolta del niño perdido empieza al aceptar")
+	_player.respawn_at(escort_root.global_position + Vector3(2.0, 0, 0))
+	await _frames(5)
+	var moved_from := escort_root.global_position
+	_player.global_position += Vector3(30, 0, 0)
+	await _frames(10)
+	_check(escort_root.global_position.distance_to(moved_from) < 0.1, "si te alejas mucho, el niño se queda esperando y te llama (no te sigue solo)")
+	_player.global_position = escort_root.global_position + Vector3(2.0, 0, 0)
+	await _frames(10)
+	_player.global_position += Vector3(3.0, 0, 0)
+	await _frames(40)
+	_check(escort_root.global_position.distance_to(moved_from) > 0.3, "al volver cerca, el niño te sigue de nuevo")
+	# Lo manda directo a la puerta real de la casa a la que se dirige (la misma que
+	# escogió start_child_escort, no una casa cualquiera) para probar la llegada sin
+	# caminar todo el pueblo.
+	var home_door := _world.structures.escort_home("test:lost_child")
+	_check(home_door != Vector2.INF, "la escolta debe tener una casa de destino")
+	if home_door != Vector2.INF:
+		escort_root.global_position = Vector3(home_door.x, 0, home_door.y)
+		_player.global_position = escort_root.global_position
+		await _frames(10)
+		_check(arrived[0] and not _world.structures.escort_active("test:lost_child"), "al llegar a casa, la familia agradece y entrega el premio")
+	# Si llegó a casa, _finish_child_escort() ya lo liberó; si no, se libera aquí.
+	if is_instance_valid(escort_root):
+		escort_root.queue_free()
+
 	# Migraciones (fase 5.8): aviso, paso por el cielo en V y aterrizaje de un día, aunque
 	# la especie sea de fuera de la región.
 	var migrations := _main.get_node("Migrations") as Migrations

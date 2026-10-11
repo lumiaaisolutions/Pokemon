@@ -73,6 +73,7 @@ func _run() -> void:
 	_check_daycare()
 	_check_mart_queue(start_settlement)
 	await _check_photo_booth()
+	await _check_decorate_furniture(start_settlement)
 
 
 ## Entra a un interior y revisa luz, cámara y (en tienda/Centro) el personal.
@@ -435,3 +436,51 @@ func _check_mart_queue(settlement: Dictionary) -> void:
 	_check(_services._mart_queue_nodes.is_empty(), "al abrir, la fila debe entrar caminando y vaciarse (quedaron %d)" % _services._mart_queue_nodes.size())
 	GameState.play_time = saved_play_time
 	_player.global_position = original_pos
+
+
+## Decorar la casa comprada con muebles 3D (completar lo simplificado del mundo,
+## 2026-10-11): catálogo, comprar y colocar donde estés parado, mover/girar/quitar, con
+## colisión y persistencia real en GameState.world_flags["house_furniture"].
+func _check_decorate_furniture(settlement: Dictionary) -> void:
+	var house_building: Dictionary = {}
+	for building: Dictionary in settlement["buildings"] as Array:
+		if building["kind"] == "house" and building.get("for_sale", false):
+			house_building = building
+			break
+	if house_building.is_empty():
+		_failures.append("no se encontró una casa en venta para probar decorar muebles")
+		return
+	var house_id := Structures.house_id(settlement, house_building)
+	var bought: Dictionary = GameState.world_flags.get("houses_bought", {})
+	bought[house_id] = true
+	GameState.world_flags["houses_bought"] = bought
+	var interiors := _services.interiors
+	interiors.enter("house", settlement, house_building, _player.global_position + Vector3.UP * 0.3)
+	await _wait_interior(interiors, true)
+	await _frames(15)
+	var root: Node3D = interiors.current.get("root")
+	_check(root != null, "decorar: debe construirse la sala de la casa comprada")
+	if root == null:
+		return
+	var has_decorate_point := _world.structures.points().any(func(p: Dictionary) -> bool: return (p["prompt"] as String).begins_with("Decorar muebles"))
+	_check(has_decorate_point, "la casa ya comprada tiene el punto \"Decorar muebles\"")
+	_check(interiors.furniture_count(house_id) == 0, "la casa empieza sin muebles colocados")
+	interiors.place_furniture(house_id, root, "bed")
+	_check(interiors.furniture_count(house_id) == 1, "colocar un mueble lo agrega y persiste en la partida")
+	var stored: Array = GameState.world_flags["house_furniture"][house_id]
+	_check(String(stored[0]["item"]) == "bed" and is_equal_approx(float(stored[0]["rot"]), 0.0), "el mueble guarda su tipo y rotación")
+	interiors.rotate_furniture(house_id, root, 0)
+	stored = GameState.world_flags["house_furniture"][house_id]
+	_check(is_equal_approx(float(stored[0]["rot"]), PI * 0.5), "girar 90° cambia su rotación guardada")
+	interiors.move_furniture(house_id, root, 0)
+	_check(interiors.furniture_count(house_id) == 1, "mover no agrega ni quita, solo cambia su lugar")
+	interiors.remove_furniture(house_id, root, 0)
+	_check(interiors.furniture_count(house_id) == 0, "quitar el mueble lo libera de verdad (no queda en la partida)")
+	# El catálogo entero debe construirse sin errores (modelos de pocas caras y, en los
+	# peluches, el sprite de mundo del Pokémon sobre su base).
+	for item: String in HouseFurniture.ORDER:
+		var piece := HouseFurniture.build(item)
+		_check(piece != null and piece.get_child_count() > 0, "el mueble \"%s\" del catálogo debe construir un modelo real" % item)
+		piece.free()
+	interiors.exit_to(interiors.current["return"])
+	await _wait_interior(interiors, false)

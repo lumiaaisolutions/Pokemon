@@ -42,12 +42,20 @@ static var flash := 0.0
 
 @export var world_path: NodePath
 @export var player_path: NodePath
+## Clima extremo real (completar lo simplificado del mundo, 2026-10-11): si está
+## asignado, mientras el jugador esté en el bioma de hoy se fuerza de verdad la
+## tormenta/ventisca/sequía (ver _process(), WorldEvents.extreme_kind_at()).
+@export var events_path: NodePath
 
 var _world: WorldBuilder
 var _player: Node3D
+var _events: WorldEvents
 var _particles: Dictionary = {}
 var _lightning := 0.0
 var _rng := RandomNumberGenerator.new()
+## El clima extremo de hoy te está forzando este clima ahora mismo (sequía = Kind.SAND
+## con más Fuego, ver type_factor()).
+static var drought_active := false
 
 
 func _ready() -> void:
@@ -55,6 +63,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_world = get_node(world_path) as WorldBuilder
 	_player = get_node(player_path) as Node3D
+	# Events se crea justo después de Weather en main.gd: se busca más tarde (al primer
+	# _process) en vez de aquí, para no depender del orden exacto de creación.
 	_particles[Kind.RAIN] = _make_particles(Color(0.7, 0.8, 1.0, 0.7), Vector2(0.03, 0.6), 900, Vector3(0, -22, 0), 1.2)
 	_particles[Kind.SNOW] = _make_particles(Color(1, 1, 1, 0.9), Vector2(0.12, 0.12), 700, Vector3(0.6, -2.2, 0.3), 6.0)
 	_particles[Kind.SAND] = _make_particles(Color(0.85, 0.7, 0.45, 0.7), Vector2(0.25, 0.08), 900, Vector3(14, -0.5, 3), 2.0)
@@ -130,9 +140,22 @@ func current_name() -> String:
 func _process(delta: float) -> void:
 	if _world == null or _player == null:
 		return
+	if _events == null and events_path != NodePath():
+		_events = get_node_or_null(events_path) as WorldEvents
 	var pos := _player.global_position
 	var indoors := pos.x > WorldBuilder.INTERIOR_X
-	var kind := Kind.CLEAR if indoors else weather_for(_world.region_biome_at(pos.x, pos.z), GameState.play_time, _world.config.seed)
+	var biome := _world.region_biome_at(pos.x, pos.z)
+	var kind := Kind.CLEAR if indoors else weather_for(biome, GameState.play_time, _world.config.seed)
+	drought_active = false
+	if not indoors and _events != null:
+		match _events.extreme_kind_at(biome):
+			WorldEvents.ExtremeKind.STORM:
+				kind = Kind.STORM
+			WorldEvents.ExtremeKind.BLIZZARD:
+				kind = Kind.BLIZZARD
+			WorldEvents.ExtremeKind.DROUGHT:
+				kind = Kind.SAND
+				drought_active = true
 	if forced >= 0 and not indoors:
 		kind = forced as Kind
 	current = kind
@@ -175,6 +198,10 @@ func type_factor(types: Array) -> float:
 			table = {PokemonTypes.Type.ICE: 4.0, PokemonTypes.Type.FIRE: 0.5}
 		Kind.SAND:
 			table = {PokemonTypes.Type.GROUND: 2.5, PokemonTypes.Type.ROCK: 2.0, PokemonTypes.Type.STEEL: 1.5}
+			# Sequía fuerte de verdad (completar lo simplificado del mundo, 2026-10-11):
+			# además de Tierra/Roca, salen más Pokémon de Fuego ("lo que aparece").
+			if drought_active:
+				table[PokemonTypes.Type.FIRE] = 2.0
 		Kind.ASH:
 			table = {PokemonTypes.Type.FIRE: 2.0, PokemonTypes.Type.ROCK: 1.5}
 		Kind.FOG:

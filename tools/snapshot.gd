@@ -18,6 +18,10 @@ func _ready() -> void:
 	if "sinintro" in args:
 		GameState.party.append({"species": "pikachu", "shiny": false, "hp_ratio": 1.0})
 	var scene := (load(scene_path) as PackedScene).instantiate()
+	# world/main.tscn: sin la ceremonia del inicial (igual que las pruebas), para
+	# capturar el mundo libre y no la cinemática de selección.
+	if "starter_ceremony" in scene:
+		scene.set("starter_ceremony", false)
 	add_child(scene)
 	# "legendon": fuerza la leyenda de controles desplegada (revisar su alineación). Se
 	# fija DESPUÉS de add_child: main.gd carga GameOptions (y pisaría este valor) en su

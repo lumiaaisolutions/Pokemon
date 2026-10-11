@@ -17,6 +17,25 @@ const EXTREME_WEATHER_CHANCE := 0.15
 const ALPHA_RADIUS := 70.0
 const SPACE_POOL := ["clefairy", "cleffa", "minior", "lunatone", "solrock", "staryu", "beldum", "elgyem", "chimecho", "bronzor"]
 
+## Clima extremo real (completar lo simplificado del mundo, 2026-10-11): tormenta
+## eléctrica, ventisca o sequía fuerte, siempre en un bioma afín, determinista por
+## semilla y día (ver _new_day()). Mientras estés en ese bioma ese día, Weather fuerza
+## de verdad ese clima (no solo más probable) y cambia lo que puedes hacer ahí.
+enum ExtremeKind { NONE, STORM, BLIZZARD, DROUGHT }
+const EXTREME_NAMES := {ExtremeKind.STORM: "Tormenta eléctrica", ExtremeKind.BLIZZARD: "Ventisca", ExtremeKind.DROUGHT: "Sequía fuerte"}
+## Biomas afines a cada clima extremo (los mismos que ya dan ese clima en Weather.TABLES).
+const EXTREME_BIOMES := {
+	ExtremeKind.STORM: [RegionLayout.Biome.MEADOW, RegionLayout.Biome.FOREST, RegionLayout.Biome.FLOWERS, RegionLayout.Biome.JUNGLE, RegionLayout.Biome.BEACH, RegionLayout.Biome.SEA, RegionLayout.Biome.SWAMP],
+	ExtremeKind.BLIZZARD: [RegionLayout.Biome.TUNDRA, RegionLayout.Biome.MOUNTAIN],
+	ExtremeKind.DROUGHT: [RegionLayout.Biome.DESERT, RegionLayout.Biome.CANYON, RegionLayout.Biome.SAVANNA, RegionLayout.Biome.MESA],
+}
+## Cuánto más rápido baja el hambre con el frío de una ventisca extrema.
+const BLIZZARD_HUNGER_MULT := 1.7
+## Riesgo de que un rayo te dañe si sigues en el agua durante una tormenta extrema.
+const LIGHTNING_WATER_CHANCE := 0.35
+const LIGHTNING_WATER_DAMAGE := 1.0
+const LIGHTNING_WATER_COOLDOWN := 6.0
+
 @export var world_path: NodePath
 @export var player_path: NodePath
 @export var spawner_path: NodePath
@@ -30,6 +49,7 @@ var _meteor_sky: GPUParticles3D
 var _alphas := {}
 var _dominant: PokemonActor
 var _dominant_timer := 30.0
+var _lightning_water_cooldown := 0.0
 
 
 func _ready() -> void:
@@ -61,6 +81,7 @@ func _process(delta: float) -> void:
 		_new_day(day)
 	_update_meteors(day, hour)
 	_update_alphas()
+	_update_extreme_effects(delta)
 	_dominant_timer -= delta
 	if _dominant_timer <= 0.0:
 		_dominant_timer = 120.0
@@ -77,14 +98,29 @@ func _new_day(day: int) -> void:
 	_flags()["meteor_night"] = day if _rng.randf() < METEOR_CHANCE else -1
 	if int(_flags()["meteor_night"]) == day:
 		GameState.add_news("Rotom: ¡esta noche habrá lluvia de estrellas! Mira el cielo después de las 20:00.")
-	# Clima extremo (mundo más lleno, acordado con Fernando el 2026-10-10: "tormentas
-	# eléctricas, ventiscas, sequías"). Aviso del día; el clima normal por bioma
-	# (Weather.weather_for) ya incluye tormenta, ventisca y arena, así que esto solo
-	# anuncia cuándo pegan más fuerte, sin tocar su generación determinista (la usan
-	# las pruebas de clima de test_town).
-	_flags()["extreme_weather_day"] = day if _rng.randf() < EXTREME_WEATHER_CHANCE else -1
-	if int(_flags()["extreme_weather_day"]) == day:
-		GameState.add_news("Rotom: hoy el clima puede volverse extremo (tormentas eléctricas, ventiscas o una sequía fuerte) en algunas zonas. Ten cuidado.")
+	# Clima extremo real (completar lo simplificado del mundo, 2026-10-11): tormenta
+	# eléctrica, ventisca o sequía fuerte, siempre en un bioma afín, determinista por
+	# semilla + día (no por _rng, que se vuelve a barajar cada partida: ver _ready()).
+	# Mientras dura, Weather fuerza de verdad ese clima en su bioma (extreme_kind_at()),
+	# no solo más probable como antes.
+	var day_rng := RandomNumberGenerator.new()
+	day_rng.seed = hash([_world.config.seed, day, "extreme_weather"])
+	var kind: ExtremeKind = ExtremeKind.NONE
+	var biome := -1
+	if day_rng.randf() < EXTREME_WEATHER_CHANCE:
+		var kinds: Array = [ExtremeKind.STORM, ExtremeKind.BLIZZARD, ExtremeKind.DROUGHT]
+		kind = kinds[day_rng.randi() % kinds.size()]
+		var pool: Array = EXTREME_BIOMES[kind]
+		biome = pool[day_rng.randi() % pool.size()]
+	_flags()["extreme_weather"] = {"day": day, "kind": kind, "biome": biome}
+	if kind != ExtremeKind.NONE:
+		var biome_name: String = RegionLayout.BIOME_NAMES[biome]
+		var text: String = {
+			ExtremeKind.STORM: "Rotom: ¡hoy habrá una tormenta eléctrica fuerte en zonas de %s! Salen más Pokémon Eléctrico; cuidado si estás en el agua, puede caerte un rayo cerca." % biome_name,
+			ExtremeKind.BLIZZARD: "Rotom: ¡hoy habrá una ventisca en zonas de %s! Poca visibilidad, salen más Pokémon de Hielo y el frío te da hambre más rápido." % biome_name,
+			ExtremeKind.DROUGHT: "Rotom: ¡hoy hay una sequía fuerte en zonas de %s! El agua bajó, salen más Pokémon de Fuego y Tierra." % biome_name,
+		}[kind]
+		GameState.add_news(text)
 
 
 ## Empieza un brote masivo cerca de un pueblo al azar (o de species en point, pruebas).
@@ -146,10 +182,57 @@ func meteor_scheduled_today() -> bool:
 	return int(_flags().get("meteor_night", -1)) == GameState.game_day()
 
 
-## Clima extremo de hoy (mundo más lleno, 2026-10-11): por ahora es el aviso del Rotom
-## en _new_day(); queda disponible para que otro sistema lo consulte más adelante.
-func extreme_weather_today() -> bool:
-	return int(_flags().get("extreme_weather_day", -1)) == GameState.game_day()
+## Clima extremo de hoy: {"day", "kind" (ExtremeKind), "biome" (RegionLayout.Biome)} o
+## {} si hoy no hay. Lo consultan Weather (para forzarlo de verdad) y el Rotom.
+func extreme_weather_today() -> Dictionary:
+	var info: Dictionary = _flags().get("extreme_weather", {})
+	if info.is_empty() or int(info.get("day", -1)) != GameState.game_day() or int(info.get("kind", ExtremeKind.NONE)) == ExtremeKind.NONE:
+		return {}
+	return info
+
+
+## El clima extremo de hoy si biome es el suyo, o ExtremeKind.NONE si no hay o es otro
+## bioma. Lo usa Weather para forzar de verdad la tormenta/ventisca/sequía ahí.
+func extreme_kind_at(biome: RegionLayout.Biome) -> ExtremeKind:
+	var info := extreme_weather_today()
+	if info.is_empty() or int(info["biome"]) != int(biome):
+		return ExtremeKind.NONE
+	return int(info["kind"]) as ExtremeKind
+
+
+## Nombre para mostrar ("Tormenta eléctrica", "Ventisca", "Sequía fuerte") del clima
+## extremo de hoy, o "" si no hay.
+func extreme_weather_name_today() -> String:
+	var info := extreme_weather_today()
+	return String(EXTREME_NAMES.get(int(info.get("kind", ExtremeKind.NONE)), "")) if not info.is_empty() else ""
+
+
+## Efectos reales del clima extremo mientras estás en su bioma (completar lo
+## simplificado del mundo, 2026-10-11): la ventisca te da más hambre con el frío; la
+## tormenta puede dañarte con un rayo si sigues en el agua.
+func _update_extreme_effects(delta: float) -> void:
+	if _player.global_position.x > WorldBuilder.INTERIOR_X:
+		GameState.cold_hunger_multiplier = 1.0
+		return
+	var biome := _world.region_biome_at(_player.global_position.x, _player.global_position.z)
+	var kind := extreme_kind_at(biome)
+	GameState.cold_hunger_multiplier = BLIZZARD_HUNGER_MULT if kind == ExtremeKind.BLIZZARD else 1.0
+	_lightning_water_cooldown = maxf(_lightning_water_cooldown - delta, 0.0)
+	if kind != ExtremeKind.STORM or _lightning_water_cooldown > 0.0:
+		return
+	if _world.water_depth_at(_player.global_position.x, _player.global_position.z) <= 0.3:
+		return
+	var weather := get_tree().get_first_node_in_group(&"weather") as Weather
+	if weather == null or weather.flash <= 1.0:
+		return
+	_lightning_water_cooldown = LIGHTNING_WATER_COOLDOWN
+	if _rng.randf() > LIGHTNING_WATER_CHANCE:
+		return
+	var player := _player as Player
+	if player == null or player.mode == Player.Mode.DOWNED:
+		return
+	player.take_damage(LIGHTNING_WATER_DAMAGE)
+	GameState.notice.emit("¡Un rayo cayó cerca del agua! Sal a tierra durante la tormenta.")
 
 
 func _update_meteors(day: int, _hour: float) -> void:

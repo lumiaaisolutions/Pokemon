@@ -679,6 +679,116 @@ func _marker(root: Node3D, at: Vector3, texture: Texture2D, size_m: float = 0.42
 	return sprite
 
 
+# --- Decorar la casa comprada con muebles 3D (completar lo simplificado del mundo,
+# 2026-10-11) ---------------------------------------------------------------------------
+
+func _furniture_dict() -> Dictionary:
+	if not GameState.world_flags.has("house_furniture"):
+		GameState.world_flags["house_furniture"] = {}
+	return GameState.world_flags["house_furniture"]
+
+
+## Muebles guardados de esta casa: {"item", "x", "z", "rot"} en coordenadas locales de la
+## sala (estable entre partidas: el modelo de cada casa es siempre el mismo, elegido con
+## la semilla de su posición, ver enter()).
+func _furniture_list(house_id: String) -> Array:
+	var all := _furniture_dict()
+	if not all.has(house_id):
+		all[house_id] = []
+	return all[house_id]
+
+
+func _place_furniture_node(root: Node3D, entry: Dictionary) -> Node3D:
+	var node := HouseFurniture.build(String(entry["item"]))
+	node.position = Vector3(float(entry["x"]), 0, float(entry["z"]))
+	node.rotation.y = float(entry.get("rot", 0.0))
+	root.add_child(node)
+	var footprint := HouseFurniture.footprint(String(entry["item"]))
+	var body := StaticBody3D.new()
+	body.collision_layer = WorldBuilder.LAYER_OBSTACLES
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(footprint.x, 0.9, footprint.y)
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = Vector3(0, 0.45, 0)
+	body.add_child(collision)
+	node.add_child(body)
+	return node
+
+
+## Reconstruye los muebles ya colocados al entrar a la casa.
+func _spawn_house_furniture(root: Node3D, house_id: String) -> void:
+	var nodes: Array[Node3D] = []
+	for entry: Dictionary in _furniture_list(house_id):
+		nodes.append(_place_furniture_node(root, entry))
+	current["furniture_nodes"] = nodes
+
+
+## Coloca un mueble ya comprado donde esté parado el jugador ahora mismo (modo decorar:
+## "se colocan donde quieras dentro de tu casa"); con colisión y persistencia.
+func place_furniture(house_id: String, root: Node3D, item: String) -> void:
+	var player := services.player()
+	if player == null:
+		return
+	var local := root.to_local(player.global_position)
+	var entry := {"item": item, "x": local.x, "z": local.z, "rot": 0.0}
+	_furniture_list(house_id).append(entry)
+	(current.get("furniture_nodes", []) as Array).append(_place_furniture_node(root, entry))
+
+
+func _respawn_furniture_at(root: Node3D, house_id: String, index: int) -> void:
+	var list := _furniture_list(house_id)
+	var nodes: Array = current.get("furniture_nodes", [])
+	if index < nodes.size() and is_instance_valid(nodes[index]):
+		(nodes[index] as Node).queue_free()
+		nodes[index] = _place_furniture_node(root, list[index])
+
+
+## Mover: lo quita de donde estaba y lo vuelve a poner donde estés parado ahora.
+func move_furniture(house_id: String, root: Node3D, index: int) -> void:
+	var list := _furniture_list(house_id)
+	var player := services.player()
+	if index < 0 or index >= list.size() or player == null:
+		return
+	var local := root.to_local(player.global_position)
+	var entry: Dictionary = list[index]
+	entry["x"] = local.x
+	entry["z"] = local.z
+	_respawn_furniture_at(root, house_id, index)
+	GameState.notice.emit("Moviste %s." % HouseFurniture.display_name(String(entry["item"])))
+
+
+## Girar: 90° cada vez.
+func rotate_furniture(house_id: String, root: Node3D, index: int) -> void:
+	var list := _furniture_list(house_id)
+	if index < 0 or index >= list.size():
+		return
+	var entry: Dictionary = list[index]
+	entry["rot"] = fmod(float(entry.get("rot", 0.0)) + PI * 0.5, TAU)
+	_respawn_furniture_at(root, house_id, index)
+	GameState.notice.emit("Giraste %s." % HouseFurniture.display_name(String(entry["item"])))
+
+
+## Quitar: libera el mueble de la casa (no se devuelve el dinero, como decorar el asta).
+func remove_furniture(house_id: String, root: Node3D, index: int) -> void:
+	var list := _furniture_list(house_id)
+	if index < 0 or index >= list.size():
+		return
+	var nodes: Array = current.get("furniture_nodes", [])
+	if index < nodes.size() and is_instance_valid(nodes[index]):
+		(nodes[index] as Node).queue_free()
+	if index < nodes.size():
+		nodes.remove_at(index)
+	var item := String(list[index]["item"])
+	list.remove_at(index)
+	GameState.notice.emit("Quitaste %s." % HouseFurniture.display_name(item))
+
+
+## Muebles colocados ahora en esta casa (pruebas).
+func furniture_count(house_id: String) -> int:
+	return _furniture_list(house_id).size()
+
+
 ## Punto del segundo piso (tienda y Centro): local + el desplazamiento real del piso de
 ## arriba detectado por _model_room(). Vector3.INF si esta sala no tiene uno (modelo sin
 ## segundo piso claro): quien llama debe comprobarlo con has_upper_floor() antes de usarlo.
@@ -833,6 +943,14 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			if settlement.get("kind", "") == "city" and int(building.get("color", 0)) % 2 == 0:
 				_npc(root, Vector3(2.6, 0, -1.5), "abuelo_a")
 				_point(Vector3(2.6, 0.5, -0.2), "Tutor de movimientos ($%d)" % TownServices.TUTOR_PRICE, services.tutor)
+			# Decorar la casa comprada con muebles 3D (completar lo simplificado del mundo,
+			# 2026-10-11): solo en la casa ya comprada, nunca en una casa ajena o cabaña.
+			if kind == "house" and building.get("for_sale", false):
+				var owned_houses: Dictionary = GameState.world_flags.get("houses_bought", {})
+				var house_id := Structures.house_id(settlement, building)
+				if owned_houses.has(house_id):
+					_spawn_house_furniture(root, house_id)
+					_point(Vector3(0, 0.5, 1.8), "Decorar muebles", services.decorate_furniture_menu.bind(settlement, building, house_id, root), 2.2)
 		"lab":
 			for i in 3:
 				_block(root, Vector3(3.0, 1.0, 1.2), Vector3(-5 + i * 5, 0.5, back + 1.5), Color(0.85, 0.88, 0.92))

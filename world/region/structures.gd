@@ -42,6 +42,17 @@ var _player: Node3D
 var _door_cooldown := 0.0
 ## Mobiliario del asentamiento que se está construyendo ahora mismo (ver build()).
 var _furniture_buffer: Array[Dictionary] = []
+## Niño perdido que te sigue de verdad hasta su casa (completar lo simplificado del
+## mundo, 2026-10-11): {"key", "root", "sprite", "look", "settlement", "home", "waiting",
+## "bubble_timer", "on_arrive"}. Ver start_child_escort()/_update_escorts().
+var _escorts: Array[Dictionary] = []
+const ESCORT_SPEED := 2.3
+## Se queda a esta distancia detrás del jugador (como el Pokémon que te sigue).
+const ESCORT_FOLLOW_DISTANCE := 1.8
+## Si te alejas más de esto, se detiene y te llama en vez de seguir caminando solo.
+const ESCORT_MAX_DISTANCE := 15.0
+const ESCORT_RESUME_DISTANCE := 9.0
+const ESCORT_ARRIVE_DISTANCE := 2.2
 
 
 func build(builder: WorldBuilder) -> void:
@@ -114,6 +125,7 @@ func _process(_delta: float) -> void:
 	# Transporte entre pueblos (mundo más lleno, 2026-10-11): marca como visitado el
 	# asentamiento donde esté el jugador ahora mismo.
 	TownTransport.update_visited(world, _player)
+	_update_escorts(_delta)
 	var best: Dictionary = {}
 	var best_distance := INF
 	var walking := not (_player is Player) or (_player as Player).mode == Player.Mode.WALK
@@ -155,6 +167,115 @@ func interact_near(pos: Vector3, radius: float = INTERACT_RADIUS) -> bool:
 			(point["action"] as Callable).call()
 			return true
 	return false
+
+
+# --- Niño perdido: te sigue de verdad hasta su casa --------------------------------------
+
+## Casa (puerta) del asentamiento más cercano a pos, para llevar ahí al niño perdido.
+func _nearest_settlement_door(pos: Vector3) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := INF
+	for settlement: Dictionary in world.layout.settlements:
+		var d := Vector2(pos.x - float(settlement["x"]), pos.z - float(settlement["z"])).length()
+		if d < best_d:
+			best_d = d
+			best = settlement
+	if best.is_empty():
+		return {}
+	var homes: Array = (best["buildings"] as Array).filter(func(b: Dictionary) -> bool: return b["kind"] in ["house", "cabin", "tent"])
+	var door := Vector2(float(best["x"]), float(best["z"]))
+	if not homes.is_empty():
+		var home: Dictionary = homes[absi(hash(best["name"])) % homes.size()]
+		var b := Vector2(float(home["x"]), float(home["z"]))
+		var to_center := (Vector2(float(best["x"]), float(best["z"])) - b).normalized()
+		door = b + to_center * (float(home["d"]) * 0.5 + 1.6)
+	return {"settlement": best, "door": door}
+
+
+## Hay una escolta en curso con esta llave (para no empezarla dos veces).
+func escort_active(key: String) -> bool:
+	return _escorts.any(func(e: Dictionary) -> bool: return e["key"] == key)
+
+
+## A dónde debe llegar la escolta de esta llave, o Vector2.INF si no hay (pruebas).
+func escort_home(key: String) -> Vector2:
+	for escort: Dictionary in _escorts:
+		if escort["key"] == key:
+			return escort["home"]
+	return Vector2.INF
+
+
+## Empieza a seguirte de verdad: camina detrás de ti con burbujas; si te alejas mucho se
+## queda esperando y te llama; al llegar a una casa del pueblo más cercano, su familia te
+## agradece en la caja de diálogo y on_arrive() entrega el premio.
+func start_child_escort(key: String, root: Node3D, look: String, on_arrive: Callable) -> void:
+	if escort_active(key):
+		return
+	var info := _nearest_settlement_door(root.global_position)
+	if info.is_empty():
+		return
+	var sprite := root.get_node_or_null("Sprite") as DirectionalSprite
+	_escorts.append({
+		"key": key, "root": root, "sprite": sprite, "look": look,
+		"settlement": info["settlement"], "home": info["door"],
+		"waiting": false, "bubble_timer": 2.0, "on_arrive": on_arrive,
+	})
+	SpeechBubbles.say(root, "¡Vamos, sígueme el paso!")
+
+
+func _update_escorts(delta: float) -> void:
+	if _escorts.is_empty() or _player == null:
+		return
+	for escort: Dictionary in _escorts.duplicate():
+		var node_raw: Variant = escort["root"]
+		if not is_instance_valid(node_raw):
+			_escorts.erase(escort)
+			continue
+		var node: Node3D = node_raw
+		var sprite_raw: Variant = escort["sprite"]
+		var sprite: DirectionalSprite = sprite_raw if is_instance_valid(sprite_raw) else null
+		var to_player := _player.global_position - node.global_position
+		to_player.y = 0.0
+		var distance := to_player.length()
+		escort["bubble_timer"] = float(escort["bubble_timer"]) - delta
+		if distance > ESCORT_MAX_DISTANCE:
+			escort["waiting"] = true
+		elif distance < ESCORT_RESUME_DISTANCE:
+			escort["waiting"] = false
+		if escort["waiting"]:
+			if sprite != null:
+				sprite.animate(Vector3.ZERO, delta)
+			if float(escort["bubble_timer"]) <= 0.0:
+				escort["bubble_timer"] = 5.0
+				SpeechBubbles.say(node, "¡Espérame, te sigo! No corras tanto.")
+		elif distance > ESCORT_FOLLOW_DISTANCE:
+			var step := to_player.normalized() * minf(ESCORT_SPEED * delta, distance - ESCORT_FOLLOW_DISTANCE)
+			node.global_position += step
+			node.global_position.y = world.surface_height_at(node.global_position.x, node.global_position.z)
+			if sprite != null:
+				sprite.animate(Vector3(step.x, 0, step.z) / maxf(delta, 0.001), delta)
+		elif sprite != null:
+			sprite.look_at_point(_player.global_position)
+			sprite.animate(Vector3.ZERO, delta)
+		var home: Vector2 = escort["home"]
+		if Vector2(node.global_position.x, node.global_position.z).distance_to(home) < ESCORT_ARRIVE_DISTANCE:
+			_finish_child_escort(escort)
+
+
+func _finish_child_escort(escort: Dictionary) -> void:
+	_escorts.erase(escort)
+	var node_raw: Variant = escort["root"]
+	var settlement: Dictionary = escort["settlement"]
+	var dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	var lines := ["¡Hijo mío, qué alivio! Gracias por traerlo a salvo hasta %s." % String(settlement["name"]), "Toma esto, de parte de toda la familia."]
+	if dialog != null:
+		dialog.open("Familia agradecida", lines, NpcLooks.portrait(String(escort["look"])))
+	else:
+		GameState.notice.emit(lines[0])
+	(escort["on_arrive"] as Callable).call()
+	GameState.notice.emit("¡El niño perdido llegó sano y salvo a casa!")
+	if is_instance_valid(node_raw):
+		(node_raw as Node).queue_free()
 
 
 # --- Consultas ---------------------------------------------------------------------------
@@ -419,8 +540,13 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		add_point(door_world + Vector3.UP * 0.5, "Descansar en la carpa (hasta la mañana)", services.rest.bind(door_world), 2.4)
 		return root
 	var inward := -Vector3(to_center.x, 0, to_center.y)
-	# Modelo de B2W2 si existe para este tipo de edificio.
-	var model := BuildingModels.instance(kind, int(building["color"]) + int(absf(x)))
+	# Modelo de B2W2 si existe para este tipo de edificio. Los edificios únicos por tema
+	# ("landmark": museo, biblioteca, mercado, fábrica, acuario, observatorio, casino) no
+	# tenían modelo propio y se veían como cajas lisas (reportado por Fernando); usan el
+	# modelo real que mejor encaja con su sub_kind (ver BuildingModels.MODELS,
+	# "landmark_museum" etc.), nunca una caja.
+	var model_kind := kind if kind != "landmark" else "landmark_" + String(building.get("sub_kind", "library"))
+	var model := BuildingModels.instance(model_kind, int(building["color"]) + int(absf(x)))
 	if not model.is_empty():
 		var size: Vector3 = model["size"]
 		root.add_child(model["node"])
@@ -430,10 +556,10 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		_collider(root, Vector3(size.x * 0.97, size.y, size.z * 0.97), Vector3(0, size.y * 0.5, 0))
 		_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, 0))
 		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
-		var model_title: String = BUILDING_NAMES[kind]
+		var model_title: String = BUILDING_NAMES[kind] if kind != "landmark" else TownIdentity.LANDMARK_NAMES.get(String(building.get("sub_kind", "")), "Edificio")
 		if kind == "gym":
 			model_title = gym_title(settlement)
-		if kind in ["mart", "gym", "contest", "lab", "restaurant", "food_stall"]:
+		if kind in ["mart", "gym", "contest", "lab", "restaurant", "food_stall", "landmark"]:
 			_sign(root, model_title, Vector3(0, size.y + 0.8, size.z * 0.5))
 		# Comida: el restaurante y el puesto abren su menú (no tienen interior).
 		if kind == "restaurant":
@@ -443,7 +569,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		_decorate(root, kind, size, settlement, building, to_center)
 		if kind == "house":
 			_setup_house(root, settlement, building, door_world, inward, model_title)
-		elif kind in ["center", "mart", "lab", "cabin", "contest", "gym"]:
+		elif kind in ["center", "mart", "lab", "cabin", "contest", "gym", "landmark"]:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		if kind == "mart":
 			# Puerta real en el mundo (no una aproximación): la usa la fila de la mañana
@@ -501,11 +627,17 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 ## cualquier casa y además se puede poner un asta con bandera de color junto a la
 ## puerta (decisión de Fernando: solo decoración exterior simple, ver
 ## docs/decisiones_sin_preguntar.md).
+## Llave estable de una casa comprable (igual mientras el plano del asentamiento no
+## cambie): la usan la compra, la bandera exterior y los muebles de dentro (Interiors).
+static func house_id(settlement: Dictionary, building: Dictionary) -> String:
+	return "%s:%d" % [String(settlement["name"]), (settlement["buildings"] as Array).find(building)]
+
+
 func _setup_house(root: Node3D, settlement: Dictionary, building: Dictionary, door_world: Vector3, inward: Vector3, title: String) -> void:
 	if not building.get("for_sale", false):
 		add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % title, services.enter_interior.bind(building["kind"], settlement, building), INTERACT_RADIUS, inward)
 		return
-	var id := "%s:%d" % [String(settlement["name"]), (settlement["buildings"] as Array).find(building)]
+	var id := house_id(settlement, building)
 	var bought: Dictionary = GameState.world_flags.get("houses_bought", {})
 	var price := 2500 + int(float(building["w"]) * float(building["d"])) * 35
 	if not bought.has(id):
@@ -611,7 +743,7 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 			_decor_sprite(root, bush, Vector3(corner.x * (size.x * 0.5 + 0.8), 0.0, corner.y * (size.z * 0.5 + 0.5)))
 	# Farol junto a la entrada (modelo de B2W2 si está).
 	var lamp := BuildingModels.instance("lamp", rng.randi())
-	if not lamp.is_empty() and kind in ["center", "mart", "gym", "lab", "contest", "house"]:
+	if not lamp.is_empty() and kind in ["center", "mart", "gym", "lab", "contest", "house", "landmark"]:
 		var node: Node3D = lamp["node"]
 		node.position = Vector3(2.6 if rng.randf() < 0.5 else -2.6, 0.0, front + 1.6)
 		root.add_child(node)
@@ -999,7 +1131,7 @@ func _place(place: Dictionary) -> Node3D:
 			sprite.name = "Sprite"
 			root.add_child(sprite)
 			sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
-			add_point(root.position + Vector3(0, 0.5, 1.4), "Hablar con el viajero", services.wanderer_talk.bind(place, look), 2.6)
+			add_point(root.position + Vector3(0, 0.5, 1.4), "Hablar con el viajero", services.wanderer_talk.bind(place, look, root), 2.6)
 		"sleeping_giant":
 			# Pokémon gigante dormido en el camino (mundo más lleno, 2026-10-11): despierta
 			# si te acercas y reta en combate; una vez por día.
@@ -1072,6 +1204,20 @@ func _steam(color: Color) -> CPUParticles3D:
 ## tema del pueblo una vez al día, como agradecimiento.
 const GROWTH_GIFTS := {"fishing": "pearl", "mining": "hard-stone", "farm": "oran-berry", "lumber": "rare-candy",
 		"oasis": "water-stone", "alpine": "full-heal", "commercial": "premier-ball"}
+
+
+## Pueblo que crece de verdad en el momento (completar lo simplificado del mundo,
+## 2026-10-11): TownJobs llama esto en cuanto cumples el encargo que hace crecer al
+## pueblo, sin esperar a recargar el mundo. No duplica el puesto si ya existe (p. ej. si
+## el mundo se reconstruye más tarde y TownJobs.grown() ya era cierto, ver build()).
+func spawn_growth_now(settlement: Dictionary) -> void:
+	var buildings := get_node_or_null("Buildings") as Node3D
+	if buildings == null:
+		return
+	var kiosk_name := "Growth_" + String(settlement["name"]).replace(" ", "")
+	if buildings.has_node(kiosk_name):
+		return
+	_growth_kiosk(settlement, buildings)
 
 
 func _growth_kiosk(settlement: Dictionary, parent: Node3D) -> void:
