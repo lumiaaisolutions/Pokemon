@@ -24,6 +24,9 @@ const TALK_RADIUS := 2.2
 const PER_KIND := {"city": 6, "town": 4, "village": 3, "cabins": 1}
 ## Distancia mínima entre habitantes (no se amontonan).
 const PERSONAL_SPACE := 1.4
+## Margen al rodear el mobiliario sólido del pueblo (física de mobiliario, acordado con
+## Fernando el 2026-10-10): la mitad del ancho de un habitante, aprox.
+const FURNITURE_MARGIN := 0.4
 ## Cuánto pasea cada oficio alrededor de su lugar (0 = se queda en su sitio).
 const WANDER := {"niño": 3.0, "vecino": 2.0, "coordinador": 1.5, "abuela": 0.0, "vendedor": 0.0, "enfermera": 0.0, "investigador": 1.0, "entrenador": 2.5}
 ## Nombres por género (el del sprite): antes una sola lista daba "Mari" a un chico.
@@ -228,9 +231,13 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 		node.visible = true
 	var route: Array[Vector2] = npc["route"]
 	var velocity := Vector3.ZERO
+	# Último tramo al punto actual de la ruta (casa, trabajo o su lugar en la plaza): no se
+	# evita mobiliario para no quedarse oscilando sin llegar si algo queda cerca del destino.
+	var arriving := false
 	if not route.is_empty():
 		var here := Vector2(node.global_position.x, node.global_position.z)
 		var to := route[0] - here
+		arriving = to.length() < 1.2
 		if to.length() < 0.3:
 			route.pop_front()
 			if route.is_empty() and goal == "home":
@@ -258,6 +265,8 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 			away.y = 0.0
 			if away.length() < PERSONAL_SPACE and away.length() > 0.01:
 				node.global_position += away.normalized() * (PERSONAL_SPACE - away.length()) * 0.5
+	if not arriving:
+		_avoid_furniture(node, int(npc.get("town_index", -1)))
 	node.global_position.y = _stand_y(node)
 	if velocity == Vector3.ZERO and node.visible and _player.global_position.distance_to(node.global_position) < 4.0:
 		sprite.look_at_point(_player.global_position)
@@ -267,6 +276,30 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 	var point: Dictionary = npc["point"]
 	point["pos"] = node.global_position + Vector3.UP * 0.5
 	point["radius"] = TALK_RADIUS if node.visible else 0.0
+
+
+## Rodea el mobiliario sólido del pueblo (bancas, macetas, cercas, faroles, puestos,
+## cajas, ver Structures.furniture): si queda más cerca que su radio lo empuja hacia
+## afuera, igual que el espacio personal entre habitantes. No cambia su ruta, solo el
+## paso de este cuadro (acordado con Fernando el 2026-10-10: "todo el mobiliario").
+func _avoid_furniture(node: Node3D, town_index: int) -> void:
+	if town_index < 0 or town_index >= _world.layout.settlements.size():
+		return
+	var pieces: Array = _world.layout.settlements[town_index].get("furniture", [])
+	if pieces.is_empty():
+		return
+	var pos := Vector2(node.global_position.x, node.global_position.z)
+	for piece: Dictionary in pieces:
+		var away := pos - (piece["pos"] as Vector2)
+		var clearance := float(piece["radius"]) + FURNITURE_MARGIN
+		var distance := away.length()
+		# A medias, como el espacio personal: si empujara a toda su fuerza cada cuadro,
+		# un destino (casa, lugar en la plaza) que cayera justo en el borde del mobiliario
+		# podría dejarlo oscilando ahí sin llegar nunca.
+		if distance < clearance and distance > 0.01:
+			pos += away.normalized() * (clearance - distance) * 0.5
+	node.global_position.x = pos.x
+	node.global_position.z = pos.y
 
 
 ## Altura donde se para: en el suelo, o nadando (hundido hasta medio cuerpo, con

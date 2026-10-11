@@ -37,6 +37,8 @@ var _nearest: Dictionary = {}
 var _materials := {}
 var _player: Node3D
 var _door_cooldown := 0.0
+## Mobiliario del asentamiento que se está construyendo ahora mismo (ver build()).
+var _furniture_buffer: Array[Dictionary] = []
 
 
 func build(builder: WorldBuilder) -> void:
@@ -49,11 +51,16 @@ func build(builder: WorldBuilder) -> void:
 	buildings.name = "Buildings"
 	add_child(buildings)
 	for settlement: Dictionary in world.layout.settlements:
+		# Mobiliario sólido del pueblo (bancas, macetas, cercas, faroles, puestos, cajas):
+		# se junta aquí y se guarda en el asentamiento para que los habitantes, que se
+		# mueven por posición directa, lo rodeen (ver TownNPCs._avoid_furniture).
+		_furniture_buffer = []
 		for building: Dictionary in settlement["buildings"]:
 			buildings.add_child(_building(settlement, building))
 		# Identidad del pueblo: monumento, plaza y objetos de su tema.
 		TownIdentity.decorate(self, buildings, settlement)
 		# Restaurante (uno por ciudad) y puesto de comida (en todo pueblo y ciudad).
+		settlement["furniture"] = _furniture_buffer
 	var landmarks := Node3D.new()
 	landmarks.name = "Landmarks"
 	add_child(landmarks)
@@ -228,11 +235,32 @@ func _roof(parent: Node3D, width: float, depth: float, height: float, base_y: fl
 	return instance
 
 
-func _collider(parent: Node3D, size: Vector3, center: Vector3) -> StaticBody3D:
+## block_camera: además de obstáculo para el jugador, bloquea el SpringArm de la cámara
+## (edificios y monumentos grandes). El mobiliario pequeño (bancas, macetas, cercas,
+## faroles, puestos, cajas) debe ir con block_camera = false: si no, la cámara se pega de
+## golpe al tropezar con un objeto chico en vez de solo con paredes y terreno (reportado
+## por Fernando el 2026-10-10).
+func _collider(parent: Node3D, size: Vector3, center: Vector3, block_camera: bool = true) -> StaticBody3D:
 	var body := StaticBody3D.new()
-	body.collision_layer = WorldBuilder.LAYER_OBSTACLES | WorldBuilder.LAYER_CAMERA
+	body.collision_layer = WorldBuilder.LAYER_OBSTACLES | (WorldBuilder.LAYER_CAMERA if block_camera else 0)
 	var shape := BoxShape3D.new()
 	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = center
+	body.add_child(collision)
+	parent.add_child(body)
+	return body
+
+
+## Como _collider pero cilíndrico (macetones, troncos): se ajusta mejor a su forma
+## redonda que una caja. Mobiliario pequeño: no bloquea la cámara por defecto.
+func _cylinder_collider(parent: Node3D, radius: float, height: float, center: Vector3, block_camera: bool = false) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.collision_layer = WorldBuilder.LAYER_OBSTACLES | (WorldBuilder.LAYER_CAMERA if block_camera else 0)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = height
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	collision.position = center
@@ -246,6 +274,13 @@ func _collider(parent: Node3D, size: Vector3, center: Vector3) -> StaticBody3D:
 func _camera_blocker(parent: Node3D, size: Vector3, center: Vector3) -> void:
 	var body := _collider(parent, size, center)
 	body.collision_layer = WorldBuilder.LAYER_CAMERA
+
+
+## Registra mobiliario sólido (posición y radio en el plano XZ) para que los habitantes
+## del pueblo, que se mueven por posición directa sin físicas, lo rodeen (ver
+## TownNPCs._avoid_furniture). pos ya en coordenadas del mundo.
+func _furniture(pos: Vector2, radius: float) -> void:
+	_furniture_buffer.append({"pos": pos, "radius": radius})
 
 
 func _sign(parent: Node3D, text: String, at: Vector3, color: Color = Color.WHITE) -> Label3D:
@@ -337,7 +372,9 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		var size: Vector3 = model["size"]
 		root.add_child(model["node"])
 		_box(root, Vector3(size.x + 0.6, 3.0, size.z + 0.6), Vector3(0, -1.53, 0), Color(0.62, 0.6, 0.57))
-		_collider(root, Vector3(size.x * 0.9, size.y, size.z * 0.82), Vector3(0, size.y * 0.5, -size.z * 0.06))
+		# Casi todo el contorno (antes dejaba 15% de hueco en la fachada y se podía entrar
+		# caminando por cualquier lado, reportado por Fernando el 2026-10-10).
+		_collider(root, Vector3(size.x * 0.97, size.y, size.z * 0.97), Vector3(0, size.y * 0.5, 0))
 		_camera_blocker(root, size * 1.06 + Vector3(0, 0.5, 0), Vector3(0, size.y * 0.5, 0))
 		door_world = root.position + Vector3(to_center.x, 0, to_center.y) * (size.z * 0.5 + 0.9)
 		var model_title: String = BUILDING_NAMES[kind]
@@ -350,7 +387,7 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: Restaurante", _open_restaurant.bind(settlement), INTERACT_RADIUS, inward)
 		elif kind == "food_stall":
 			add_point(door_world + Vector3.UP * 0.5, "Comprar en el puesto de comida", _open_food_stall, INTERACT_RADIUS)
-		_decorate(root, kind, size, settlement, building)
+		_decorate(root, kind, size, settlement, building, to_center)
 		if kind in ["center", "mart", "lab", "house", "cabin", "contest", "gym"]:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		return root
@@ -419,11 +456,18 @@ func _open_restaurant(settlement: Dictionary) -> void:
 
 ## Decoración alrededor de un edificio (estilo B2W2): flores a los lados de la puerta,
 ## arbustos en las esquinas, farol junto a la entrada, cerca de jardín en las casas y
-## buzón. Todo fijo por la semilla.
-func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary, building: Dictionary) -> void:
+## buzón. Todo fijo por la semilla. to_center: del edificio hacia la plaza (root está
+## rotado hacia allá; sirve para pasar las posiciones locales a coordenadas del mundo y
+## registrar el mobiliario que los habitantes deben rodear).
+func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary, building: Dictionary, to_center: Vector2) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([float(building["x"]), float(building["z"]), world.layout.seed])
 	var front := size.z * 0.5
+	# Base del edificio en el mundo y su "lado" (perpendicular a to_center): convierte una
+	# posición local (lx, lz) del root (rotado hacia la plaza) a coordenadas del mundo.
+	var base := Vector2(float(building["x"]), float(building["z"]))
+	var side_axis := Vector2(to_center.y, -to_center.x)
+	var to_world := func(lx: float, lz: float) -> Vector2: return base + side_axis * lx + to_center * lz
 	var flowers: Array = [load("res://art/world/b2w2/flowers_yellow.png"), load("res://art/world/b2w2/flower_bush_pink.png"), load("res://art/world/b2w2/lavender.png")]
 	var bush: Texture2D = load("res://art/world/b2w2/bush.png")
 	# Flores a los lados de la puerta.
@@ -441,7 +485,8 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 		var node: Node3D = lamp["node"]
 		node.position = Vector3(2.6 if rng.randf() < 0.5 else -2.6, 0.0, front + 1.6)
 		root.add_child(node)
-		_collider(root, Vector3(0.4, 3.0, 0.4), node.position + Vector3(0, 1.5, 0))
+		_collider(root, Vector3(0.4, 3.0, 0.4), node.position + Vector3(0, 1.5, 0), false)
+		_furniture(to_world.call(node.position.x, node.position.z), 0.5)
 		var light := OmniLight3D.new()
 		light.light_color = Color(1.0, 0.85, 0.55)
 		# Suave: antes la pared blanca del Centro se veía encendida de noche.
@@ -466,10 +511,15 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 				var piece_node: Node3D = piece["node"]
 				piece_node.position = Vector3(fx, 0.0, front + 2.6)
 				root.add_child(piece_node)
-				# Las cercas no se atraviesan.
-				_collider(root, Vector3(fence_size.x, maxf(fence_size.y, 1.0), maxf(fence_size.z, 0.35)), Vector3(fx, maxf(fence_size.y, 1.0) * 0.5, front + 2.6))
+				# Las cercas no se atraviesan (ni la cámara se pega de golpe con ellas).
+				_collider(root, Vector3(fence_size.x, maxf(fence_size.y, 1.0), maxf(fence_size.z, 0.35)), Vector3(fx, maxf(fence_size.y, 1.0) * 0.5, front + 2.6), false)
+				# Radio de evasión de los habitantes: el grosor (fence_size.z), no el ancho
+				# de la pieza (fence_size.x puede ser de varios metros); si no, el círculo de
+				# "no pasar" de una sola cerca llegaba a tapar la puerta de la casa.
+				_furniture(to_world.call(fx, front + 2.6), maxf(fence_size.z, 0.35) * 0.5 + 0.3)
 		_box(root, Vector3(0.12, 1.0, 0.12), Vector3(1.8, 0.5, front + 2.2), Color(0.45, 0.3, 0.2))
-		_collider(root, Vector3(0.5, 1.3, 0.4), Vector3(1.8, 0.65, front + 2.2))
+		_collider(root, Vector3(0.5, 1.3, 0.4), Vector3(1.8, 0.65, front + 2.2), false)
+		_furniture(to_world.call(1.8, front + 2.2), 0.5)
 		_box(root, Vector3(0.5, 0.35, 0.35), Vector3(1.8, 1.1, front + 2.2), [Color(0.85, 0.25, 0.25), Color(0.25, 0.45, 0.85)][rng.randi() % 2])
 
 
@@ -768,7 +818,7 @@ func _place(place: Dictionary) -> Node3D:
 			_box(root, Vector3(3.4, 0.15, 2.2), Vector3(0, 2.6, 0), Color(0.9, 0.3, 0.3))
 			for side: float in [-1.0, 1.0]:
 				_cylinder(root, 0.4, 0.15, Vector3(side * 1.2, 0.4, 1.0), Color(0.3, 0.2, 0.12)).rotation.x = PI * 0.5
-			_collider(root, Vector3(3.0, 2.0, 1.8), Vector3(0, 1.0, 0))
+			_collider(root, Vector3(3.0, 2.0, 1.8), Vector3(0, 1.0, 0), false)
 			add_point(root.position + Vector3(0, 0.5, 2.0), "Ver lo que vende el comerciante", services.open_merchant.bind(place))
 		"oasis":
 			for i in 7:

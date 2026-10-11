@@ -95,7 +95,11 @@ static func instance(kind: String, variant: int) -> Dictionary:
 		var core := MeshInstance3D.new()
 		core.name = "Core"
 		var cube := BoxMesh.new()
-		var shape: Array = CORE_SHAPES.get(name, [0.0, 0.86, 0.86, 0.72, 0.0, ""])
+		# Por defecto solo tapa la mitad trasera (el frente, con la puerta y las ventanas,
+		# suele quedar bajo un alero que mide más que la pared: un núcleo centrado llegaba
+		# hasta la fachada y la tapaba, como si no tuviera puerta; reportado por Fernando
+		# el 2026-10-10). CORE_SHAPES tiene ajustes a la medida para modelos puntuales.
+		var shape: Array = CORE_SHAPES.get(name, [0.0, 0.9, 0.5, 0.78, -0.25, ""])
 		cube.size = Vector3(size.x * float(shape[1]), size.y * float(shape[3]), size.z * float(shape[2]))
 		core.mesh = cube
 		core.position = Vector3(size.x * float(shape[0]), cube.size.y * 0.5, size.z * float(shape[4]))

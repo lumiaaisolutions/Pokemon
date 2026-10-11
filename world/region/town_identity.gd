@@ -58,6 +58,9 @@ static func decorate(structures: Structures, parent: Node3D, settlement: Diction
 			structures._cylinder(root, 0.85, 0.06, at + Vector3(0, 0.56, 0), Color(0.42, 0.3, 0.2), -1.0, 16)
 			var bush: Texture2D = load(["res://art/world/b2w2/flower_bush_pink.png", "res://art/world/b2w2/flowers_yellow.png", "res://art/world/b2w2/lavender.png"][i / 2 % 3])
 			structures._decor_sprite(root, bush, at + Vector3(0, 0.55, 0))
+			# Sólido (física de mobiliario, 2026-10-10): el jugador se para encima al saltar.
+			structures._cylinder_collider(root, 1.0, 1.1, at + Vector3(0, 0.55, 0))
+			structures._furniture(Vector2(cx, cz) + Vector2(at.x, at.z), 1.3)
 		else:
 			var bench := BuildingModels.instance("bench", i)
 			if not bench.is_empty():
@@ -65,6 +68,10 @@ static func decorate(structures: Structures, parent: Node3D, settlement: Diction
 				node.position = at
 				node.rotation.y = -angle + PI * 0.5
 				root.add_child(node)
+				var bench_size: Vector3 = bench["size"]
+				# Colisión a la medida de la banca (hija del propio nodo: hereda su giro).
+				structures._collider(node, Vector3(bench_size.x * 0.85, bench_size.y, bench_size.z * 0.85), Vector3(0, bench_size.y * 0.5, 0), false)
+				structures._furniture(Vector2(cx, cz) + Vector2(at.x, at.z), maxf(bench_size.x, bench_size.z) * 0.55 + 0.2)
 	# Objetos del tema entre los edificios.
 	var buildings: Array = settlement["buildings"]
 	for i in 16:
@@ -175,6 +182,9 @@ static func _statue(structures: Structures, root: Node3D, color: Color) -> void:
 
 
 static func _theme_prop(structures: Structures, root: Node3D, theme: String, at: Vector3, rng: RandomNumberGenerator) -> void:
+	# Centro del asentamiento en el mundo (root no gira): posición de mobiliario para que
+	# los habitantes lo rodeen (física de mobiliario, acordado con Fernando el 2026-10-10).
+	var world_xz := Vector2(root.position.x, root.position.z)
 	match theme:
 		"farm":
 			# Surcos de cultivo o pacas de heno.
@@ -184,30 +194,39 @@ static func _theme_prop(structures: Structures, root: Node3D, theme: String, at:
 					structures._decor_sprite(root, PropArt.texture("tuft_green"), at + Vector3(-1.2 + row * 0.4, 0.25, row * 0.9))
 			else:
 				structures._cylinder(root, 0.6, 0.9, at + Vector3(0, 0.45, 0), Color(0.88, 0.75, 0.4))
-				structures._collider(root, Vector3(1.2, 0.9, 1.2), at + Vector3(0, 0.45, 0))
+				structures._collider(root, Vector3(1.2, 0.9, 1.2), at + Vector3(0, 0.45, 0), false)
+				structures._furniture(world_xz + Vector2(at.x, at.z), 0.9)
 		"fishing":
 			# Barcas volteadas, redes y barriles.
 			structures._box(root, Vector3(3.0, 0.6, 1.2), at + Vector3(0, 0.3, 0), Color(0.3, 0.5, 0.75))
 			structures._cylinder(root, 0.4, 0.8, at + Vector3(2.0, 0.4, 0.6), Color(0.5, 0.35, 0.22))
-			structures._collider(root, Vector3(3.0, 0.8, 1.4), at + Vector3(0, 0.4, 0))
+			structures._collider(root, Vector3(3.0, 0.8, 1.4), at + Vector3(0, 0.4, 0), false)
+			structures._furniture(world_xz + Vector2(at.x, at.z), 1.7)
 		"mining":
 			structures._decor_sprite(root, PropArt.texture("boulder"), at)
 			structures._box(root, Vector3(1.0, 0.8, 1.0), at + Vector3(1.6, 0.4, 0), Color(0.5, 0.36, 0.22))
+			# Caja sólida (física de mobiliario): el jugador se para encima al saltar.
+			structures._collider(root, Vector3(1.0, 0.8, 1.0), at + Vector3(1.6, 0.4, 0), false)
+			structures._furniture(world_xz + Vector2(at.x + 1.6, at.z), 0.9)
 		"lumber":
 			# Pilas de troncos.
 			for i in 3:
 				structures._decor_sprite(root, PropArt.texture("log"), at + Vector3(0, i * 0.35, i * 0.1))
-			structures._collider(root, Vector3(2.0, 1.0, 1.0), at + Vector3(0, 0.5, 0))
+			structures._collider(root, Vector3(2.0, 1.0, 1.0), at + Vector3(0, 0.5, 0), false)
+			structures._furniture(world_xz + Vector2(at.x, at.z), 1.2)
 		"oasis":
 			# Puestos con toldo de colores.
 			structures._box(root, Vector3(2.0, 0.9, 1.0), at + Vector3(0, 0.45, 0), Color(0.62, 0.45, 0.28))
 			structures._box(root, Vector3(2.4, 0.1, 1.6), at + Vector3(0, 2.0, 0), [Color(0.9, 0.35, 0.3), Color(0.3, 0.6, 0.9), Color(0.95, 0.75, 0.25)][rng.randi() % 3])
 			for side in [-1.0, 1.0]:
 				structures._box(root, Vector3(0.1, 2.0, 0.1), at + Vector3(side * 1.1, 1.0, 0.7), Color(0.45, 0.3, 0.2))
-			structures._collider(root, Vector3(2.0, 1.0, 1.0), at + Vector3(0, 0.5, 0))
+			structures._collider(root, Vector3(2.0, 1.0, 1.0), at + Vector3(0, 0.5, 0), false)
+			structures._furniture(world_xz + Vector2(at.x, at.z), 1.4)
 		"alpine":
 			structures._decor_sprite(root, PropArt.texture("snow_pile"), at)
 			structures._box(root, Vector3(1.4, 0.3, 0.6), at + Vector3(1.5, 0.15, 0), Color(0.6, 0.3, 0.25))
+			structures._collider(root, Vector3(1.4, 0.3, 0.6), at + Vector3(1.5, 0.15, 0), false)
+			structures._furniture(world_xz + Vector2(at.x + 1.5, at.z), 0.9)
 		"commercial":
 			# Faroles y puestos de mercado.
 			var lamp := BuildingModels.instance("lamp", rng.randi())
@@ -215,6 +234,8 @@ static func _theme_prop(structures: Structures, root: Node3D, theme: String, at:
 				var node: Node3D = lamp["node"]
 				node.position = at
 				root.add_child(node)
-				structures._collider(root, Vector3(0.4, 3.0, 0.4), at + Vector3(0, 1.5, 0))
+				structures._collider(root, Vector3(0.4, 3.0, 0.4), at + Vector3(0, 1.5, 0), false)
 			else:
 				structures._box(root, Vector3(0.2, 3.0, 0.2), at + Vector3(0, 1.5, 0), Color(0.3, 0.3, 0.35))
+				structures._collider(root, Vector3(0.4, 3.0, 0.4), at + Vector3(0, 1.5, 0), false)
+			structures._furniture(world_xz + Vector2(at.x, at.z), 0.5)

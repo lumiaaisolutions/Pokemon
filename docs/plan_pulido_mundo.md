@@ -89,10 +89,10 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
    - Instrucciones claras de qué hacer (lanzar la Poké Ball a tu inicial).
    - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. Detalles por preguntar a Fernando.
 4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial"). **Hecho** (`world/npc/speech_bubbles.gd`, ver [habitantes](sistemas/habitantes.md#burbujas-contexto-y-charlas-2026-10-10)).
-5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas.
+5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas. **Hecho** (`Structures._collider`/`_cylinder_collider`, `Structures.furniture`, `TownNPCs._avoid_furniture`) → [pueblos e interiores](sistemas/pueblos_e_interiores.md#física-del-mobiliario-y-cámara-2026-10-10-noche).
 6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia.
 7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano.
-8. **Tienda Pokémon sin puerta y con una pared negra** (la caja interior que tapa caras faltantes se ve): mejor diseño, que parezca real y tenga su puerta.
+8. **Tienda Pokémon sin puerta y con una pared negra** (la caja interior que tapa caras faltantes se ve): mejor diseño, que parezca real y tenga su puerta. **Hecho** (`BuildingModels.instance`, núcleo trasero en vez de centrado; colisión de todo el contorno) → [edificios B2W2](sistemas/edificios_b2w2.md#puerta-visible-y-colisión-de-todo-el-contorno-2026-10-10-noche).
 9. **Prueba intermitente (resuelta):** la del viajero fallaba cuando el jugador caía en el agua o el viajero ya había pasado; la de la horda y la de huir esperaban cuadros de física y bajo carga (con el juego abierto) varios caben en uno. Ahora esperan cuadros reales.
 
 ### Decisiones de Fernando (2026-10-10, noche)
