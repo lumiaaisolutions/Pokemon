@@ -16,3 +16,4 @@ Cada **7 días del juego**: Primavera (más lluvia), Verano (más sol y tormenta
 - **Lluvia de estrellas:** 30 % de las noches; estrellas fugaces, Pokémon del espacio (Clefairy, Minior, Lunatone…) y un fragmento que cae cerca para recoger.
 - **Pokémon dominante:** cada 2 minutos, 35 % de que aparezca uno grande (×1.5) y fuerte (vida ×2) cerca; aura dorada; premio: Pepita.
 - **Territorios Alfa:** al acercarte (70 m) a uno vive un Alfa (×1.7, vida ×2.5, aura roja) una vez por día; premio: Caramelo Raro.
+- **Clima extremo (2026-10-11, mundo más lleno):** cada mañana 15 % de que el Rotom avise que hoy el clima puede volverse extremo (tormenta eléctrica, ventisca o sequía fuerte) en algunas zonas (`WorldEvents.extreme_weather_today`). No cambia la generación determinista de `Weather.weather_for()` (la usan las pruebas de clima); por ahora es solo el aviso, ver `docs/decisiones_sin_preguntar.md`.

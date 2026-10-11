@@ -38,8 +38,14 @@ const FLOORS := {
 	"cave": Color(0.4, 0.36, 0.32), "sewer": Color(0.35, 0.38, 0.35), "tower": Color(0.42, 0.38, 0.48), "mansion": Color(0.4, 0.3, 0.3),
 	"power_plant": Color(0.55, 0.55, 0.5), "lab_ruins": Color(0.7, 0.7, 0.72), "victory_road": Color(0.45, 0.4, 0.36),
 	"mine": Color(0.45, 0.38, 0.3), "villain_base": Color(0.25, 0.25, 0.3), "distortion": Color(0.35, 0.2, 0.45), "shipwreck": Color(0.35, 0.28, 0.22),
+	"landmark": Color(0.85, 0.82, 0.78),
 }
 const DUNGEONS := ["cave", "sewer", "tower", "mansion", "power_plant", "lab_ruins", "victory_road", "mine", "villain_base", "distortion", "shipwreck"]
+## Mazmorra real de varios pisos con jefe al final (mundo más lleno, acordado con
+## Fernando 2026-10-10: "mazmorras y cuevas reales de varios pisos con tesoros y jefe").
+## Por ahora solo la mina (ver _descend_mine, services.mine_boss_challenge); la gruta de
+## cristal es otra cosa (sin pantalla de carga, se construye en el mundo abierto, no aquí).
+const MINE_FLOORS := 3
 
 var structures: Structures
 var services: TownServices
@@ -128,7 +134,7 @@ func enter(kind: String, settlement: Dictionary, data: Dictionary, return_point:
 	root.name = "Interior_%s" % kind
 	root.position = ORIGIN
 	add_child(root)
-	current = {"kind": kind, "root": root, "return": return_point, "points": [], "actors": [], "place": data, "settlement": settlement}
+	current = {"kind": kind, "root": root, "return": return_point, "points": [], "actors": [], "place": data, "settlement": settlement, "floor": 1}
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(data.get("x", 0)) + str(data.get("z", 0)) + kind) ^ structures.world.layout.seed
 	var spawn: Vector3
@@ -658,7 +664,8 @@ func upper_size() -> Vector2:
 ## Salas de edificios. Devuelve el punto de aparición (relativo al mundo).
 func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: Dictionary, rng: RandomNumberGenerator) -> Vector3:
 	var size: Vector2 = {"center": Vector2(18, 14), "mart": Vector2(14, 11), "house": Vector2(10, 9), "cabin": Vector2(8, 7),
-			"lab": Vector2(16, 12), "gym": Vector2(26, 30), "contest": Vector2(22, 18), "league": Vector2(30, 36)}.get(kind, Vector2(12, 10))
+			"lab": Vector2(16, 12), "gym": Vector2(26, 30), "contest": Vector2(22, 18), "league": Vector2(30, 36),
+			"landmark": Vector2(16, 13)}.get(kind, Vector2(12, 10))
 	var wall := Color(0.95, 0.93, 0.88)
 	if kind in ["gym", "league"]:
 		wall = Color(0.55, 0.55, 0.62)
@@ -842,6 +849,23 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_block(root, Vector3(12, 0.8, 5), Vector3(0, 0.4, back + 2.0), Color(0.85, 0.55, 0.7))
 			_npc(root, Vector3(6, 0, back + 6.0), "guay_chica")
 			_point(Vector3(6, 0.5, back + 7.4), "Participar en el concurso", services.contest.bind(settlement))
+		"landmark":
+			# Edificio único por tema (pueblos ×2 con identidad, 2026-10-11): 3 exhibidores
+			# (pedestal + vitrina) o, en el casino, máquinas tragamonedas; un encargado y un
+			# solo punto de interacción (ver TownServices.landmark_visit).
+			var sub: String = building.get("sub_kind", "library")
+			var is_casino := sub == "casino"
+			for i in 3:
+				var at := Vector3(-4.0 + i * 4.0, 0, back + 2.2)
+				if is_casino:
+					_block(root, Vector3(1.1, 1.3, 0.8), at + Vector3(0, 0.65, 0), Color(0.3, 0.2, 0.35), true, 0.3)
+				else:
+					_block(root, Vector3(1.0, 0.9, 1.0), at + Vector3(0, 0.45, 0), Color(0.75, 0.72, 0.65))
+					_block(root, Vector3(0.8, 0.6, 0.8), at + Vector3(0, 1.05, 0), Color(0.6, 0.75, 0.85, 0.5), false, 0.1)
+			var clerk_look := NpcLooks.for_role("vendedor" if is_casino else "investigador", rng)
+			_npc(root, Vector3(0, 0, back), clerk_look)
+			_point(Vector3(0, 0.5, back + 1.6), "Jugar en la máquina ($%d)" % TownServices.CASINO_PRICE if is_casino else "Ver los exhibidores",
+					services.landmark_visit.bind(settlement, building), 2.0)
 	# Las mazmorras sí usan bloques: se apaga el modo modelo al terminar la sala.
 	_modeled = false
 	return ORIGIN + door + Vector3(0, 0.3, -1.5)
@@ -910,19 +934,28 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 	var far_exit := _far_exit(kind, place)
 	var exit_local: Vector3 = to_local.call(exit_cell)
 	_block(root, Vector3(2.4, 0.05, 1.4), exit_local + Vector3(0, 0.02, -CELL * 0.35), Color(0.4, 0.75, 0.9), false, 0.5)
+	var floor: int = current.get("floor", 1)
 	if kind == "villain_base":
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35 + 1.5), "Enfrentar al líder del %s" % GameState.villain_team, services.villain_confront.bind(ORIGIN + exit_local + Vector3(0, 0.3, 2.5)), 2.0)
+	elif kind == "mine" and floor < MINE_FLOORS:
+		# Mazmorra de varios pisos (mundo más lleno, 2026-10-11): bajar regenera la mina
+		# con otro recorrido (mismo cuarto, otro piso) hasta llegar al fondo.
+		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), "Bajar al piso %d de la mina" % (floor + 1), _descend_mine, 1.8)
+		far_exit = Vector3.INF
+	elif kind == "mine" and floor >= MINE_FLOORS and not services.mine_boss_done(place):
+		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), "Enfrentar al guardián de la mina", services.mine_boss_challenge.bind(place, ORIGIN + exit_local + Vector3(0, 0.3, -2.5)), 2.0)
+		far_exit = Vector3.INF
 	if far_exit != Vector3.INF:
 		var label: String = {"victory_road": "Salir frente a la Liga Pokémon", "distortion": "Salir por el otro portal"}.get(kind, "Salida al otro lado")
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), label, func() -> void: exit_to(far_exit), 1.8)
-	else:
+	elif kind != "villain_base" and not (kind == "mine" and (floor < MINE_FLOORS or not services.mine_boss_done(place))):
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), "Salir", func() -> void: exit_to(current["return"]), 1.8)
-	# Tesoros (uno por día del juego) y Pokémon propios.
+	# Tesoros (uno por día del juego y por piso) y Pokémon propios.
 	var cells: Array = open.keys()
 	for i in 2:
 		var c: Vector2i = cells[rng.randi() % cells.size()]
 		var at: Vector3 = to_local.call(c) + Vector3(rng.randf_range(-2, 2), 0, rng.randf_range(-2, 2))
-		services.place_treasure(self, root, at, "%s:%d:%d" % [kind, int(place.get("id", 0)), i], rng)
+		services.place_treasure(self, root, at, "%s:%d:%d:f%d" % [kind, int(place.get("id", 0)), i, floor], rng)
 	var pool: Array[SpeciesData] = []
 	for id: String in POOLS.get(kind, []):
 		var species := MenuStyle.species(id)
@@ -937,6 +970,37 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 			if actor != null:
 				(current["actors"] as Array).append(actor)
 	return ORIGIN + entrance + Vector3(0, 0.3, -1.0)
+
+
+## Baja al siguiente piso de la mina (mazmorra de varios pisos, 2026-10-11): se regenera
+## el mismo cuarto con otro recorrido (reseedeado con el número de piso) sin salir del
+## interior ni volver a cargar la pantalla de fundido.
+func _descend_mine() -> void:
+	if current.is_empty() or current["kind"] != "mine" or busy:
+		return
+	busy = true
+	current["floor"] = int(current.get("floor", 1)) + 1
+	for point: Dictionary in current["points"]:
+		structures.remove_point(point)
+	current["points"] = []
+	for actor in current["actors"]:
+		if is_instance_valid(actor):
+			(actor as Node).queue_free()
+	current["actors"] = []
+	var root: Node3D = current["root"]
+	for child in root.get_children():
+		child.queue_free()
+	services.navigation_free_interior()
+	await get_tree().process_frame
+	var place: Dictionary = current["place"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(place.get("x", 0)) + str(place.get("z", 0)) + "mine") ^ structures.world.layout.seed ^ (int(current["floor"]) * 104729)
+	var spawn := _build_dungeon(root, "mine", place, rng)
+	current["spawn"] = spawn
+	services.navigation_bake_interior(root)
+	services.move_party_to(spawn)
+	GameState.notice.emit("Bajas al piso %d de la mina." % int(current["floor"]))
+	busy = false
 
 
 ## Adónde sale la otra boca: la cueva pareja o la Liga (Calle Victoria).

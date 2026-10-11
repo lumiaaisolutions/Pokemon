@@ -382,6 +382,14 @@
       "desc": "Te regresa al último Centro Pokémon o campamento."
     },
     {
+      "id": "treasure-map",
+      "name": "Mapa del Tesoro",
+      "pocket": "exploracion",
+      "price": 0,
+      "treasure_map": true,
+      "desc": "Encontrado en cofres. Al usarlo, marca en el mapa el campamento con cofre más cercano que no hayas descubierto."
+    },
+    {
       "id": "old-rod",
       "name": "Caña Vieja",
       "pocket": "exploracion",
