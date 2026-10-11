@@ -176,3 +176,9 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 - Fernando pidió más recomendaciones de lugares; proponerlas al probar lo construido.
 
 - **Veneno, detalles de implementación:** quita 0.5 de vida por segundo al jugador y 3 % por segundo a los Pokémon, nunca por debajo de 1 (no desmaya, como en los juegos actuales); se ve con tinte morado que late y burbujas moradas sobre el envenenado y los corazones del HUD en morado. Nuevo objeto **Antídoto** ($200, Curación, a la venta en la Tienda Pokémon). Prueba en `test_camping`.
+
+### Rotom Móvil y menú (decisiones de Fernando, 2026-10-10 noche)
+- **Rotom:** Teléfono Rotom en pantalla: entra flotando un Rotom Teléfono naranja con ojos; su pantalla tiene apps con íconos grandes; al tocar una se abre a pantalla completa con tarjetas, íconos y barras; el Rotom parpadea y reacciona (sonríe al cumplir algo).
+- **Apps:** Actividades y caminos (tarjetas con ícono, barra y premio; caminos con progreso e insignias); Noticias con íconos por tipo, hora y "Ver en el mapa"; Clima y calendario (pronóstico por bioma, estación, días de eventos, horario de líderes); Charla con Rotom (consejos según lo que te falta, con animaciones); Cámara y álbum; Brújula de objetivos (flecha en el HUD); Contactos (líderes, héroes, profesor y rival: dónde están, revancha, consejos).
+- **Menú completo (sin excepción):** tarjetas visuales: tarjetas grandes, íconos pixel, gráficas y colores por categoría; nada de listas de texto; se adapta al tamaño de la ventana; animaciones al entrar y al elegir; explicación de cada cosa al pasar el cursor (p. ej. Dinero: saldo grande con monedas, gráfica de ingresos y gastos, íconos en cada precio).
+- **Recursos:** descargar recursos de interfaz de BW2/Rotom de spriters-resource pidiendo permiso por lote (archivo, origen, tamaño); Fernando pasa el Cloudflare si aparece.
