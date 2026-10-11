@@ -12,8 +12,18 @@ func _ready() -> void:
 	if args.size() > 3:
 		GameState.character_id = args[3]
 		GameState.player_name = PlayerCharacters.find(args[3])["name"]
+	# "sinintro" en cualquier posición: equipo no vacío, para que world/main.tscn no
+	# arranque la cinemática del profesor ni la ceremonia del inicial (revisar el HUD
+	# normal, no el de la introducción).
+	if "sinintro" in args:
+		GameState.party.append({"species": "pikachu", "shiny": false, "hp_ratio": 1.0})
 	var scene := (load(scene_path) as PackedScene).instantiate()
 	add_child(scene)
+	# "legendon": fuerza la leyenda de controles desplegada (revisar su alineación). Se
+	# fija DESPUÉS de add_child: main.gd carga GameOptions (y pisaría este valor) en su
+	# propio _ready(), que corre como parte de add_child.
+	if "legendon" in args:
+		GameOptions.show_hints = true
 	if args.size() > 4 and scene.has_method("_show_step"):
 		await get_tree().process_frame
 		if args.size() > 3:
@@ -242,8 +252,18 @@ func _ready() -> void:
 			services.enter_interior(kind, settlement, building)
 		for i in 90:
 			await get_tree().process_frame
+		# "atras": lleva al jugador junto al mostrador/fondo de la sala.
+		if "atras" in args:
+			var interiors := services.interiors
+			var back_z: float = -float(interiors.current.get("size", Vector2.ZERO).y) * 0.5 + 5.0
+			player.global_position = Interiors.ORIGIN + Vector3(0, 0.5, back_z)
+			var rig_back := scene.get_node("CameraRig") as CameraRig
+			rig_back.snap()
+			for i in 20:
+				await get_tree().process_frame
 		var rig := scene.get_node("CameraRig") as CameraRig
-		rig.set("_pitch_deg", 50.0)
+		if not ("rawcam" in args):
+			rig.set("_pitch_deg", 50.0)
 		for i in 30:
 			await get_tree().process_frame
 		print("interior en ", player.global_position)

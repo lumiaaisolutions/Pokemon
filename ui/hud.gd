@@ -581,7 +581,10 @@ func _update_downed_panel() -> void:
 # --- Ayudas de botones -------------------------------------------------------------
 
 func _build_hints() -> void:
-	# Leyenda: filas [ícono] acción, abajo a la derecha, según el contexto.
+	# Leyenda: filas [ícono] acción, abajo a la derecha, según el contexto. Su posición
+	# vertical se recalcula cada cuadro en _update_hints() pegada al panel de la Poké
+	# Ball (que cambia de alto): antes quedaba a una altura fija a medio cargar entre las
+	# misiones y el panel de la Ball, bug de Fernando 2026-10-11 ("se ve desfasada").
 	_legend = VBoxContainer.new()
 	_legend.anchor_left = 1.0
 	_legend.anchor_right = 1.0
@@ -589,10 +592,8 @@ func _build_hints() -> void:
 	_legend.anchor_bottom = 1.0
 	_legend.offset_left = -420
 	_legend.offset_right = -24
-	_legend.offset_top = -380
-	_legend.offset_bottom = -70
 	_legend.alignment = BoxContainer.ALIGNMENT_END
-	_legend.add_theme_constant_override("separation", 6)
+	_legend.add_theme_constant_override("separation", 8)
 	_legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_legend)
 	_tip = PanelContainer.new()
@@ -612,11 +613,9 @@ func _build_hints() -> void:
 	_legend_tab.anchor_bottom = 1.0
 	_legend_tab.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_legend_tab.offset_right = -24
-	_legend_tab.offset_top = -436
-	_legend_tab.offset_bottom = -400
 	_legend_tab.focus_mode = Control.FOCUS_NONE
 	_legend_tab.add_theme_font_override("font", UiKit.font(true))
-	_legend_tab.add_theme_font_size_override("font_size", 17)
+	_legend_tab.add_theme_font_size_override("font_size", 19)
 	var tab_style := StyleBoxFlat.new()
 	tab_style.bg_color = Color(0.07, 0.11, 0.24, 0.8)
 	tab_style.set_corner_radius_all(14)
@@ -645,6 +644,18 @@ func _update_hints() -> void:
 	_legend_tab.visible = not (dialog != null and dialog.is_open())
 	# Mientras alguien habla, la leyenda se oculta para no encimarse.
 	_legend.visible = GameOptions.show_hints and not (dialog != null and dialog.is_open())
+	# Pegadas a la esquina, justo encima del panel de la Ball (su alto cambia según el
+	# texto): antes tenían una altura fija que las dejaba flotando a medio camino entre
+	# las misiones y el panel, chicas y desfasadas (bug de Fernando 2026-10-11).
+	var ball_top := -20.0 - _ball_panel.size.y - 14.0
+	if _legend.visible:
+		_legend.offset_bottom = ball_top
+		_legend.offset_top = ball_top - 280.0
+		_legend_tab.offset_top = _legend.offset_top - 40.0
+		_legend_tab.offset_bottom = _legend.offset_top - 4.0
+	else:
+		_legend_tab.offset_top = ball_top - 36.0
+		_legend_tab.offset_bottom = ball_top
 	var rows: Array = []
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	var context := ""
@@ -784,7 +795,6 @@ func _build_ball_panel() -> void:
 	_ball_panel.offset_right = -24
 	_ball_panel.offset_bottom = -20
 	add_child(_ball_panel)
-	_legend.offset_bottom = -130
 	GameState.bag_changed.connect(func() -> void: _ball_key = "")
 	InputHints.device_changed.connect(func(_pad: bool) -> void: _ball_key = "")
 

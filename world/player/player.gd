@@ -25,6 +25,11 @@ const BIKE_SPEED_FACTOR := 1.5
 const BIKE_ROAD_FACTOR := 2.0
 ## Pendiente máxima que suben los escaladores (Roca y Tierra) montados.
 const CLIMB_MAX_ANGLE := 68.0
+## Escalón más alto que se sube caminando, sin saltar (mostradores bajos, escalones de
+## mostrador, escaleras de interior): CharacterBody3D no los sube solo, los trata como
+## pared (reglas_calidad #2; bug de Fernando 2026-10-11, "parece que hay una pared" en el
+## Centro Pokémon y al subir las escaleras).
+const STEP_HEIGHT := 0.5
 const FLY_SPEED := 15.0
 const FLY_FAST_SPEED := 24.0
 const FLY_CLIMB := 7.0
@@ -186,6 +191,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y -= config.gravity * delta
 
+	if is_on_floor() and not swimming:
+		_step_up(Vector3(velocity.x, 0.0, velocity.z) * delta)
 	move_and_slide()
 	_update_fall(swimming)
 	_update_air(delta)
@@ -267,6 +274,24 @@ func _update_swim_visuals(horizontal: Vector3, delta: float) -> void:
 ## Velocidad horizontal actual (la usan las pruebas y, más adelante, la UI y el audio).
 func get_ground_speed() -> float:
 	return Vector2(velocity.x, velocity.z).length()
+
+
+## Sube escalones bajos caminando, sin que haga falta saltar: si el paso de este cuadro
+## chocaría de frente, se prueba el mismo paso un poco más arriba (STEP_HEIGHT); si ahí ya
+## cabe, es un escalón bajo (un mostrador, un borde de piso, un peldaño) y se sube de
+## golpe para que move_and_slide() complete el avance; si sigue bloqueado, es una pared de
+## verdad y no se toca nada.
+func _step_up(motion: Vector3) -> void:
+	if motion.length() < 0.01:
+		return
+	var xform := global_transform
+	if not test_move(xform, motion):
+		return
+	var lifted := xform
+	lifted.origin += Vector3.UP * STEP_HEIGHT
+	if test_move(lifted, motion):
+		return
+	global_position.y += STEP_HEIGHT
 
 
 func is_dodging() -> bool:
