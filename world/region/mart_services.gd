@@ -570,10 +570,12 @@ func _process(delta: float) -> void:
 			_customer_buys(services.interiors.current.get("settlement", {}))
 	if _thief.is_empty():
 		return
-	var node: Node3D = _thief["node"]
-	if not is_instance_valid(node):
+	# Puede haberse liberado al salir del interior: se revisa antes de tiparlo.
+	var maybe: Variant = _thief.get("node")
+	if not is_instance_valid(maybe):
 		_thief = {}
 		return
+	var node := maybe as Node3D
 	var player := services.player()
 	if player == null:
 		return
