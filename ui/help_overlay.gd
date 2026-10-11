@@ -135,6 +135,92 @@ static func build_content() -> Control:
 	return scroll
 
 
+## Color e ícono/emoji por categoría, para la pestaña Controles del menú (nivel
+## Dinero/Logros, pedido de Fernando el 2026-10-11: tarjetas y colores por categoría).
+const SECTION_STYLE := {
+	"Explorar": [Color(0.35, 0.65, 0.4), "🧭"],
+	"Captura": [Color(0.85, 0.3, 0.3), "🎯"],
+	"Combate en arena": [Color(0.8, 0.5, 0.2), "⚔"],
+	"Tu Pokémon": [Color(0.3, 0.5, 0.85), "🐾"],
+	"Agua": [Color(0.25, 0.6, 0.8), "🌊"],
+	"Sistema": [Color(0.55, 0.45, 0.75), "⚙"],
+}
+
+
+## Versión de la pestaña Controles del menú (fondo claro Pokopia): una tarjeta por
+## categoría con ícono y color propio, glifos de teclado y de mando lado a lado, y un
+## tooltip en cada control explicando qué hace (a diferencia de build_content(), que es
+## la ayuda rápida sobre fondo oscuro con H).
+static func build_menu_content() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# GridContainer con 2 columnas fijas: el ancho de HFlowContainer no se calcula bien
+	## dentro de un ScrollContainer (se queda angosto); con columnas fijas es predecible.
+	var columns := GridContainer.new()
+	columns.columns = 2
+	columns.add_theme_constant_override("h_separation", 16)
+	columns.add_theme_constant_override("v_separation", 16)
+	scroll.add_child(columns)
+	for section: Array in SECTIONS:
+		var title: String = section[0]
+		var style: Array = SECTION_STYLE.get(title, [Color(0.5, 0.5, 0.55), "🎮"])
+		var color: Color = style[0]
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", UiKit.light_style(color, 20, 3))
+		panel.custom_minimum_size = Vector2(380, 0)
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		columns.add_child(panel)
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", 10)
+		panel.add_child(column)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 8)
+		column.add_child(head)
+		head.add_child(_emoji_badge(String(style[1]), color))
+		head.add_child(UiKit.label(title, 22, UiKit.ink(color), true))
+		var header := HBoxContainer.new()
+		header.add_theme_constant_override("separation", 10)
+		column.add_child(header)
+		header.add_child(_menu_column(UiKit.label("Teclado / mouse", 14, UiKit.TEXT_SOFT, true), 190))
+		header.add_child(_menu_column(UiKit.label("Mando", 14, UiKit.TEXT_SOFT, true), 150))
+		for entry: Array in section[1]:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			row.tooltip_text = String(entry[2])
+			row.add_child(_menu_column(_glyph(entry[0], 0), 190))
+			row.add_child(_menu_column(_glyph(entry[1] if entry[1] != "" else entry[0], 1), 150))
+			column.add_child(row)
+			var caption := UiKit.wrapped(String(entry[2]), 14, UiKit.TEXT_SOFT)
+			caption.tooltip_text = String(entry[2])
+			column.add_child(caption)
+	return scroll
+
+
+static func _menu_column(control: Control, width: float) -> Control:
+	var box := HBoxContainer.new()
+	box.custom_minimum_size.x = width
+	box.add_child(control)
+	return box
+
+
+## Círculo de color con un emoji centrado (categoría de la tarjeta de Controles).
+static func _emoji_badge(emoji: String, color: Color, diameter: float = 38.0) -> Control:
+	var holder := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.set_corner_radius_all(int(diameter * 0.5))
+	holder.add_theme_stylebox_override("panel", style)
+	holder.custom_minimum_size = Vector2(diameter, diameter)
+	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var label := Label.new()
+	label.text = emoji
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", int(diameter * 0.55))
+	holder.add_child(label)
+	return holder
+
+
 static func _glyph(action: String, pad: int) -> Control:
 	if action.begins_with("@"):
 		return InputGlyph.text(action.substr(1), pad == 0)

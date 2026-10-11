@@ -93,6 +93,7 @@ func _detail(index: int) -> Control:
 	columns.add_child(left)
 	left.add_child(UiKit.icon_rect(MenuStyle.front_sprite(species, shiny), Vector2(260, 220)))
 	var hp_row := HBoxContainer.new()
+	hp_row.tooltip_text = "Vida actual. En 0 se desmaya y hay que curarlo en el Centro o con pociones."
 	hp_row.add_child(UiKit.bar(ratio, 200, UiKit.hp_color(ratio), 14))
 	hp_row.add_child(UiKit.label("  %d/%d" % [int(hp_max * ratio), hp_max], 20, UiKit.WHITE, true))
 	left.add_child(hp_row)
@@ -102,6 +103,7 @@ func _detail(index: int) -> Control:
 		left.add_child(UiKit.label("★ Es tu acompañante", 20, UiKit.GOLD, true))
 	else:
 		var make := UiKit.slant_button("Hacer acompañante", UiKit.MINT)
+		make.tooltip_text = "Te acompañará en el mundo y el combate (reemplaza al que tengas ahora)."
 		make.pressed.connect(func() -> void:
 			if _menu.main != null and _menu.main.has_method("swap_companion"):
 				_menu.main.swap_companion(index)
@@ -132,6 +134,7 @@ func _detail(index: int) -> Control:
 		for i in STAT_KEYS.size():
 			var key: String = STAT_KEYS[i]
 			var plus := MenuStyle.button("+1 %s" % STAT_NAMES[i], 15)
+			plus.tooltip_text = "Sube %s en 1 punto de entrenamiento (tope %d por estadística, %d en total)." % [STAT_NAMES[i], MAX_PER_STAT, MAX_TOTAL]
 			plus.disabled = int(training.get(key, 0)) >= MAX_PER_STAT or _total(training) >= MAX_TOTAL
 			plus.pressed.connect(func() -> void:
 				var current: Dictionary = entry.get("training", {})

@@ -21,10 +21,10 @@
   - **Mapa:** el mapa completo actual.
   - **Diario y misiones:** misiones activas (como las de megapiedras), su progreso y el marcador en el mapa.
   - **Rotom:** el teléfono Rotom entra flotando y parpadea; su pantalla tiene 7 apps a pantalla completa (Actividades y caminos, Noticias, Clima y calendario, Charla con Rotom, Cámara y álbum, Brújula de objetivos, Contactos). Hecho (2026-10-11); detalle completo en [interfaz.md](interfaz.md#rotom-teléfono-y-menú-con-tarjetas-en-todas-las-pestañas-2026-10-11).
-  - **Ficha del entrenador:** personaje, nombre, tiempo jugado, dinero, Pokédex, capturas, shinies, legendarios e insignias.
+  - **Ficha del entrenador:** tarjeta estilo Trainer Card con retrato, nombre, dificultad, medallas de la región en círculos, barra de la Pokédex y chips con dinero, tiempo jugado, región, shinies/legendarios y cintas. Detalle en [interfaz.md](interfaz.md#ficha-mapa-controles-opciones-y-guardar-al-mismo-nivel-2026-10-11-segunda-pasada).
   - **Logros y estadísticas:** medallas por hitos y estadísticas de partida (km recorridos, peleas ganadas, desmayos…).
   - **Dinero:** dinero, últimas compras y ventas, y precios de referencia para las tiendas de la capa 2.6.
-  - **Controles:** dibujo pixel art del **teclado de Mac** y del **control de PlayStation**. Al elegir una acción, su botón parpadea y una mini animación muestra a tu personaje haciéndola.
+  - **Controles:** una tarjeta por categoría con glifos del **teclado/mouse de Mac** y del **control de PlayStation** lado a lado (`InputGlyph`) y un tooltip por control; la ayuda rápida con H sigue aparte, sobre fondo oscuro.
   - **Opciones:** ver abajo.
   - **Guardar:** ver abajo.
 - **Guía inicial:** la primera vez que haces cada cosa salen avisos cortos.
@@ -59,7 +59,7 @@ Hecho; lo implementado está en [mochila y Pokédex](mochila_y_pokedex.md). Del 
 - **Accesibilidad:** tamaño del texto, filtro para daltonismo, reducir temblor de cámara y destellos, y mantener o alternar para apuntar y correr.
 
 ## Guardado
-- **3 ranuras** desde el menú. Cada una muestra personaje, nombre, tiempo jugado y Pokédex.
+- **3 ranuras** desde el menú, en tarjeta (retrato, nombre, tiempo jugado, medallas, región, Pokédex y dinero), con su botón propio y una tarjeta aparte para el autoguardado.
 - **Autoguardado** cada 5 minutos y al entrar a un Centro Pokémon.
 - Se guarda: personaje, nombre y dificultad; posición; vida; dinero; equipo, caja y mochila; Pokédex e investigación; legendarios; niebla del mapa; misiones; logros; estadísticas y opciones. Las opciones se guardan aparte, en `user://`.
 
