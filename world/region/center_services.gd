@@ -346,6 +346,12 @@ func _do_excursion(key: String, spot: Dictionary) -> void:
 
 # --- Fotógrafo (cabina de fotos, queda en la Ficha) -------------------------------------------
 
+## Cabina de fotos (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md: antes solo contaba cuántas fotos y con quién, sin
+## generar una imagen real). Reusa PhotoMode (la misma cámara con la que se fotografían
+## los Pokémon salvajes, "photo" en el mundo): captura el viewport de verdad con tu
+## compañero y la guarda en user://fotos/, visible en la Ficha y en el álbum del Rotom
+## (que ya lee toda esa carpeta).
 func photo_booth() -> void:
 	var companion := services.companion()
 	var dialog := _dialog()
@@ -357,9 +363,13 @@ func photo_booth() -> void:
 			GameState.notice.emit(text)
 		return
 	var flags := _flags()
+	var photo := get_tree().get_first_node_in_group(&"photo_mode") as PhotoMode
+	if photo != null:
+		await photo.take()
+		if photo.last_saved_path != "":
+			flags["photo_booth_path"] = photo.last_saved_path
 	flags["photo_booth_count"] = int(flags.get("photo_booth_count", 0)) + 1
 	flags["photo_booth_last"] = MenuStyle.species(GameState.party[GameState.companion_index]["species"]).display_name
-	AudioBus.play_sfx("ui_decide")
 	var text := "¡Sonrían! Guardamos la foto con %s en tu Ficha." % flags["photo_booth_last"]
 	if dialog != null:
 		dialog.open("Fotógrafo", [text])
@@ -369,6 +379,11 @@ func photo_booth() -> void:
 
 func photo_booth_count() -> int:
 	return int(_flags().get("photo_booth_count", 0))
+
+
+## Ruta de la última foto real de la cabina (o "" si todavía no se ha tomado ninguna).
+func photo_booth_path() -> String:
+	return String(_flags().get("photo_booth_path", ""))
 
 
 # --- Segundo piso: club de combate y tabla de récords --------------------------------------
@@ -452,21 +467,63 @@ func region_board(settlement: Dictionary) -> void:
 # --- Visitas de líderes, héroes y rival curando a su equipo --------------------------------
 
 const VISITOR_CHANCE := 0.25
+## Peso relativo de cada tipo de visitante cuando hay héroes de verdad pasando hoy por
+## este pueblo (Heroes.location) o toca la visita suelta del rival: completando la
+## simplificación anotada en docs/decisiones_sin_preguntar.md ("solo el líder de la
+## ciudad por ahora"), ahora también puede tocar un héroe no elegido o Hugh.
+const RIVAL_VISIT_CHANCE := 0.12
 
 
-func maybe_visitor(settlement: Dictionary) -> String:
+## Visitante de hoy (o {} si no toca ninguno): {"id", "kind" ("leader"/"hero"/"rival"),
+## "sprite_id" (lo que se le pasa a Interiors._npc para su aspecto), "name"}.
+func maybe_visitor(settlement: Dictionary) -> Dictionary:
 	var key := "visitor:%s:%d" % [settlement.get("name", ""), GameState.game_day()]
 	if _flags().get(key, false) or _rng.randf() > VISITOR_CHANCE:
-		return ""
+		return {}
 	_flags()[key] = true
-	var id := services.structures.leader_of(settlement)
-	return id
+	var candidates: Array[Dictionary] = []
+	var leader_id := services.structures.leader_of(settlement)
+	if leader_id != "":
+		candidates.append({"id": leader_id, "kind": "leader", "sprite_id": Leaders.look(leader_id), "name": Leaders.name_of(leader_id)})
+	var heroes := services.main().get_node_or_null("Heroes")
+	if heroes != null and heroes.has_method("roster") and heroes.has_method("location"):
+		for id: String in heroes.roster():
+			var loc: Dictionary = heroes.location(id)
+			if String(loc.get("name", "")) == String(settlement.get("name", "")):
+				candidates.append({"id": id, "kind": "hero", "sprite_id": id, "name": PlayerCharacters.find(id)["name"]})
+	if _rng.randf() < RIVAL_VISIT_CHANCE:
+		candidates.append({"id": "hugh", "kind": "rival", "sprite_id": "hugh", "name": GameState.rival})
+	if candidates.is_empty():
+		return {}
+	return candidates[_rng.randi() % candidates.size()]
 
 
-func talk_visitor(id: String) -> void:
+func _visitor_portrait(visitor: Dictionary) -> Texture2D:
+	match String(visitor.get("kind", "")):
+		"leader":
+			return Leaders.portrait(visitor["id"])
+		"rival":
+			return NpcLooks.portrait("hugh")
+		_:
+			var sheet := PlayerCharacters.sheet(visitor["id"])
+			var atlas := AtlasTexture.new()
+			atlas.atlas = sheet
+			atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
+			return atlas
+
+
+## Hablar con la visita: platicar o pedirle un combate amistoso (mismo patrón corto que
+## el café y el club de combate, anotado en docs/decisiones_sin_preguntar.md).
+func talk_visitor(visitor: Dictionary) -> void:
 	var dialog := _dialog()
-	var text := "%s: vine a curar a mi equipo después de unos combates duros." % Leaders.name_of(id)
-	if dialog != null:
-		dialog.open("Líder " + Leaders.name_of(id), [text], Leaders.portrait(id))
-	else:
+	var kind_title: String = {"leader": "Líder", "hero": "Entrenador", "rival": "Rival"}.get(String(visitor.get("kind", "")), "Visita")
+	var name: String = visitor.get("name", "Alguien")
+	var text := "%s: vine a curar a mi equipo después de unos combates duros." % name
+	if dialog == null:
 		GameState.notice.emit(text)
+		return
+	dialog.open("%s %s" % [kind_title, name], [text], _visitor_portrait(visitor), ["Platicar", "Combate amistoso"], func(choice: int) -> void:
+		if choice == 1:
+			_friendly_duel(name, visitor.get("sprite_id", visitor.get("id", "")))
+		else:
+			dialog.open("%s %s" % [kind_title, name], ["Buen viaje. Aquí seguiré un rato más."], _visitor_portrait(visitor)))

@@ -77,6 +77,8 @@ static func action(name: String) -> Texture2D:
 			texture = _draw(_tent_icon)
 		"commune":
 			texture = _draw(_heart)
+		"chest":
+			texture = _draw(_box)
 		"upgrade":
 			texture = _draw(_hammer)
 		"stars":

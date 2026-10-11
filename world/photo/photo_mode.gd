@@ -16,6 +16,10 @@ const UI_NODES := ["Hud", "MapUi", "Battle/BattleUI"]
 
 var _main: Node
 var _busy := false
+## Ruta de la última imagen guardada (user://fotos/...): la usa la cabina de fotos del
+## Centro Pokémon para quedarse con la foto real (completando la simplificación anotada
+## en docs/decisiones_sin_preguntar.md: antes no generaba una imagen de verdad).
+var last_saved_path := ""
 
 
 func _ready() -> void:
@@ -31,6 +35,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Saca una foto. Devuelve las especies fotografiadas.
 func take() -> Array[String]:
 	_busy = true
+	last_saved_path = ""
 	var hidden: Array[CanvasLayer] = []
 	for path in UI_NODES:
 		var layer := _main.get_node_or_null(path) as CanvasLayer
@@ -44,7 +49,9 @@ func take() -> Array[String]:
 	if image != null and not image.is_empty():
 		DirAccess.make_dir_recursive_absolute(PHOTO_DIR)
 		var stamp := Time.get_datetime_string_from_system().replace(":", "-")
-		image.save_png(PHOTO_DIR + "foto_%s.png" % stamp)
+		var filename := "foto_%s.png" % stamp
+		image.save_png(PHOTO_DIR + filename)
+		last_saved_path = PHOTO_DIR + filename
 	_flash()
 	AudioBus.play_sfx("ui_decide", 1.6)
 	var subjects := subjects_in_frame()

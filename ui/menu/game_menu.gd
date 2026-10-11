@@ -580,7 +580,30 @@ func _trainer_card() -> Control:
 	]
 	for entry: Array in data:
 		chips.add_child(_fiche_chip(String(entry[0]), String(entry[1]), String(entry[2])))
+	var photo_thumb := _photo_booth_thumbnail()
+	if photo_thumb != null:
+		right.add_child(photo_thumb)
 	return scroll
+
+
+## Foto real de la cabina del Centro (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md): si ya hay una guardada, su miniatura en la Ficha.
+func _photo_booth_thumbnail() -> Control:
+	var path := String(GameState.world_flags.get("center", {}).get("photo_booth_path", ""))
+	if path == "" or not FileAccess.file_exists(path):
+		return null
+	var image := Image.new()
+	if image.load(path) != OK:
+		return null
+	image.resize(200, 112, Image.INTERPOLATE_LANCZOS)
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UiKit.card_style(10))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	frame.add_child(box)
+	box.add_child(UiKit.label("📷 Tu última foto en la cabina", 15, UiKit.TEXT_SOFT, true))
+	box.add_child(UiKit.icon_rect(ImageTexture.create_from_image(image), Vector2(200, 112)))
+	return frame
 
 
 ## Chip con emoji + valor y una explicación en su tooltip (Ficha de entrenador).

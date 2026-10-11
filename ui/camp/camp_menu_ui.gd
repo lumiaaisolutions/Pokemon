@@ -40,7 +40,9 @@ func open() -> void:
 	_option(box, "Cocinar", "cook", Color(0.85, 0.45, 0.15), true, func() -> void: camp_manager.open_cooking(entry))
 	_option(box, "Recoger", "pack", Color(0.5, 0.38, 0.25), true, func() -> void: camp_manager.pack_tent(entry))
 	_option(box, "Convivir" + (" (ya hoy)" if communed else ""), "commune", Color(0.8, 0.3, 0.45), not communed, func() -> void: camp_manager.commune(entry))
-	_option(box, "Mejorar campamento" + (" (máximo)" if level >= 2 else " ($%d)" % CampManager.UPGRADE_COST), "upgrade", Color(0.2, 0.55, 0.5), level < 2, func() -> void: camp_manager.upgrade_camp(entry))
+	_option(box, "Mejorar campamento" + (" (máximo)" if level >= 2 else " (%s)" % camp_manager.upgrade_cost_text(entry)), "upgrade", Color(0.2, 0.55, 0.5), level < 2, func() -> void: camp_manager.upgrade_camp(entry))
+	if camp_manager.has_chest(entry):
+		_option(box, "Baúl del campamento", "chest", Color(0.55, 0.42, 0.2), true, func() -> void: camp_manager.open_chest(entry))
 	_option(box, "Ver las estrellas" + ("" if night else " (de noche)"), "stars", Color(0.3, 0.35, 0.6), night, func() -> void: camp_manager.stargaze())
 	_option(box, "Nada", "none", Color(0.42, 0.42, 0.46), true, Callable())
 	(box.get_child(2) as Button).grab_focus.call_deferred()

@@ -102,6 +102,13 @@ func _set_indoor_look(inside: bool, dungeon: bool) -> void:
 	if rig != null and inside:
 		rig.set("_zoom", current.get("cam_zoom", rig.zoom_max))
 		rig.set("_pitch_deg", current.get("cam_pitch", 52.0))
+		# Yaw de golpe (encontrado el 2026-10-11 al revisar las sondas): el jugador entra
+		# siempre mirando hacia -Z (así se construyen _build_room y _build_dungeon: la
+		# puerta/entrada queda en +Z y el cuarto se extiende hacia -Z), pero el yaw no se
+		# reiniciaba y se quedaba con el de afuera, a veces mostrando una pared de frente en
+		# vez del cuarto completo. rig.snap() (llamado justo después desde move_party_to) ya
+		# fija posición y zoom de golpe; con esto también fija el yaw de golpe.
+		rig.set("_yaw_deg", 0.0)
 
 
 func _fade_to(alpha: float, seconds: float = 0.3) -> void:
@@ -165,6 +172,12 @@ func _cleanup() -> void:
 	services.end_trial()
 	services.navigation_free_interior()
 	_set_indoor_look(false, false)
+	if current.get("kind", "") == "mart":
+		# La sala (y con ella el ladrón, los clientes y el ambiente de la tienda) se libera
+		# abajo; sin esto, MartServices se quedaba con referencias a nodos ya liberados
+		# (bug encontrado el 2026-10-11: "Trying to assign invalid previously freed
+		# instance" cada cuadro al revisar al ladrón).
+		services.mart.reset_room()
 	(current["root"] as Node).queue_free()
 	current = {}
 
@@ -659,6 +672,10 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 	else:
 		_room_shell(root, size, FLOORS.get(kind, Color(0.7, 0.7, 0.7)), wall)
 	var door := Vector3(0, 0, size.y * 0.5 - (2.2 if _modeled else 1.0))
+	# Puerta local (MartServices la usa para los clientes que entran y salen de verdad por
+	# ahí; ver "shelves" más abajo, donde cada estante se registra para que caminen a uno).
+	current["door"] = door
+	current["shelves"] = [] as Array[Vector3]
 	_block(root, Vector3(2.4, 0.05, 1.4), door + Vector3(0, 0.02, 0.2), Color(0.6, 0.2, 0.2), false)
 	_exit_mark(root, door)
 	# Salir con E o caminando hacia la salida (como al entrar).
@@ -699,12 +716,16 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			# Cabina de fotos (queda en la Ficha) y tablón de la región.
 			_point(Vector3(-size.x * 0.5 + 1.6, 0.5, back + size.y * 0.3), "Cabina de fotos con tu compañero", services.center_services.photo_booth, 1.6)
 			_point(Vector3(size.x * 0.5 - 1.6, 0.5, back + size.y * 0.3), "Tablón de la región", services.center_services.region_board.bind(settlement), 1.6)
-			# Visita ocasional: el líder de la ciudad viene a curar a su equipo.
-			var visitor_id := services.center_services.maybe_visitor(settlement)
-			if visitor_id != "":
+			# Visita ocasional: el líder de la ciudad, un héroe no elegido que hoy anda por
+			# aquí (Heroes.location) o el rival, curando a su equipo; con quien se puede
+			# platicar o pedir un combate amistoso (completando la simplificación anotada
+			# en docs/decisiones_sin_preguntar.md).
+			var visitor := services.center_services.maybe_visitor(settlement)
+			if not visitor.is_empty():
 				var visitor_at := Vector3(-1.2, 0, back + size.y * 0.2)
-				_npc(root, visitor_at, Leaders.look(visitor_id))
-				_point(visitor_at + Vector3(0, 0.5, 1.2), "Hablar con el líder %s" % Leaders.name_of(visitor_id), services.center_services.talk_visitor.bind(visitor_id), 1.8)
+				_npc(root, visitor_at, visitor["sprite_id"])
+				var verb: String = {"leader": "al líder", "hero": "a", "rival": "al rival"}.get(visitor["kind"], "a")
+				_point(visitor_at + Vector3(0, 0.5, 1.2), "Hablar con %s %s" % [verb, visitor["name"]], services.center_services.talk_visitor.bind(visitor), 1.8)
 			# Segundo piso real del modelo: club de combate (retos amistosos con tabla de
 			# récords de racha) y más zona de descanso.
 			if has_upper_floor():

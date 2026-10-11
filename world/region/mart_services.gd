@@ -37,6 +37,13 @@ const GIFT_LIKES := {
 const THIEF_ESCAPE_SECONDS := 14.0
 const THIEF_CATCH_RADIUS := 1.6
 const THIEF_CHANCE := 0.3
+## Clientes con rutina (2026-10-11, completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md): entran por la puerta, caminan a un estante de
+## verdad, "compran" (burbuja + baja existencias) y salen por donde entraron.
+const CUSTOMER_WALK_SPEED := 1.7
+const CUSTOMER_MAX := 2
+const CUSTOMER_BROWSE_SECONDS := Vector2(0.8, 1.6)
+const CUSTOMER_BUBBLES := ["Justo lo que necesitaba.", "Me lo llevo.", "Qué buen surtido.", "¡Perfecto, gracias!"]
 
 var services: TownServices
 var _rng := RandomNumberGenerator.new()
@@ -44,9 +51,11 @@ var _rng := RandomNumberGenerator.new()
 var _thief: Dictionary = {}
 ## Ambiente de "ruido de gente" dentro de la tienda (si existe el archivo).
 var _ambient: AudioStreamPlayer
-## Cuenta regresiva para que un cliente compre algo (existencias que también bajan sin
+## Cuenta regresiva para que entre un cliente nuevo (existencias que también bajan sin
 ## que tú compres, acordado con Fernando el 2026-10-10).
 var _customer_timer := 0.0
+## Clientes activos ahora: [{"node", "state", "target", "door", "wait", "id"}].
+var _customers: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -87,9 +96,20 @@ func remaining(settlement: Dictionary, id: String) -> int:
 	return int(_day_stock(settlement).get(id, STOCK_PER_DAY))
 
 
-## Un cliente de la tienda compró uno (rutina, ver _process): baja existencias sin avisar
-## con una ventana si ya está en 0.
-func _customer_buys(settlement: Dictionary) -> void:
+## Un cliente real entra por la puerta, camina a un estante con existencias, "compra"
+## (burbuja + baja esa existencia) y sale por donde entró (completando la simplificación
+## anotada en docs/decisiones_sin_preguntar.md: antes solo bajaba una existencia al azar
+## sin nadie caminando).
+func _spawn_customer(settlement: Dictionary) -> void:
+	if _customers.size() >= CUSTOMER_MAX:
+		return
+	var interiors := services.interiors
+	if interiors.current.get("kind", "") != "mart":
+		return
+	var root: Node3D = interiors.current.get("root")
+	var shelves: Array = interiors.current.get("shelves", [])
+	if root == null or shelves.is_empty():
+		return
 	var entry := _day_stock(settlement)
 	var options: Array[String] = []
 	for id: String in entry:
@@ -97,8 +117,60 @@ func _customer_buys(settlement: Dictionary) -> void:
 			options.append(id)
 	if options.is_empty():
 		return
-	var id: String = options[_rng.randi() % options.size()]
+	var door: Vector3 = interiors.current.get("door", Vector3.ZERO)
+	var look := NpcLooks.for_role("vecino", _rng)
+	var sprite := DirectionalSprite.new()
+	sprite.name = "Customer"
+	sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
+	sprite.walk_fps = 5.0
+	sprite.position = door
+	root.add_child(sprite)
+	sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+	sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
+	var shelf: Vector3 = shelves[_rng.randi() % shelves.size()]
+	_customers.append({"node": sprite, "state": "enter", "target": shelf, "door": door, "wait": 0.0,
+			"id": options[_rng.randi() % options.size()], "settlement": settlement})
+
+
+## Avanza un cliente un cuadro; true si ya terminó su rutina (hay que quitarlo).
+func _update_customer(customer: Dictionary, delta: float) -> bool:
+	var node: DirectionalSprite = customer["node"]
+	if not is_instance_valid(node):
+		return true
+	var state: String = customer["state"]
+	if state == "browse":
+		node.animate(Vector3.ZERO, delta)
+		customer["wait"] = float(customer["wait"]) - delta
+		if float(customer["wait"]) <= 0.0:
+			_customer_buys(customer)
+			customer["state"] = "leave"
+		return false
+	var target: Vector3 = customer["target"] if state == "enter" else customer["door"]
+	var to := target - node.position
+	to.y = 0.0
+	if to.length() < 0.2:
+		node.position = Vector3(target.x, node.position.y, target.z)
+		if state == "enter":
+			customer["state"] = "browse"
+			customer["wait"] = _rng.randf_range(CUSTOMER_BROWSE_SECONDS.x, CUSTOMER_BROWSE_SECONDS.y)
+			node.animate(Vector3.ZERO, delta)
+			return false
+		return true # Llegó a la puerta de salida: _process la libera.
+	var step := to.normalized() * minf(CUSTOMER_WALK_SPEED * delta, to.length())
+	node.position += step
+	node.animate(step / maxf(delta, 0.0001), delta)
+	return false
+
+
+## El cliente llegó al estante: baja esa existencia (como antes) y burbuja de compra.
+func _customer_buys(customer: Dictionary) -> void:
+	var settlement: Dictionary = customer["settlement"]
+	var id: String = customer["id"]
+	var entry := _day_stock(settlement)
+	if int(entry.get(id, 0)) <= 0:
+		return
 	entry[id] = int(entry[id]) - 1
+	SpeechBubbles.say(customer["node"], CUSTOMER_BUBBLES[_rng.randi() % CUSTOMER_BUBBLES.size()], 1.8)
 
 
 # --- Mostrador: saludo (empleado del mes), tienda y tarjeta de puntos ------------------
@@ -239,6 +311,9 @@ func place_shelf(local: Vector3, settlement: Dictionary, id: String) -> void:
 	var interiors := services.interiors
 	interiors.room_marker(local + Vector3(0, 1.3, 0), Items.icon(id), 0.5)
 	interiors.room_point(local, "%s ($%d)" % [Items.display_name(id), int(Items.get_item(id).get("price", 0))], inspect_shelf.bind(settlement, id), 1.7)
+	# Registra el estante para que los clientes con rutina caminen de verdad hacia uno
+	# (ver _spawn_customer): posición local donde se para a "comprar".
+	(interiors.current.get("shelves", []) as Array).append(local)
 
 
 ## Abre una ventanita con el objeto del estante: nombre, descripción, precio y un botón
@@ -562,18 +637,43 @@ func maybe_spawn_thief(settlement: Dictionary, root: Node3D, shelf_at: Vector3, 
 	GameState.notice.emit("¡Un ladrón del %s está vaciando un estante! Atrápalo antes de que llegue a la puerta." % GameState.villain_team)
 
 
+## Al salir de la tienda (Interiors._cleanup() ya libera la sala y a quien esté dentro):
+## se vacían el ladrón y los clientes para no quedarse con referencias a nodos liberados.
+func reset_room() -> void:
+	_thief = {}
+	_customers.clear()
+	stop_ambient()
+
+
 func _process(delta: float) -> void:
-	if services.interiors.is_inside() and services.interiors.current.get("kind", "") == "mart":
+	var inside_mart: bool = services.interiors.is_inside() and services.interiors.current.get("kind", "") == "mart"
+	if inside_mart:
 		_customer_timer -= delta
 		if _customer_timer <= 0.0:
 			_customer_timer = _rng.randf_range(25.0, 45.0)
-			_customer_buys(services.interiors.current.get("settlement", {}))
+			_spawn_customer(services.interiors.current.get("settlement", {}))
+	for i in range(_customers.size() - 1, -1, -1):
+		# Si saliste de la tienda, Interiors._cleanup() ya liberó la sala entera (y a los
+		# clientes con ella); aquí solo se vacía la lista para no seguir actualizando nodos
+		# inválidos. Si sigues dentro y un cliente terminó su rutina, se libera su nodo.
+		if not inside_mart:
+			_customers.remove_at(i)
+		elif _update_customer(_customers[i], delta):
+			var node: Node3D = _customers[i]["node"]
+			if is_instance_valid(node):
+				node.queue_free()
+			_customers.remove_at(i)
 	if _thief.is_empty():
 		return
-	var node: Node3D = _thief["node"]
-	if not is_instance_valid(node):
+	# Bug encontrado al revisar (2026-10-11): si sales de la tienda con el ladrón activo,
+	# Interiors._cleanup() libera la sala entera (y al ladrón con ella) pero _thief no se
+	# vaciaba; asignar esa instancia ya liberada a una variable con tipo (Node3D) hacía
+	# "Trying to assign invalid previously freed instance" cada cuadro, sin parar. Se
+	# revisa la validez con el valor sin tipo del diccionario antes de esa asignación.
+	if not is_instance_valid(_thief.get("node")):
 		_thief = {}
 		return
+	var node: Node3D = _thief["node"]
 	var player := services.player()
 	if player == null:
 		return

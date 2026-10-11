@@ -2,19 +2,26 @@ class_name CookingUI
 extends Control
 ## Cocinar en la fogata de la tienda de campaña (campamento, comida y hambre;
 ## acordado con Fernando el 2026-10-10): recetas según los ingredientes de la
-## mochila (curry, sándwich, estofado de bayas, pescado asado…); se comen al
-## instante (llenan mucho el hambre y dan un efecto extra) y tu equipo sale a
-## comer contigo (sube su vínculo). Pausa el juego, como la Tienda Pokémon.
+## mochila (curry, sándwich, estofado de bayas, pescado asado…). Tiempo real de
+## cocción con animación de vapor (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md: antes era instantáneo); la fogata mejorada del
+## campamento cocina más rápido (ver CampManager.cook_seconds). Al estar listo, tu
+## equipo sale a comer contigo (sube su vínculo). Pausa el juego, como la Tienda Pokémon.
 
 var main: Node
-## Campamento desde el que se abrió (si lo hay): al salir, si se cocinó algo, se ve el
-## vapor, las burbujas y el platillo sobre el tronco (ver world/npc/camp.gd.cook_flourish,
-## pedido de Fernando el 2026-10-10, ronda 3).
+## Campamento desde el que se abrió (si lo hay): al terminar de cocinar se ve el vapor,
+## las burbujas y el platillo sobre el tronco (world/npc/camp.gd.cook_flourish, pedido de
+## Fernando el 2026-10-10, ronda 3).
 var camp: Camp
 var _money: Label
 var _list: VBoxContainer
 var _message := ""
 var _last_dish := ""
+## Cocción en curso (tiempo real; ver _start_cooking/_process).
+var _cooking := false
+var _cook_remaining := 0.0
+var _pending_recipe: Dictionary = {}
+var _pending_eat_now := true
 
 
 func open() -> void:
@@ -52,9 +59,13 @@ func open() -> void:
 
 
 func _refresh() -> void:
-	_money.text = _message if _message != "" else "Elige una receta: se come al instante junto a tu equipo."
 	for child in _list.get_children():
 		child.queue_free()
+	if _cooking:
+		_money.text = "🔥 Cocinando %s... %ds" % [Items.display_name(String(_pending_recipe.get("result", ""))), int(ceil(_cook_remaining))]
+		_list.add_child(MenuStyle.label("Espera a que esté listo junto a la fogata.", 16, MenuStyle.MUTED))
+		return
+	_money.text = _message if _message != "" else "Elige una receta: se cocina de verdad junto a la fogata."
 	var recipes := Items.cook_recipes()
 	if recipes.is_empty():
 		_list.add_child(MenuStyle.label("Todavía no hay recetas de cocina.", 18, MenuStyle.MUTED))
@@ -70,19 +81,14 @@ func _refresh() -> void:
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name.tooltip_text = str(Items.get_item(String(recipe["result"])).get("desc", ""))
 		row.add_child(name)
-		# Comer ahí o guardarlo en la Mochila (decisión de Fernando, 2026-10-10; caduca).
+		# Comer ahí o guardarlo en la Mochila (decisión de Fernando, 2026-10-10; caduca):
+		# las dos opciones cocinan de verdad en la fogata (tiempo real, ver _start_cooking).
 		var button := MenuStyle.button("Cocinar y comer", 18)
-		button.pressed.connect(func() -> void:
-			_message = ItemEffects.cook(recipe, main, true)
-			if _message.begins_with("¡Cocinaste"):
-				_last_dish = String(recipe["result"])
-			_refresh())
+		button.pressed.connect(_start_cooking.bind(recipe, true))
 		MenuStyle.style_button(button, ItemEffects.can_craft(recipe))
 		row.add_child(button)
 		var keep := MenuStyle.button("Guardar", 18)
-		keep.pressed.connect(func() -> void:
-			_message = ItemEffects.cook(recipe, main, false)
-			_refresh())
+		keep.pressed.connect(_start_cooking.bind(recipe, false))
 		MenuStyle.style_button(keep, ItemEffects.can_craft(recipe))
 		row.add_child(keep)
 		_list.add_child(row)
@@ -92,6 +98,44 @@ func _refresh() -> void:
 		first.grab_focus.call_deferred()
 
 
+## Empieza la cocción de verdad (tiempo real, más corto con la fogata mejorada): el
+## platillo no está listo hasta que pasa CampManager.cook_seconds(nivel).
+func _start_cooking(recipe: Dictionary, eat_now: bool) -> void:
+	if _cooking or not ItemEffects.can_craft(recipe):
+		return
+	_cooking = true
+	_pending_recipe = recipe
+	_pending_eat_now = eat_now
+	var level := int(camp.level) if camp != null and is_instance_valid(camp) else 0
+	_cook_remaining = CampManager.cook_seconds(level)
+	if camp != null and is_instance_valid(camp):
+		PixelBurst.spawn(main, camp.global_position + Camp.FIRE_OFFSET + Vector3(0, 1.3, 0), PixelBurst.Kind.SMOKE, 0.6)
+	_refresh()
+
+
+func _process(delta: float) -> void:
+	if not _cooking:
+		return
+	_cook_remaining -= delta
+	if _cook_remaining <= 0.0:
+		_finish_cooking()
+	else:
+		_money.text = "🔥 Cocinando %s... %ds" % [Items.display_name(String(_pending_recipe.get("result", ""))), int(ceil(_cook_remaining))]
+
+
+func _finish_cooking() -> void:
+	_cooking = false
+	_message = ItemEffects.cook(_pending_recipe, main, _pending_eat_now)
+	var dish := String(_pending_recipe.get("result", ""))
+	if _message.begins_with("¡Cocinaste"):
+		_last_dish = dish
+	if camp != null and is_instance_valid(camp):
+		var companion := main.get("companion") as PokemonActor if main != null else null
+		camp.cook_flourish(companion, Items.icon(dish))
+	_pending_recipe = {}
+	_refresh()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("menu"):
 		get_viewport().set_input_as_handled()
@@ -99,8 +143,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
+	if _cooking:
+		GameState.notice.emit("Espera a que termine de cocinarse.")
+		return
 	get_tree().paused = false
-	if camp != null and is_instance_valid(camp) and _last_dish != "":
-		var companion := main.get("companion") as PokemonActor if main != null else null
-		camp.cook_flourish(companion, Items.icon(_last_dish))
 	queue_free()
