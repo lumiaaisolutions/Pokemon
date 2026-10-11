@@ -801,11 +801,21 @@ func _place_passes(rng: RandomNumberGenerator) -> void:
 		return
 	var wanted := rng.randi_range(4, 6)
 	var half := size * 0.5 - 160.0
+	# Por etapas: primero lo ideal; si no alcanzan 4, se relaja la cresta, la distancia al
+	# camino y los biomas (en algunas semillas hay pocas montañas cerca de caminos).
+	var stages := [[PASS_MIN_RIDGE, 600.0, PASS_BIOMES], [PASS_MIN_RIDGE * 0.6, 1000.0, PASS_BIOMES + [Biome.TUNDRA, Biome.VOLCANO, Biome.FOREST, Biome.DARK_FOREST]], [3.0, 1600.0, []]]
+	for stage: Array in stages:
+		if passes.size() >= 4:
+			break
+		_search_passes(rng, wanted, half, float(stage[0]), float(stage[1]), stage[2] as Array)
+
+
+func _search_passes(rng: RandomNumberGenerator, wanted: int, half: float, min_ridge: float, road_max: float, biomes: Array) -> void:
 	var attempts := 0
-	while passes.size() < wanted and attempts < 40000:
+	while passes.size() < wanted and attempts < 60000:
 		attempts += 1
 		var mid := Vector2(rng.randf_range(-half, half), rng.randf_range(-half, half))
-		if not biome_at(mid.x, mid.y) in PASS_BIOMES:
+		if not biomes.is_empty() and not biome_at(mid.x, mid.y) in biomes:
 			continue
 		var angle := rng.randf() * TAU
 		var dir := Vector2(cos(angle), sin(angle))
@@ -822,16 +832,17 @@ func _place_passes(rng: RandomNumberGenerator) -> void:
 		var h_b := base_height(b.x, b.y)
 		if h_a < sea_level + 2.0 or h_b < sea_level + 2.0:
 			continue
-		if h_mid - minf(h_a, h_b) < PASS_MIN_RIDGE:
+		if h_mid - minf(h_a, h_b) < min_ridge:
 			continue
 		var road_d := road_info(mid.x, mid.y).x
-		if road_d < 15.0 or road_d > 300.0:
+		# Pueblos ×2 dejan menos espacio libre: se acepta un camino algo más lejos.
+		if road_d < 15.0 or road_d > road_max:
 			continue
 		if places.any(func(p: Dictionary) -> bool: return Vector2(float(p["x"]), float(p["z"])).distance_to(mid) < 70.0):
 			continue
-		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(mid) < float(s["radius"]) + 70.0):
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(mid) < float(s["radius"]) + 40.0):
 			continue
-		if passes.any(func(p: Dictionary) -> bool: return Vector2(float(p["mid_x"]), float(p["mid_z"])).distance_to(mid) < 200.0):
+		if passes.any(func(p: Dictionary) -> bool: return Vector2(float(p["mid_x"]), float(p["mid_z"])).distance_to(mid) < 150.0):
 			continue
 		passes.append({
 			"id": "pass:%d" % passes.size(), "ax": a.x, "az": a.y, "bx": b.x, "bz": b.y,

@@ -61,7 +61,9 @@ func _run() -> void:
 	zangoose.stunned.connect(func(a: PokemonActor) -> void: fallen.append(a))
 	seviper.stunned.connect(func(a: PokemonActor) -> void: fallen.append(a))
 	var bar_seen := false
-	for i in 1500:
+	# Hasta 60 s reales: con la IA por carácter (esquivan y rodean) la pelea dura más.
+	var deadline := Time.get_ticks_msec() + 60000
+	while Time.get_ticks_msec() < deadline:
 		await get_tree().physics_frame
 		if is_instance_valid(zangoose) and (zangoose.get_node("HealthBar") as Node3D).visible:
 			bar_seen = true
