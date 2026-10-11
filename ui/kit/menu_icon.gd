@@ -50,10 +50,22 @@ func _draw() -> void:
 			_chest()
 		"Rotom":
 			_rotom()
-		"Foto":
+		"Foto", "Cámara y álbum":
 			_camera()
 		"Mapa":
 			_map()
+		"Actividades y caminos":
+			_checklist()
+		"Noticias":
+			_news_bubble()
+		"Clima y calendario":
+			_weather_icon()
+		"Charla con Rotom":
+			_chat_bubble()
+		"Brújula de objetivos":
+			_compass()
+		"Contactos":
+			_contacts()
 		"Logros":
 			_trophy()
 		"Dinero":
@@ -212,3 +224,66 @@ func _book() -> void:
 	_round_rect(Rect2(-22, -26, 44, 26), 6, Color(0.95, 0.95, 0.88))
 	draw_rect(Rect2(-34, -40, 10, 80), Color(0.3, 0.6, 0.35))
 	draw_colored_polygon(PackedVector2Array([Vector2(12, -40), Vector2(24, -40), Vector2(24, -24), Vector2(18, -30), Vector2(12, -24)]), Color(0.95, 0.3, 0.3))
+
+
+## Apps del Rotom Móvil (2026-10-11): tablilla con palomitas (actividades y caminos).
+func _checklist() -> void:
+	_round_rect(Rect2(-38, -42, 76, 84), 10, Color(0.97, 0.95, 0.9))
+	draw_rect(Rect2(-14, -46, 28, 12), Color(0.75, 0.2, 0.22))
+	for i in 3:
+		var y := -22.0 + i * 24.0
+		_disc(Vector2(-24, y), 7, Color(0.4, 0.75, 0.45) if i < 2 else Color(0.85, 0.85, 0.85), false)
+		if i < 2:
+			draw_line(Vector2(-27, y), Vector2(-25, y + 3), Color.WHITE, 2.5)
+			draw_line(Vector2(-25, y + 3), Vector2(-20, y - 4), Color.WHITE, 2.5)
+		draw_rect(Rect2(-10, y - 4, 38, 8), Color(0.6, 0.6, 0.66))
+
+
+## Burbuja de noticias con un "!" (avisos del Rotom con hora).
+func _news_bubble() -> void:
+	_round_rect(Rect2(-40, -36, 80, 60), 16, Color(0.95, 0.65, 0.25))
+	draw_colored_polygon(PackedVector2Array([Vector2(-14, 22), Vector2(4, 22), Vector2(-10, 40)]), Color(0.95, 0.65, 0.25))
+	draw_rect(Rect2(-5, -22, 10, 26), Color.WHITE)
+	_disc(Vector2(0, 14), 5, Color.WHITE, false)
+
+
+## Sol con nube (clima) y una franja de calendario abajo.
+func _weather_icon() -> void:
+	_disc(Vector2(-6, -16), 22, Color(1.0, 0.8, 0.25))
+	for i in 8:
+		var a := TAU * i / 8.0
+		var from := Vector2(-6, -16) + Vector2(cos(a), sin(a)) * 24
+		var to := Vector2(-6, -16) + Vector2(cos(a), sin(a)) * 32
+		draw_line(from, to, Color(1.0, 0.8, 0.25), 4.0)
+	_round_rect(Rect2(-6, 2, 52, 26), 13, Color(0.95, 0.95, 0.97))
+	_round_rect(Rect2(-34, 20, 70, 20), 4, Color(0.55, 0.65, 0.9))
+	for i in 3:
+		draw_rect(Rect2(-26 + i * 20, 24, 8, 8), Color.WHITE)
+
+
+## Burbuja de charla con una "R" de Rotom.
+func _chat_bubble() -> void:
+	_round_rect(Rect2(-40, -38, 80, 58), 20, Color(0.5, 0.75, 0.98))
+	draw_colored_polygon(PackedVector2Array([Vector2(8, 18), Vector2(26, 18), Vector2(10, 38)]), Color(0.5, 0.75, 0.98))
+	draw_string(UiKit.font(true), Vector2(-14, 2), "R", HORIZONTAL_ALIGNMENT_LEFT, -1, 40, OUTLINE)
+	draw_string(UiKit.font(true), Vector2(-15, 1), "R", HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(1, 1, 1, 0.95))
+
+
+## Rosa de los vientos con una aguja roja (brújula de objetivos).
+func _compass() -> void:
+	_disc(Vector2.ZERO, 40, Color(0.93, 0.9, 0.82))
+	_disc(Vector2.ZERO, 32, Color(0.98, 0.97, 0.94), false)
+	for i in 4:
+		var a := TAU * i / 4.0
+		draw_line(Vector2.ZERO, Vector2(cos(a), sin(a)) * 30, Color(0.6, 0.58, 0.5), 2.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(0, -28), Vector2(8, 0), Vector2(0, 6), Vector2(-8, 0)]), Color(0.85, 0.2, 0.22))
+	draw_colored_polygon(PackedVector2Array([Vector2(0, 28), Vector2(8, 0), Vector2(0, -6), Vector2(-8, 0)]), Color(0.6, 0.62, 0.68))
+	_disc(Vector2.ZERO, 6, Color(0.3, 0.3, 0.35), false)
+
+
+## Dos siluetas (contactos: líderes, héroes, profesor y rival).
+func _contacts() -> void:
+	for offset in [Vector2(-14, 2), Vector2(16, -2)]:
+		var color := Color(0.5, 0.7, 0.95) if offset.x < 0 else Color(0.95, 0.6, 0.4)
+		_disc(offset + Vector2(0, -24), 13, color)
+		_round_rect(Rect2(offset.x - 20, offset.y - 8, 40, 36), 16, color)

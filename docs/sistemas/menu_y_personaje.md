@@ -20,6 +20,7 @@
   - **Caja (PC):** capturados fuera del equipo. Puedes ordenarlos, marcar favoritos, liberarlos y cambiarlos con el equipo.
   - **Mapa:** el mapa completo actual.
   - **Diario y misiones:** misiones activas (como las de megapiedras), su progreso y el marcador en el mapa.
+  - **Rotom:** el teléfono Rotom entra flotando y parpadea; su pantalla tiene 7 apps a pantalla completa (Actividades y caminos, Noticias, Clima y calendario, Charla con Rotom, Cámara y álbum, Brújula de objetivos, Contactos). Hecho (2026-10-11); detalle completo en [interfaz.md](interfaz.md#rotom-teléfono-y-menú-con-tarjetas-en-todas-las-pestañas-2026-10-11).
   - **Ficha del entrenador:** personaje, nombre, tiempo jugado, dinero, Pokédex, capturas, shinies, legendarios e insignias.
   - **Logros y estadísticas:** medallas por hitos y estadísticas de partida (km recorridos, peleas ganadas, desmayos…).
   - **Dinero:** dinero, últimas compras y ventas, y precios de referencia para las tiendas de la capa 2.6.

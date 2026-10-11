@@ -207,7 +207,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 4. Faroles más fuertes de noche y el molino que cambiaba de color; Cilan y Volkner con sus sprites definitivos.
 5. Túneles-desfiladero tapados por rocas grandes.
 6. Campamento animado y extras; botones nuevos en todas las interfaces.
-7. Rotom Teléfono con apps y menú con tarjetas visuales.
+7. ~~Rotom Teléfono con apps y menú con tarjetas visuales.~~ **Hecho** (2026-10-11, rama `rotom-menu`): Rotom Teléfono dibujado en vectores que parpadea y sonríe, con sus 7 apps (Actividades y caminos, Noticias, Clima y calendario, Charla con Rotom, Cámara y álbum, Brújula de objetivos, Contactos); Dinero y Logros del menú en tarjetas con ícono y gráfica; animación de entrada y tooltips en todas las pestañas. Detalle en [interfaz.md](sistemas/interfaz.md#rotom-teléfono-y-menú-con-tarjetas-en-todas-las-pestañas-2026-10-11). Pendiente si se quiere más: el mismo nivel de detalle (gráficas, tooltips exhaustivos) en Equipo, Mochila, Pokédex, Cajas, Ficha, Mapa, Controles, Opciones y Guardar.
 8. Tienda y Centro Pokémon con todas sus funciones.
 9. Mundo más lleno (algo cada ~300 m) y pueblos ×2 con identidad.
 10. Fase 6 (guardianes, líder villano, dificultad adaptable) y fase 7 (app de Mac y pasada final).

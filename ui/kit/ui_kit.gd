@@ -541,6 +541,21 @@ static func centered_margin(child: Control, horizontal: float = 0.04, vertical: 
 	return margin
 
 
+## Entrada suave (atenuado + pequeño deslizamiento) para una tarjeta o pantalla nueva
+## (pedido de Fernando: "animaciones al entrar y al elegir" en todo el menú). El control
+## ya debe estar en el árbol (añádelo primero con add_child y luego llama a esto).
+static func animate_in(control: Control, delay: float = 0.0) -> void:
+	if control == null or not control.is_inside_tree():
+		return
+	var start_y := control.position.y
+	control.modulate.a = 0.0
+	control.position.y = start_y + 16.0
+	var tween := control.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(control, "modulate:a", 1.0, 0.3).set_delay(delay)
+	tween.tween_property(control, "position:y", start_y, 0.3).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
 # --- Estilo claro (Pokopia) ------------------------------------------------------------
 
 ## Panel claro redondeado con borde de color (tarjetas, diálogo).

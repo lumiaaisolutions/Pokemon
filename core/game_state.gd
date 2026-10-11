@@ -66,10 +66,27 @@ func next_activity_id() -> int:
 
 
 func add_news(text: String) -> void:
-	news.push_front({"day": game_day() + 1, "text": text})
+	news.push_front({"day": game_day() + 1, "text": text, "type": news_type(text)})
 	if news.size() > 30:
 		news.resize(30)
 	notice.emit("[Rotom] " + text)
+
+
+## Categoría de una noticia (para el ícono de la app Noticias del Rotom): se adivina por
+## su texto, así no hay que tocar cada lugar que llama a add_news().
+func news_type(text: String) -> String:
+	var lower := text.to_lower()
+	if lower.contains("medalla") or lower.contains("campeón") or lower.contains("cinta del concurso"):
+		return "medalla"
+	if lower.contains("bandada"):
+		return "bandada"
+	if lower.contains("brote masivo"):
+		return "brote"
+	if lower.contains("dominante") or lower.contains("alfa"):
+		return "dominante"
+	if text.begins_with("Rumor:"):
+		return "rumor"
+	return "general"
 
 ## Avisos de captura (el HUD los muestra).
 signal pokemon_caught(display_name: String, shiny: bool, location: String)
