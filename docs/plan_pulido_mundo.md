@@ -214,3 +214,15 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 8. Tienda y Centro Pokémon con todas sus funciones. **Hecho (2026-10-11, rama `tienda-centro`):** ver [pueblos e interiores](sistemas/pueblos_e_interiores.md#tienda-pokémon-por-dentro-todas-sus-funciones-2026-10-11) y [#centro-pokémon-todas-sus-funciones-2026-10-11](sistemas/pueblos_e_interiores.md#centro-pokémon-todas-sus-funciones-2026-10-11). **Completado (2026-10-11, ronda de completar):** clientes reales con rutina y fila real en la mañana (Tienda), visitas de héroes/rival además del líder y cabina de fotos con imagen real (Centro), campamento mejorado con materiales (no dinero), baúl funcional, cocción con tiempo real y visitante nocturno real caminando, y la cámara también reinicia el yaw al entrar a un interior; ver [jugador](sistemas/jugador.md#campamento-animado-y-extras-pedido-de-fernando-2026-10-10-ronda-3--hecho), [pueblos e interiores](sistemas/pueblos_e_interiores.md) y `docs/decisiones_sin_preguntar.md` (filas marcadas "Completado 2026-10-11").
 9. Mundo más lleno (algo cada ~300 m) y pueblos ×2 con identidad.
 10. ~~Fase 6 (guardianes, líder villano, dificultad adaptable)~~ **Hecho** (2026-10-11, rama `fase6`): ver [jefes.md](sistemas/jefes.md). Pendiente: fase 7 (app de Mac y pasada final).
+
+### Revisión de Fernando de las decisiones de la noche (2026-10-11 mañana)
+- **Follaje:** 3D de verdad propio (árboles con tronco y copa de volúmenes, arbustos y flores con volumen, texturas pixel de B2W2); nada plano desde ningún ángulo (reemplaza la "cruz de 2 planos").
+- **Combate amistoso** (café y club del Centro): combate de entrenador real en arena (equipo, IA, curas), sin perder dinero.
+- **Rotom Teléfono:** redibujarlo en pixel art estilo BW2.
+- **Música:** buscar pistas de BW2 que falten (campamento de noche, tienda, centro, cinemática) y pedir permiso del lote.
+- **Guardián del mar:** sí, junto a una isla con arena en tierra; llegas surfeando.
+- **Líder villano:** desde 4 medallas; más fuerte mientras más medallas tengas al retarlo.
+- **Epílogo:** cinemática corta (~20 s: la base se desmorona, profesor y gente celebran, resumen del viaje).
+- **Huevo de guardería:** llega como huevo y nace tras caminar un rato.
+- **Noticias del Rotom:** guardar y mostrar la hora.
+- Lo demás de la noche se queda (5 Poké Balls de regalo, probabilidades de cofres).
