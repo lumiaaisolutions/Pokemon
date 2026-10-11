@@ -58,7 +58,7 @@ func _run() -> void:
 	var to := target.global_position + Vector3.UP * 0.5
 	var gravity := float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 	ball.linear_velocity = (to - from) / 0.5 + Vector3.UP * 0.5 * gravity * 0.5
-	await _frames(int((CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + 2.0) * 60))
+	await get_tree().create_timer(CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + PokeballProjectile.INTRO_TIME + 3.0).timeout
 	var companion := _main.get("companion") as PokemonActor
 	_check(companion != null and companion.species == species, "el elegido debe ser el compañero")
 	_check(companion != null and companion.role == PokemonActor.Role.COMPANION, "el elegido sigue al jugador como compañero")
