@@ -226,3 +226,5 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 - **Huevo de guardería:** llega como huevo y nace tras caminar un rato.
 - **Noticias del Rotom:** guardar y mostrar la hora.
 - Lo demás de la noche se queda (5 Poké Balls de regalo, probabilidades de cofres).
+- **Pantalla de carga (Fernando, 2026-10-11):** animada estilo BW2 al iniciar la partida y al viajar entre regiones: un Pokémon de tu equipo caminando, barra de progreso y consejos que cambian.
+- **Antes de la fase 7:** cuando terminen los agentes, abrir el juego para que Fernando lo pruebe; con sus reportes se corrige y después se arma la app de Mac.
