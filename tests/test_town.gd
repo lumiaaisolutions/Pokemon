@@ -240,6 +240,25 @@ func _run() -> void:
 	var probe := {"wake": 8.0, "sleep": 21.0, "work": Vector2(1, 1)}
 	_check(TownNPCs.goal_for(probe, 12.0, false) == "work" and TownNPCs.goal_for(probe, 19.0, false) == "plaza" and TownNPCs.goal_for(probe, 23.0, false) == "home", "la rutina cambia con la hora")
 	_check(TownNPCs.goal_for(probe, 12.0, true) == "home", "con tormenta se van a casa")
+
+	# Burbujas: charla entre dos vecinos cercanos, y nunca hay más de 3 a la vez.
+	var visible_npcs: Array = npcs.all_npcs().filter(func(n: Dictionary) -> bool: return (n["node"] as Node3D).visible)
+	_check(visible_npcs.size() >= 2, "hacen falta 2 vecinos visibles para probar la charla (%d)" % visible_npcs.size())
+	if visible_npcs.size() >= 2:
+		var chatter_a: Dictionary = visible_npcs[0]
+		var chatter_b: Dictionary = visible_npcs[1]
+		npcs.force_chat(chatter_a, chatter_b)
+		await _frames(5)
+		var bubble_a := (chatter_a["node"] as Node3D).get_node_or_null("Bubble")
+		var bubble_b := (chatter_b["node"] as Node3D).get_node_or_null("Bubble")
+		_check(bubble_a != null or bubble_b != null, "aparece una burbuja de charla entre dos vecinos cercanos")
+		# Cupo: forzar burbujas en todos los vecinos nunca pasa de 3 a la vez.
+		for extra: Dictionary in visible_npcs:
+			SpeechBubbles.say(extra["node"], "¡Hola!", 3.0, "extra:%d" % (extra["node"] as Node3D).get_instance_id())
+		await _frames(2)
+		_check(SpeechBubbles.active_count() <= SpeechBubbles.MAX_ACTIVE, "nunca hay más de %d burbujas a la vez (%d)" % [SpeechBubbles.MAX_ACTIVE, SpeechBubbles.active_count()])
+		await _frames(180)
+
 	GameState.play_time = float(GameState.game_day()) * 1440.0 + (23.5 - GameState.START_HOUR) * 60.0
 	for i in 3600:
 		await get_tree().physics_frame

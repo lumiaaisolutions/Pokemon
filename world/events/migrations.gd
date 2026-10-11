@@ -183,6 +183,9 @@ func fly_over() -> void:
 	_flock_time = 0.0
 	_sky_looked = false
 	GameState.notice.emit("¡Mira el cielo! Pasa una bandada de %s rumbo a %s." % [species.display_name, _world.location_name(target.x, target.z)])
+	var npcs := get_tree().get_first_node_in_group(&"town_npcs") as TownNPCs
+	if npcs != null:
+		npcs.react(_player.global_position, ["¡Mira esa bandada!", "¡Una bandada en el cielo!"])
 
 
 func _move_flock(delta: float) -> void:

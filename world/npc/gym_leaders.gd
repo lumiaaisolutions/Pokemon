@@ -451,7 +451,7 @@ func friendly_battle(leader: Dictionary) -> bool:
 	var team := Leaders.gym_team(id, region, Regions.badges())
 	var info := {"id": "friendly:" + id, "name": "Líder " + Leaders.name_of(id), "team": team,
 			"money": FRIENDLY_MONEY * (region + 1), "item": "", "smart": true, "heals": 1,
-			"at": node.global_position + (_player.global_position - node.global_position).normalized() * 3.0}
+			"at": node.global_position + (_player.global_position - node.global_position).normalized() * 3.0, "node": node}
 	leader["busy"] = true
 	info["on_end"] = func(_result: String) -> void:
 		leader["busy"] = false

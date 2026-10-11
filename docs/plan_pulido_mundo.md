@@ -88,7 +88,7 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
    - No debe dejarte salir de la zona hasta elegir inicial.
    - Instrucciones claras de qué hacer (lanzar la Poké Ball a tu inicial).
    - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. Detalles por preguntar a Fernando.
-4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial").
+4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial"). **Hecho** (`world/npc/speech_bubbles.gd`, ver [habitantes](sistemas/habitantes.md#burbujas-contexto-y-charlas-2026-10-10)).
 5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas.
 6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia.
 7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano.

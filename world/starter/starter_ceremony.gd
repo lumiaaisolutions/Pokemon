@@ -45,6 +45,7 @@ func start() -> void:
 		egg.set_meta("species", species_list[i])
 		_eggs.append(egg)
 	hud.show_toast("¡Los huevos se están moviendo!")
+	_react_nearby(player.global_position, ["¡Está eligiendo su inicial!", "¡Va a elegir compañero!"])
 	await _wobble(2.5)
 	for i in EGGS:
 		await _hatch(i)
@@ -110,7 +111,15 @@ func _on_vanished(actor: PokemonActor) -> void:
 	for other in _hatched:
 		if other != actor and is_instance_valid(other):
 			_flee(other)
+	_react_nearby(at, ["¡Empieza su aventura!", "¡Ya tiene compañero!"])
 	chosen.emit(actor.species, actor.shiny, at)
+
+
+## Si hay vecinos cerca, comentan la ceremonia (burbujas).
+func _react_nearby(pos: Vector3, lines: Array) -> void:
+	var npcs := get_tree().get_first_node_in_group(&"town_npcs") as TownNPCs
+	if npcs != null:
+		npcs.react(pos, lines)
 
 
 ## Los no elegidos se van al bosque con una nube de hojas.

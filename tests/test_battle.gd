@@ -264,6 +264,17 @@ func _run() -> void:
 					break
 			_check(started and not _battle.trainer.is_empty(), "al verte, el entrenador se acerca y empieza el combate (estado %s)" % trainer["state"])
 			if started:
+				# Burbujas: al usar un movimiento, el entrenador da la orden con el nombre real.
+				var trainer_node := _battle.trainer.get("node") as Node3D
+				_check(trainer_node != null and trainer_node == trainer["node"], "el combate guarda el nodo del entrenador para las burbujas")
+				if trainer_node != null and is_instance_valid(_battle.opponent):
+					_battle.opponent.use_move("tackle", _main.companion)
+					await _frames(2)
+					var bubble := trainer_node.get_node_or_null("Bubble") as SpeechBubbles
+					_check(bubble != null, "el entrenador muestra una burbuja al dar la orden")
+					if bubble != null:
+						var label := bubble.get_node("Label") as Label3D
+						_check(label.text.contains(Moves.get_move("tackle")["name"]), "la burbuja dice el nombre real del movimiento (%s)" % label.text)
 				var money := GameState.money
 				var count := (_battle.trainer["team"] as Array).size()
 				for round in count:

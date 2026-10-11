@@ -171,11 +171,13 @@ func _smart_opponent(delta: float) -> void:
 		trainer["heals"] = int(trainer["heals"]) - 1
 		opponent.heal_amount(0.5)
 		GameState.notice.emit("%s usó una Hiperpoción en %s." % [trainer["name"], opponent.species.display_name])
+		_trainer_says("¡Aguanta!")
 	var c := companion()
 	if c != null and _dodge_cooldown <= 0.0 and c.winding_up() and c.global_position.distance_to(opponent.global_position) < 9.0:
 		_dodge_cooldown = 2.5
 		var away := opponent.global_position - c.global_position
 		opponent.ai_dodge(Vector3(-away.z, 0, away.x) * (1.0 if _rng.randf() < 0.5 else -1.0))
+		_trainer_says("¡Esquiva!")
 
 
 ## Rival listo: el siguiente que saca es el que mejor le va contra tu Pokémon.
@@ -218,6 +220,33 @@ func _trainer_mega(actor: PokemonActor) -> void:
 		GameState.notice.emit("¡El %s de %s megaevolucionó!" % [mega.base_species.capitalize(), trainer["name"]])
 
 
+## Burbujas de combate (acordado con Fernando el 2026-10-10): mientras su Pokémon de
+## turno pelea, el entrenador (si tenemos su nodo en el mundo) va dando la orden con una
+## burbuja sobre su cabeza, con el nombre real del movimiento que usa.
+const _ORDER_PHRASES := ["¡Usa %s!", "¡Ahora, %s!", "¡Con %s!"]
+
+
+func _hook_trainer_speech(actor: PokemonActor) -> void:
+	if trainer.is_empty() or trainer.get("node") == null or not is_instance_valid(actor):
+		return
+	actor.move_used.connect(_on_trainer_move)
+
+
+func _on_trainer_move(_actor: PokemonActor, move_id: String, _style: int) -> void:
+	_trainer_says(_ORDER_PHRASES[_rng.randi() % _ORDER_PHRASES.size()] % Moves.get_move(move_id)["name"])
+
+
+## El entrenador de este combate dice algo con una burbuja (solo si tenemos su nodo).
+func _trainer_says(text: String) -> void:
+	var node := trainer.get("node") as Node3D
+	if node == null or not is_instance_valid(node):
+		return
+	var p := player()
+	if p != null and not SpeechBubbles.near_player(node, p):
+		return
+	SpeechBubbles.say(node, text)
+
+
 ## El Pokémon del entrenador cayó: sale el siguiente.
 func _next_trainer_pokemon() -> void:
 	var old := opponent
@@ -235,6 +264,7 @@ func _next_trainer_pokemon() -> void:
 	opponent = next
 	next.battle_center = center
 	next.battle_radius = ARENA_RADIUS - 0.5
+	_hook_trainer_speech(next)
 	var c := companion()
 	if c != null:
 		next.start_fight(c)
@@ -281,6 +311,7 @@ func _begin(wild: PokemonActor) -> bool:
 	wild.battle_center = center
 	wild.battle_radius = ARENA_RADIUS - 0.5
 	wild.start_fight(c)
+	_hook_trainer_speech(wild)
 	# La horda te rodea: entran al círculo y atacan a tu compañero a la vez.
 	for k in horde.size():
 		var member := horde[k]

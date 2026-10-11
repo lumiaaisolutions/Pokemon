@@ -124,7 +124,8 @@ func _fight() -> void:
 		team.append(MenuStyle.species(Heroes._stage_form(id, stage)))
 	var info := {"id": "rival", "name": "%s (rival)" % GameState.rival, "team": team, "money": 1200 + 500 * badges,
 			"item": ["super-potion", "great-ball", "ultra-ball", "rare-candy"][badges % 4], "smart": true, "heals": 1,
-			"at": _node.global_position + (_player.global_position - _node.global_position).normalized() * 2.5 if _node != null else _player.global_position + Vector3(0, 0, -5)}
+			"at": _node.global_position + (_player.global_position - _node.global_position).normalized() * 2.5 if _node != null else _player.global_position + Vector3(0, 0, -5),
+			"node": _node}
 	info["on_end"] = func(result: String) -> void: _leave(result)
 	if battle == null or not battle.start_trainer(info):
 		_leave("")
