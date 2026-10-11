@@ -41,3 +41,6 @@
 
 ## Medición de rendimiento
 Las mediciones de FPS y tirones se hacen con scripts temporales en `tests/_tmp/` (no se versionan) a 1920×1080 en el M1.
+
+## Control de versiones (2026-10-11)
+Remoto: `https://github.com/lumiaaisolutions/Pokemon` (público, decisión de Fernando sabiendo que incluye recursos de Nintendo/Game Freak). `main` es la rama estable; `interiores2` guarda el trabajo a medias de la ronda 360° de interiores. Un `git stash` local ("WIP interiores2 escrito por error en main") guarda cambios que ese agente dejó por error en la carpeta principal.
