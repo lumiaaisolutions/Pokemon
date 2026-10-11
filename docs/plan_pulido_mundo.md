@@ -145,3 +145,16 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 - Todas estas correcciones son reglas permanentes: [reglas_calidad.md](reglas_calidad.md).
 - **Entrenadores que te ven (corregido 2026-10-10):** te podías ir caminando y saltarte el combate. Ahora al verte quedas quieto mirándolo hasta que llega (sale tu compañero si estaba guardado) y en combates contra entrenadores no se puede huir: tu Pokémon vuelve al círculo con el aviso "¡No puedes huir de un combate contra un entrenador!".
 - **Cofres en 2D** (y todo lo demás): regla ampliada en [reglas_calidad.md](reglas_calidad.md): todo en 3D salvo Pokémon, personajes y NPC.
+
+### Más pedidos tras probar (2026-10-10, noche) — por diseñar con Fernando o por hacer
+- **Poké Ball (hecho):** atraviesa a los posados en árboles → ahora se les atina (caen al pie del árbol); rebota en lo que golpea; al atinar, rayo rojo que atrapa al Pokémon y luego las 3 sacudidas.
+- **Dormir en la tienda de campaña:** animación de entrar, "Zzz" y lo que hace mientras duerme (hoy solo pasa de noche a día de golpe). También animaciones para Cocinar y Recoger. **Por preguntar ideas.**
+- **Botones de todas las interfaces** (p. ej. Dormir/Cocinar/Recoger/Nada): mejor diseño, más visual. **Por preguntar.**
+- **Rival:** apareció, retó y desapareció sin que se supiera si había que pelear. Bug por revisar (flujo claro: diálogo con opciones o combate obligatorio).
+- **Pueblos:** más grandes, más detalle y decoración (sin bugs visuales), más cosas que hacer, identidad propia y diferencias reales entre ellos (algunos sin cosas que otros sí tienen). **Por preguntar.**
+- **Vecino que solo da avisos:** corregido (hablan en la caja de diálogo); revisar que nadie más hable por avisos.
+- **Mapa y mundo:** pocos puntos de interés; más eventos aleatorios, misiones extra y zonas exclusivas (como se acordó). **Por preguntar.**
+- **Pantano tóxico:** envenena progresivamente al jugador, a tu Pokémon fuera y a los salvajes que pasen; no afecta a los Pokémon tipo Veneno ni a los que el veneno no afecta (Acero; habilidades como Inmunidad).
+- **Mochila:** al acabarse un objeto, la descripción y las acciones de la derecha se quedan; deben desaparecer.
+- **Rotom Móvil:** rediseño más visual e intuitivo, con forma de Rotom Teléfono (naranja con ojos), interactivo y sin amontonar; todo lo del Rotom con ese estilo; recursos de estilo BW2 si se pueden descargar. **Por preguntar.**
+- **Todos los apartados del menú sin excepción** (Dinero, Equipo, Mochila, Pokédex, Cajas, Logros, Ficha, Mapa, Controles, Opciones, Guardar): responsivos, más interactivos, sin amontonar, más visuales y que se entienda cada cosa. **Por preguntar.**
