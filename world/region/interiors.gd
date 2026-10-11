@@ -94,11 +94,14 @@ func _set_indoor_look(inside: bool, dungeon: bool) -> void:
 	environment.background_color = Color(0.03, 0.03, 0.05)
 	environment.fog_enabled = not inside
 	DayNight.interior_light = (0.35 if dungeon else 0.6) if inside else 1.0
-	# Cámara más alta y lejana adentro, para ver toda la sala.
+	# Cámara: en salas con modelo real (techo de verdad, a veces de dos pisos como la
+	# tienda y el Centro) se ajusta a la altura real del techo para no atravesarlo ni
+	# quedar fuera del edificio; en las salas de piezas (sin techo, muros bajos estilo
+	# HD-2D) y en mazmorras (a cielo abierto) se queda alta y lejana como antes.
 	var rig := structures.world.get_parent().get_node_or_null("CameraRig") as CameraRig
 	if rig != null and inside:
-		rig.set("_zoom", rig.zoom_max)
-		rig.set("_pitch_deg", 52.0)
+		rig.set("_zoom", current.get("cam_zoom", rig.zoom_max))
+		rig.set("_pitch_deg", current.get("cam_pitch", 52.0))
 
 
 func _fade_to(alpha: float, seconds: float = 0.3) -> void:
@@ -248,7 +251,7 @@ var force_model := ""
 
 ## Pone el modelo de la sala (centrado, piso en y = 0) con colisión. Devuelve su planta
 ## (ancho, fondo) en metros, o Vector2.ZERO si no hay modelo.
-func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vector2:
+func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_color: Color) -> Vector2:
 	var options: Array = INTERIOR_MODELS.get(kind, [])
 	if options.is_empty():
 		return Vector2.ZERO
@@ -277,6 +280,10 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 	var floor_rect := _floor_rect(model, meshes)
 	if floor_rect.size == Vector3.ZERO:
 		floor_rect = AABB(box.position * BuildingModels.SCALE, box.size * BuildingModels.SCALE)
+	# Techo real sobre ese piso (los modelos de B2W2 son edificios de verdad, algunos de
+	# dos pisos como la tienda y el Centro): sin esto la cámara alta y lejana de las salas
+	# de piezas atravesaba el techo o el piso de arriba y se veía un amasijo de triángulos.
+	var ceiling := _ceiling_height(model, meshes, floor_rect)
 	var center := floor_rect.get_center()
 	model.position = Vector3(-center.x, -floor_rect.position.y, -center.z)
 	root.add_child(model)
@@ -295,11 +302,19 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 		body.add_child(collision)
 		mesh.add_child(body)
 	var size := Vector2(floor_rect.size.x, floor_rect.size.z)
-	# Paredes invisibles en todo el contorno: los modelos de la DS dejan abierto el lado
-	# de la entrada y zonas negras; sin esto se podía salir del piso y caer al vacío.
+	# Muros en todo el contorno: los modelos de la DS dejan abierto el lado de la entrada
+	# y zonas negras (se ve el vacío de fuera). Antes eran solo colisión; ahora también
+	# tapan la vista con un color parecido al de sus paredes (no hay textura real a mano).
+	# El de la entrada (hacia la cámara) es bajo, igual que en las salas de piezas, para
+	# no taparle la vista a la cámara ni esconder la puerta.
 	var half := size * 0.5
-	for wall: Array in [[Vector3(size.x + 2.0, 6.0, 1.0), Vector3(0, 3.0, -half.y - 0.5)], [Vector3(size.x + 2.0, 6.0, 1.0), Vector3(0, 3.0, half.y + 0.5)],
-			[Vector3(1.0, 6.0, size.y + 2.0), Vector3(-half.x - 0.5, 3.0, 0)], [Vector3(1.0, 6.0, size.y + 2.0), Vector3(half.x + 0.5, 3.0, 0)]]:
+	var wall_height := maxf(ceiling + 1.5, 4.0)
+	var wall_material := _material(wall_color)
+	var walls := [[Vector3(size.x + 2.0, wall_height, 1.0), Vector3(0, wall_height * 0.5 - 0.3, -half.y - 0.5), false],
+			[Vector3(size.x + 2.0, wall_height, 1.0), Vector3(0, wall_height * 0.5 - 0.3, half.y + 0.5), true],
+			[Vector3(1.0, wall_height, size.y + 2.0), Vector3(-half.x - 0.5, wall_height * 0.5 - 0.3, 0), false],
+			[Vector3(1.0, wall_height, size.y + 2.0), Vector3(half.x + 0.5, wall_height * 0.5 - 0.3, 0), false]]
+	for wall: Array in walls:
 		var fence := StaticBody3D.new()
 		fence.collision_layer = WorldBuilder.LAYER_OBSTACLES
 		var wall_shape := BoxShape3D.new()
@@ -309,6 +324,21 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 		wall_collision.position = wall[1]
 		fence.add_child(wall_collision)
 		root.add_child(fence)
+		var wall_mesh := MeshInstance3D.new()
+		var wall_box := BoxMesh.new()
+		var is_entrance: bool = wall[2]
+		var visible_size: Vector3 = wall[0]
+		var visible_position: Vector3 = wall[1]
+		if is_entrance:
+			# Bajo (como el muro de entrada de las salas de piezas): no bloquea la cámara
+			# ni la puerta, solo tapa el vacío justo detrás del borde del piso.
+			visible_size.y = 1.0
+			visible_position.y = 0.2
+		wall_box.size = visible_size
+		wall_mesh.mesh = wall_box
+		wall_mesh.material_override = wall_material
+		wall_mesh.position = visible_position
+		root.add_child(wall_mesh)
 	var ground := StaticBody3D.new()
 	ground.collision_layer = WorldBuilder.LAYER_TERRAIN
 	var floor_shape := BoxShape3D.new()
@@ -318,6 +348,23 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator) -> Vect
 	floor_collision.position.y = -0.5
 	ground.add_child(floor_collision)
 	root.add_child(ground)
+	# Faldón del piso (mismo tono del muro, más oscuro): cubre cualquier rendija de vacío
+	# que se asome bajo el modelo en los bordes.
+	var apron := MeshInstance3D.new()
+	var apron_mesh := BoxMesh.new()
+	apron_mesh.size = Vector3(size.x + 6.0, 0.4, size.y + 6.0)
+	apron.mesh = apron_mesh
+	apron.material_override = _material(wall_color.darkened(0.3))
+	apron.position.y = -0.3
+	root.add_child(apron)
+	# Cámara que cabe bajo el techo real (si no, se metía dentro del modelo o del piso de
+	# arriba) y lámparas de techo propias: los modelos de B2W2 no traen luces, solo
+	# geometría y texturas.
+	var vertical := clampf(ceiling - 1.2 - 0.6, 0.8, 7.0)
+	var horizontal := clampf(minf(size.x, size.y) * 0.45, 2.5, 9.0)
+	current["cam_pitch"] = clampf(rad_to_deg(atan2(vertical, horizontal)), 14.0, 60.0)
+	current["cam_zoom"] = clampf(sqrt(vertical * vertical + horizontal * horizontal), 3.0, 11.0)
+	_ceiling_lamps(root, size, ceiling)
 	return size
 
 
@@ -376,15 +423,116 @@ func _floor_rect(model: Node3D, meshes: Array) -> AABB:
 				by_height[level] = float(by_height.get(level, 0.0)) + area
 				var tri := AABB(a, Vector3.ZERO).expand(b).expand(c)
 				rects[level] = (rects[level] as AABB).merge(tri) if rects.has(level) else tri
-	var best := 0.0
-	var best_level := 0.0
-	for level: float in by_height:
-		if float(by_height[level]) > best:
-			best = by_height[level]
-			best_level = level
-	if best <= 0.0:
+	if by_height.is_empty():
 		return AABB()
+	# Algunos modelos traen un fondo decorativo enorme muy lejos de la sala (terreno,
+	# montañas) que por su tamaño ganaría cualquier comparación de área: se descarta
+	# primero quedándose con el grupo de alturas más poblado (donde están el piso, los
+	# muebles y los escalones) y aislando lo que esté muy lejos de ese grupo.
+	var levels: Array = by_height.keys()
+	levels.sort()
+	var main_levels := _main_height_cluster(levels)
+	var max_area := 0.0
+	for level: float in main_levels:
+		max_area = maxf(max_area, by_height[level])
+	if max_area <= 0.0:
+		return AABB()
+	# El piso real casi siempre queda cerca de la altura 0 del modelo (es el origen que
+	# usó quien lo hizo). Entre los niveles anchos (al menos 15 % del área del más grande
+	# del grupo, para admitir el verdadero piso aunque no sea el mayor) se toma el más
+	# cercano a 0.
+	var best_level: float = main_levels[0]
+	var best_distance := INF
+	for level: float in main_levels:
+		if float(by_height[level]) < max_area * 0.15:
+			continue
+		if absf(level) < best_distance:
+			best_distance = absf(level)
+			best_level = level
 	return rects[best_level]
+
+
+## De una lista de alturas ya ordenada, el grupo con más alturas distintas seguidas sin
+## un salto grande (10 m) entre una y la siguiente. Los muebles, escalones y pisos de un
+## edificio real quedan cerca entre sí; un plano de fondo aislado queda del otro lado de
+## un salto así.
+func _main_height_cluster(levels: Array) -> Array:
+	if levels.size() <= 1:
+		return levels
+	var groups: Array = [[levels[0]]]
+	for i in range(1, levels.size()):
+		if float(levels[i]) - float(levels[i - 1]) > 10.0:
+			groups.append([])
+		(groups[groups.size() - 1] as Array).append(levels[i])
+	var best: Array = groups[0]
+	for group: Array in groups:
+		if group.size() > best.size():
+			best = group
+	return best
+
+
+## Altura del techo sobre floor_rect (metros): el primer nivel horizontal ancho por
+## encima de la cabeza (los modelos de B2W2 traen edificios de dos pisos, como la
+## tienda y el Centro, con el piso de arriba haciendo de techo del de abajo). Si no
+## encuentra uno claro (sala abierta o con un solo trozo de techo pequeño), un valor
+## generoso para no limitar de más la cámara.
+const DEFAULT_CEILING := 6.0
+func _ceiling_height(model: Node3D, meshes: Array, floor_rect: AABB) -> float:
+	var floor_level := floor_rect.position.y
+	var floor_area := floor_rect.size.x * floor_rect.size.z
+	if floor_area <= 0.0:
+		return DEFAULT_CEILING
+	var by_height := {}
+	var rects := {}
+	for node in meshes:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		var xform := model.transform * BuildingModels._local_transform(mesh_instance, model)
+		for surface in mesh_instance.mesh.get_surface_count():
+			var arrays := mesh_instance.mesh.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var count := indices.size() if not indices.is_empty() else vertices.size()
+			for t in range(0, count - 2, 3):
+				var a := xform * vertices[indices[t] if not indices.is_empty() else t]
+				var b := xform * vertices[indices[t + 1] if not indices.is_empty() else t + 1]
+				var c := xform * vertices[indices[t + 2] if not indices.is_empty() else t + 2]
+				var normal := (b - a).cross(c - a)
+				var area := normal.length() * 0.5
+				if area < 0.01 or absf(normal.normalized().y) < 0.95:
+					continue
+				var level := snappedf((a.y + b.y + c.y) / 3.0, 0.2)
+				# Más alto que cualquier mueble (mostradores, estantes, mesas): esos suman
+				# área entre varios y antes se confundían con un techo bajo.
+				if level <= floor_level + 1.8:
+					continue
+				by_height[level] = float(by_height.get(level, 0.0)) + area
+				var tri := AABB(a, Vector3.ZERO).expand(b).expand(c)
+				rects[level] = (rects[level] as AABB).merge(tri) if rects.has(level) else tri
+	var levels: Array = by_height.keys()
+	levels.sort()
+	for level: float in levels:
+		var r: AABB = rects[level]
+		# Debe cubrir casi todo el piso en ambos lados (una sola losa ancha), no varios
+		# muebles sueltos a la misma altura que por separado suman bastante área.
+		if r.size.x * r.size.z >= floor_area * 0.2 and r.size.x >= floor_rect.size.x * 0.5 and r.size.z >= floor_rect.size.z * 0.5:
+			return level - floor_level
+	return DEFAULT_CEILING
+
+
+## Lámparas de techo cálidas: los modelos de B2W2 solo traen geometría y texturas, sin
+## luces propias; sin esto el interior depende del sol (que de noche casi no ilumina).
+func _ceiling_lamps(root: Node3D, size: Vector2, ceiling: float) -> void:
+	var height := clampf(ceiling - 0.4, 1.6, 5.5)
+	var cols := clampi(int(size.x / 7.0) + 1, 1, 4)
+	var rows := clampi(int(size.y / 7.0) + 1, 1, 4)
+	var range_m := maxf(size.x, size.y) / maxf(cols, rows) * 0.9 + 3.0
+	for cx in cols:
+		for cz in rows:
+			var x := (cx + 0.5) / cols * size.x - size.x * 0.5
+			var z := (cz + 0.5) / rows * size.y - size.y * 0.5
+			_light(root, Vector3(x, height, z), Color(1.0, 0.92, 0.78), range_m, 1.5)
 
 
 func _room_shell(root: Node3D, size: Vector2, floor_color: Color, wall_color: Color) -> void:
@@ -397,30 +545,37 @@ func _room_shell(root: Node3D, size: Vector2, floor_color: Color, wall_color: Co
 	_light(root, Vector3(0, 4.5, 0), Color(1.0, 0.95, 0.85), maxf(size.x, size.y) * 1.2, 1.6)
 
 
-## Personaje (NPC) con la primera celda de una hoja de entrenador o el sprite de un Pokémon.
-func _npc(root: Node3D, at: Vector3, trainer_id: String = "", pokemon: String = "") -> Sprite3D:
+## Personaje (NPC) con la primera celda de su hoja de entrenador (aspecto de BW2 o,
+## para los héroes, su propia hoja). Nunca sprites de frente/batalla en el mundo.
+func _npc(root: Node3D, at: Vector3, trainer_id: String = "") -> Sprite3D:
 	var sprite := Sprite3D.new()
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sprite.shaded = false
 	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.position = at
-	if pokemon != "":
-		var species := MenuStyle.species(pokemon)
-		sprite.texture = MenuStyle.front_sprite(species) if species != null else null
-		sprite.pixel_size = 0.03
-		sprite.offset.y = 40
-	else:
-		# Aspectos de BW2 (NpcLooks); los héroes no se usan como figurantes.
-		var own := NpcLooks.GENDER.has(trainer_id) or trainer_id.begins_with("lider_") or trainer_id.begins_with("alto_")
-		var sheet := NpcLooks.sheet(trainer_id) if own else PlayerCharacters.sheet(trainer_id)
-		var atlas := AtlasTexture.new()
-		atlas.atlas = sheet
-		atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
-		sprite.texture = atlas
-		sprite.pixel_size = 0.057
-		sprite.offset.y = atlas.region.size.y * 0.5
+	# Aspectos de BW2 (NpcLooks); los héroes no se usan como figurantes.
+	var own := NpcLooks.GENDER.has(trainer_id) or trainer_id.begins_with("lider_") or trainer_id.begins_with("alto_")
+	var sheet := NpcLooks.sheet(trainer_id) if own else PlayerCharacters.sheet(trainer_id)
+	var atlas := AtlasTexture.new()
+	atlas.atlas = sheet
+	atlas.region = Rect2(0, 0, sheet.get_width() / 3.0, sheet.get_height() / 8.0)
+	sprite.texture = atlas
+	sprite.pixel_size = 0.057
+	sprite.offset.y = atlas.region.size.y * 0.5
 	root.add_child(sprite)
 	return sprite
+
+
+## Pokémon de interior solo como mascota de alguien (el Kecleon de la tienda, el
+## Chansey/Blissey del Centro): su hoja de caminar de mundo, nunca su sprite de frente.
+func _pokemon_pet(root: Node3D, at: Vector3, species_id: String) -> void:
+	var species := MenuStyle.species(species_id)
+	if species == null or species.overworld_sheet == null:
+		return
+	var sprite := DirectionalSprite.new()
+	sprite.position = at
+	root.add_child(sprite)
+	sprite.setup(species.overworld_sheet, 2, 4, PokemonActor.PIXEL_SIZE * species.size_scale * 32.0 / species.overworld_cell, species.foot_offset_px)
 
 
 ## Salas de edificios. Devuelve el punto de aparición (relativo al mundo).
@@ -433,7 +588,7 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 	elif kind == "cabin":
 		wall = Color(0.5, 0.36, 0.24)
 	_modeled = false
-	var model_size := _model_room(root, kind, rng)
+	var model_size := _model_room(root, kind, rng, wall)
 	if model_size != Vector2.ZERO:
 		size = model_size
 		_modeled = true
@@ -448,13 +603,18 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 	match kind:
 		"center":
 			_block(root, Vector3(8, 1.1, 1.2), Vector3(0, 0.55, back + 1.0), Color(0.9, 0.4, 0.45))
-			_npc(root, Vector3(0, 0, back), "", "chansey" if rng.randf() < 0.5 else "audino")
+			# La enfermera (humana) atiende el mostrador; un Chansey o Blissey la ayuda
+			# junto a la máquina, de mascota, con su hoja de caminar de mundo (nunca de frente).
+			_npc(root, Vector3(0, 0, back), NpcLooks.for_role("enfermera", rng))
+			_pokemon_pet(root, Vector3(1.6, 0, back + 0.6), "chansey" if rng.randf() < 0.5 else "blissey")
 			_point(Vector3(0, 0.5, back + 2.4), "Curar a tu equipo", services.heal_at_center.bind(current["return"]))
 			_block(root, Vector3(1.4, 1.6, 1.0), Vector3(size.x * 0.5 - 1.5, 0.8, back), Color(0.3, 0.35, 0.45), true, 0.2)
 			_point(Vector3(size.x * 0.5 - 1.5, 0.5, back + 1.6), "Usar el PC (Caja)", services.open_menu_tab.bind("Caja"))
 		"mart":
 			_block(root, Vector3(5, 1.1, 1.2), Vector3(-3, 0.55, back + 1.0), Color(0.3, 0.5, 0.85))
-			_npc(root, Vector3(-3, 0, back), "", "kecleon")
+			# El dependiente (humano) atiende el mostrador; el Kecleon es su mascota, no vende.
+			_npc(root, Vector3(-3, 0, back), NpcLooks.for_role("vendedor", rng))
+			_pokemon_pet(root, Vector3(-1.4, 0, back + 0.6), "kecleon")
 			_point(Vector3(-3, 0.5, back + 2.4), "Comprar y vender", services.open_shop)
 			for i in 3:
 				_block(root, Vector3(1.0, 2.0, 6.0), Vector3(1.5 + i * 2.2, 1.0, 0.5), Color(0.75, 0.6, 0.45))

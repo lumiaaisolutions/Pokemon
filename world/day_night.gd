@@ -68,9 +68,18 @@ func _apply(hour: float) -> void:
 		var azimuth := lerpf(-70.0, 70.0, daylight) if hour >= 6.0 and hour <= 18.0 else 150.0
 		_sun.rotation_degrees = Vector3(-elevation, azimuth, 0.0)
 		_sun.light_color = (a[1] as Color).lerp(b[1], t)
-		_sun.light_energy = (lerpf(float(a[2]), float(b[2]), t) * Weather.light_factor + Weather.flash) * interior_light
+		var sun_energy := (lerpf(float(a[2]), float(b[2]), t) * Weather.light_factor + Weather.flash) * interior_light
+		# Luz propia cálida en interiores (decisión de Fernando): nunca a oscuras de noche,
+		# aunque el sol casi no aporte nada a esa hora. Afuera (interior_light = 1) no cambia.
+		if interior_light < 1.0:
+			sun_energy = maxf(sun_energy, 0.5)
+			_sun.light_color = _sun.light_color.lerp(Color(1.0, 0.92, 0.78), 0.65)
+		_sun.light_energy = sun_energy
 	if _environment != null:
-		_environment.ambient_light_energy = lerpf(float(a[6]), float(b[6]), t) * (1.0 if interior_light >= 1.0 else 0.8)
+		var ambient := lerpf(float(a[6]), float(b[6]), t) * (1.0 if interior_light >= 1.0 else 0.8)
+		if interior_light < 1.0:
+			ambient = maxf(ambient, 0.5)
+		_environment.ambient_light_energy = ambient
 		_environment.fog_light_color = (a[4] as Color).lerp(b[4], t)
 		_environment.fog_density = _base_fog + Weather.fog_extra
 	# Faroles de los pueblos: se encienden de noche (más fuertes desde el 2026-10-10:

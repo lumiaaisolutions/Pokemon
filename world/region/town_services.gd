@@ -198,31 +198,31 @@ func talk_resident(settlement: Dictionary, building: Dictionary, look: String = 
 	dialog.open("Vecino" if look == "" or NpcLooks.GENDER.get(look, "male") == "male" else "Vecina", [greeting, text], TownNPCs.portrait(look if look != "" else "joven_a"))
 
 
-## Profesor: entrega premios de investigación y comenta tu avance.
+## Profesor: entrega premios de investigación y comenta tu avance. Habla en la caja de
+## diálogo con su nombre y retrato (antes salía como una serie de avisos sueltos).
 func talk_professor() -> void:
 	var rewards := Research.claim_rewards()
 	var caught := 0
 	for id: String in GameState.dex:
 		caught += 1 if int(GameState.dex[id].get("caught", 0)) > 0 else 0
-	var text := "Prof. %s: llevas %d especies registradas como capturadas." % [GameState.professor, caught]
-	if rewards.is_empty():
-		text += " Sigue investigando y vuelve por tus premios."
-	GameState.notice.emit(text)
+	var lines: Array[String] = ["Llevas %d especies registradas como capturadas.%s" % [caught, "" if not rewards.is_empty() else " Sigue investigando y vuelve por tus premios."]]
 	for message in rewards:
-		GameState.notice.emit(message)
+		lines.append(message)
 	# Bicicleta y licencias de montura y vuelo (por medallas o actividades cumplidas).
 	if GameState.item_count("bicycle") <= 0 and not _flags().get("bike_given", false):
 		_flags()["bike_given"] = true
 		GameState.add_item("bicycle", 1)
-		GameState.notice.emit("Prof. %s: toma esta Bicicleta para recorrer la región (V / cruceta ←)." % GameState.professor)
+		lines.append("Toma esta Bicicleta para recorrer la región (V / cruceta ←).")
 	var done := GameState.activities.filter(func(a: Dictionary) -> bool: return a.get("done", false)).size()
 	if not _flags().get("ride_license", false) and (badges().size() >= 1 or done >= 2):
 		_flags()["ride_license"] = true
-		GameState.notice.emit("Prof. %s: ¡te ganaste la Licencia de Montura! Ya puedes montar Pokémon grandes." % GameState.professor)
+		lines.append("¡Te ganaste la Licencia de Montura! Ya puedes montar Pokémon grandes.")
 	if not _flags().get("fly_license", false) and (badges().size() >= 3 or done >= 5):
 		_flags()["fly_license"] = true
-		GameState.notice.emit("Prof. %s: ¡Licencia de Vuelo! Monta a un volador grande y salta para despegar." % GameState.professor)
-	_region_ticket()
+		lines.append("¡Licencia de Vuelo! Monta a un volador grande y salta para despegar.")
+	var ticket_line := _region_ticket()
+	if ticket_line != "":
+		lines.append(ticket_line)
 	# Revive fósiles.
 	for fossil: String in FOSSILS:
 		if GameState.item_count(fossil) > 0:
@@ -231,7 +231,13 @@ func talk_professor() -> void:
 				continue
 			GameState.use_item(fossil)
 			var where := GameState.add_caught(species, false, 1.0)
-			GameState.notice.emit("Prof. %s: ¡revivimos tu %s! Es un %s (va a tu %s)." % [GameState.professor, Items.display_name(fossil), species.display_name, where])
+			lines.append("¡Revivimos tu %s! Es un %s (va a tu %s)." % [Items.display_name(fossil), species.display_name, where])
+	var dialog := _dialog()
+	if dialog == null:
+		for line in lines:
+			GameState.notice.emit("Prof. %s: %s" % [GameState.professor, line])
+		return
+	dialog.open("Prof. %s" % GameState.professor, lines, Professor.portrait())
 
 
 # --- Retos: gimnasio, Liga y concursos --------------------------------------------------
@@ -263,26 +269,27 @@ func _dialog() -> DialogBox:
 
 
 ## Boleto a otra región: al completar esta (8 medallas, Liga y 11 misiones del Rotom).
-func _region_ticket() -> void:
+## Devuelve lo que dice el profesor sobre el Boleto ("" si no hay nada que comentar).
+func _region_ticket() -> String:
 	var prof := "Prof. %s" % GameState.professor
 	var vehicle := "barco" if TravelTerminal.boat() else "avión"
 	var booth := "el muelle" if TravelTerminal.boat() else "el aeropuerto"
 	if Regions.ticket_given():
 		if not Regions.unlocked().size() <= 1:
-			GameState.notice.emit("%s: Tu Boleto sigue vigente: ve a %s de %s para viajar." % [prof, booth, _world_start_name()])
-		return
+			return "%s: Tu Boleto sigue vigente: ve a %s de %s para viajar." % [prof, booth, _world_start_name()]
+		return ""
 	var p := Regions.progress()
 	if p["complete"]:
 		var opened := Regions.give_ticket()
 		AudioBus.play_jingle("me_badge")
 		if opened >= 0:
 			GameState.add_news("¡%s completó la %s y recibió el Boleto a la %s!" % [GameState.player_name, Regions.region_name(), Regions.region_name(opened)])
-			GameState.notice.emit("%s: ¡Completaste la %s! Toma este Boleto de %s a la %s. Ve a %s de %s." % [prof, Regions.region_name(), vehicle, Regions.region_name(opened), booth, _world_start_name()])
-		else:
-			GameState.notice.emit("%s: ¡Completaste la %s! Ya abriste todas las regiones: puedes viajar a cualquiera desde %s." % [prof, Regions.region_name(), booth])
+			return "%s: ¡Completaste la %s! Toma este Boleto de %s a la %s. Ve a %s de %s." % [prof, Regions.region_name(), vehicle, Regions.region_name(opened), booth, _world_start_name()]
+		return "%s: ¡Completaste la %s! Ya abriste todas las regiones: puedes viajar a cualquiera desde %s." % [prof, Regions.region_name(), booth]
 	elif p["badges"] > 0 or p["champion"]:
-		GameState.notice.emit("%s: Para el Boleto a otra región te falta: medallas %d/8 · Liga %s · misiones del Rotom %d/%d." % [prof, p["badges"],
-				"✓" if p["champion"] else "pendiente", p["missions"], Regions.MISSIONS_NEEDED])
+		return "%s: Para el Boleto a otra región te falta: medallas %d/8 · Liga %s · misiones del Rotom %d/%d." % [prof, p["badges"],
+				"✓" if p["champion"] else "pendiente", p["missions"], Regions.MISSIONS_NEEDED]
+	return ""
 
 
 func _world_start_name() -> String:
@@ -390,14 +397,19 @@ func _win_badge(settlement: Dictionary, id: String) -> void:
 ## Entrenadores del gimnasio (0 o 1): 2–3 Pokémon del tipo del líder; se vencen una vez.
 func gym_trainer_challenge(settlement: Dictionary, slot: int, look: String, arena: Vector3) -> void:
 	var key := "gym_trainer:%s:%d" % [settlement.get("name", ""), slot]
+	var class_name_ := "Entrenadora Guay" if NpcLooks.gender(look) == "female" else "Entrenador Guay"
+	var speaker := "%s del gimnasio" % class_name_
 	if _flags().get(key, false):
-		GameState.notice.emit("Entrenador del gimnasio: ¡ya me venciste! El líder te espera al fondo.")
+		var dialog := _dialog()
+		if dialog != null:
+			dialog.open(speaker, ["¡Ya me venciste! El líder te espera al fondo."], NpcLooks.portrait(look))
+		else:
+			GameState.notice.emit("%s: ¡ya me venciste! El líder te espera al fondo." % speaker)
 		return
 	var id := structures.leader_of(settlement)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(key) ^ int(Regions.current()["seed"])
-	var class_name_ := "Entrenadora Guay" if NpcLooks.gender(look) == "female" else "Entrenador Guay"
-	var info := {"id": key, "name": "%s del gimnasio" % class_name_, "team": Leaders.gym_trainer_team(id, Regions.index(), rng),
+	var info := {"id": key, "name": speaker, "team": Leaders.gym_trainer_team(id, Regions.index(), rng),
 			"money": 400 + Regions.index() * 250, "item": "", "at": arena}
 	_challenge(info, func() -> void: _flags()[key] = true)
 
@@ -545,7 +557,7 @@ func contest(settlement: Dictionary) -> void:
 	var hall: String = settlement.get("name", "")
 	var key := "contest_day:%s" % hall
 	if int(_flags().get(key, -1)) == GameState.game_day():
-		GameState.notice.emit("Juez: el próximo concurso es mañana.")
+		_judge_says("El próximo concurso es mañana.")
 		return
 	_flags()[key] = GameState.game_day()
 	var entry: Dictionary = GameState.party[GameState.companion_index]
@@ -565,9 +577,18 @@ func contest(settlement: Dictionary) -> void:
 			GameState.path_progress["concursos"] = mini(ribbons.size(), 5)
 			GameState.add_news("¡%s ganó la cinta del concurso de %s!" % [name, hall])
 		GameState.add_money(800, "Concurso de %s" % hall)
-		GameState.notice.emit("¡%s brilló con %d puntos y ganó el concurso! Cintas: %d/5" % [name, score, (_flags()["ribbons"] as Array).size()])
+		_judge_says("¡%s brilló con %d puntos y ganó el concurso! Cintas: %d/5" % [name, score, (_flags()["ribbons"] as Array).size()])
 	else:
-		GameState.notice.emit("%s sacó %d puntos (necesita 14). Sube el dominio de sus movimientos y su vínculo." % [name, score])
+		_judge_says("%s sacó %d puntos (necesita 14). Sube el dominio de sus movimientos y su vínculo." % [name, score])
+
+
+## El juez de la Sala de Concursos habla en la caja de diálogo (antes salía como aviso).
+func _judge_says(text: String) -> void:
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open("Juez", [text], NpcLooks.portrait("guay_chica"))
+	else:
+		GameState.notice.emit("Juez: " + text)
 
 
 # --- Lugares especiales ----------------------------------------------------------------------
@@ -642,15 +663,20 @@ func tutor() -> void:
 	var entry: Dictionary = GameState.party[GameState.companion_index]
 	var name := MenuStyle.species(entry["species"]).display_name
 	Moves.ensure_entry(entry)
+	var text := ""
 	if Moves.next_unlock(entry) == "":
-		GameState.notice.emit("Tutor: %s ya conoce todos sus movimientos." % name)
-		return
-	if GameState.money < TUTOR_PRICE:
-		GameState.notice.emit("Tutor: mis clases cuestan $%d." % TUTOR_PRICE)
-		return
-	GameState.add_money(-TUTOR_PRICE, "Tutor de movimientos")
-	var learned := Moves.unlock_next(entry)
-	GameState.notice.emit("Tutor: ¡%s aprendió %s! Equípalo en el menú (Equipo)." % [name, Moves.get_move(learned)["name"]])
+		text = "%s ya conoce todos sus movimientos." % name
+	elif GameState.money < TUTOR_PRICE:
+		text = "Mis clases cuestan $%d." % TUTOR_PRICE
+	else:
+		GameState.add_money(-TUTOR_PRICE, "Tutor de movimientos")
+		var learned := Moves.unlock_next(entry)
+		text = "¡%s aprendió %s! Equípalo en el menú (Equipo)." % [name, Moves.get_move(learned)["name"]]
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open("Tutor", [text], NpcLooks.portrait("abuelo_a"))
+	else:
+		GameState.notice.emit("Tutor: " + text)
 
 
 ## Rancho: Leche Mu-mu.
