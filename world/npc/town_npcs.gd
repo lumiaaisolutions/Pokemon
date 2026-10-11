@@ -76,6 +76,10 @@ var _practice_timer := 25.0
 ## Charlas en curso: cada una {"a", "b", "lines", "index", "timer"}.
 var _chats: Array = []
 var _chat_timer := 5.0
+## Zona de exclusión temporal (p. ej. la plaza durante la ceremonia del inicial, ver
+## StarterCeremony): nadie camina dentro mientras _exclusion_radius > 0.
+var _exclusion_center := Vector2.INF
+var _exclusion_radius := 0.0
 
 
 func _ready() -> void:
@@ -267,6 +271,7 @@ func _update_npc(npc: Dictionary, hour: float, stormy: bool, delta: float) -> vo
 				node.global_position += away.normalized() * (PERSONAL_SPACE - away.length()) * 0.5
 	if not arriving:
 		_avoid_furniture(node, int(npc.get("town_index", -1)))
+		_avoid_exclusion(node)
 	node.global_position.y = _stand_y(node)
 	if velocity == Vector3.ZERO and node.visible and _player.global_position.distance_to(node.global_position) < 4.0:
 		sprite.look_at_point(_player.global_position)
@@ -300,6 +305,33 @@ func _avoid_furniture(node: Node3D, town_index: int) -> void:
 			pos += away.normalized() * (clearance - distance) * 0.5
 	node.global_position.x = pos.x
 	node.global_position.z = pos.y
+
+
+## Pone (o quita, con radio 0) una zona circular donde nadie camina: la usa la ceremonia
+## del inicial para que la gente del pueblo se aparte de la plaza mientras no eliges
+## (pared invisible para el jugador, aparte; ver StarterCeremony).
+func set_exclusion_zone(center: Vector3, radius: float) -> void:
+	_exclusion_center = Vector2(center.x, center.z)
+	_exclusion_radius = radius
+
+
+func clear_exclusion_zone() -> void:
+	_exclusion_radius = 0.0
+
+
+## Empuja hacia afuera de la zona de exclusión, a medias como el mobiliario (para no
+## oscilar si un destino cae justo en el borde).
+func _avoid_exclusion(node: Node3D) -> void:
+	if _exclusion_radius <= 0.0:
+		return
+	var pos := Vector2(node.global_position.x, node.global_position.z)
+	var away := pos - _exclusion_center
+	var distance := away.length()
+	if distance < _exclusion_radius:
+		var push := away.normalized() if distance > 0.01 else Vector2.RIGHT
+		pos += push * (_exclusion_radius - distance) * 0.5
+		node.global_position.x = pos.x
+		node.global_position.z = pos.y
 
 
 ## Altura donde se para: en el suelo, o nadando (hundido hasta medio cuerpo, con

@@ -39,6 +39,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Clima por bioma, estaciones y eventos del mundo (hecho) | [sistemas/clima_y_eventos.md](sistemas/clima_y_eventos.md) |
 | Bicicleta, montura y vuelo (hecho) | [sistemas/montar_y_volar.md](sistemas/montar_y_volar.md) |
 | Habitantes con rutina, Fase 2.7 (hecho) | [sistemas/habitantes.md](sistemas/habitantes.md) |
+| Inicio de partida: cinemática del profesor y ceremonia del inicial (hecho) | [sistemas/inicio.md](sistemas/inicio.md) |
 | Movimientos y crecimiento sin niveles (hecho) | [sistemas/movimientos_y_crecimiento.md](sistemas/movimientos_y_crecimiento.md) |
 | Combate en arena, captura en combate y megaevolución, Fases 3 y 4 (hecho) | [sistemas/combate.md](sistemas/combate.md) |
 | Progresión: inicial, evolución sin niveles, Piedra Llave, megapiedras y fotografía, 5.5 (hecho) | [sistemas/progresion.md](sistemas/progresion.md) |

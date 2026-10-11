@@ -2,9 +2,9 @@
 
 [← Índice](../README.md) · Decidido con Fernando el 2026-10-09. Estado: **hecho** (2026-10-10). Mundo: [mundo grande](mundo_grande.md); caminos y Rotom: `world/rotom/`; retos: [pueblos e interiores](pueblos_e_interiores.md).
 
-## Inicio (✅ hecho: `world/starter/starter_ceremony.gd`)
-- Tras elegir personaje, **5 huevos eclosionan a la vez** con básicos al azar. Eliges uno; los demás se van y no se vuelven a ver.
-- Al elegido le lanzas la Pokéball (tutorial de apuntar y lanzar, captura segura). Es tu compañero de viaje.
+## Inicio (✅ hecho: cinemática + ceremonia, ver [inicio.md](inicio.md))
+- Tras elegir personaje, una **cinemática** del profesor viajando por 4 lugares reales del mundo generado (pradera, bosque, costa, montaña) presenta a 4 candidatos básicos, uno por lugar; se puede saltar.
+- Llegan con el profesor a la plaza del pueblo inicial: pared invisible mientras no eliges, el profesor comenta cada candidato al acercarte y el tutorial indica paso a paso apuntar y lanzar. El primero al que le atinas es tu compañero de viaje; los demás se van.
 
 ## Mundo aleatorio con semilla
 - Cada partida nueva genera su mapa a partir de una **semilla** guardada con la partida. En la pantalla final de la selección de personaje se puede escribir una para repetir un mapa (vacío = al azar).
@@ -43,8 +43,6 @@
 - Al entrar al agua profunda te hundes poco a poco; **mantener Espacio / ✕** te mantiene a flote o te hace subir.
 - Si tu compañero es de tipo Agua, **surfeas sobre él**. Si no, nadas tú con una animación generada (en la superficie, de la cintura para arriba con brazadas; buceando, inclinado con burbujas) y él vuelve a su Pokéball.
 
-### Cómo funciona la ceremonia (hecha)
-- Al empezar una partida nueva (equipo vacío), 5 huevos aparecen en arco frente a la cámara, con manchas del color del tipo de su Pokémon. Se sacuden cada vez más fuerte (2.5 s) y eclosionan uno por uno con un destello.
-- Salen 5 básicos distintos al azar (1 % de shiny cada uno), quietos y mirando al jugador, con su nombre encima. Mientras, no aparecen salvajes.
-- Una tarjeta explica apuntar y lanzar. El primero que recibe una Pokéball se captura siempre y entra al equipo; queda como compañero donde cayó la ball, y los demás se van con una nube de hojas.
-- Las pruebas apagan la ceremonia (`starter_ceremony = false` en `world/main.gd`) y usan un compañero al azar; la ceremonia tiene su propia prueba (`tests/test_starter`).
+### Cómo funciona la cinemática y la ceremonia (hecho, 2026-10-10 noche)
+Detalle completo en [sistemas/inicio.md](inicio.md). Resumen: `IntroCinematic` decide 4 candidatos básicos (uno por lugar/hábitat real del mundo) y narra el viaje del profesor con la cámara, música de título de BW2 y se puede saltar; `StarterCeremony` los coloca en arco en la plaza del pueblo inicial con pared invisible, comentarios del profesor al acercarte y el tutorial de apuntar y lanzar. El primero que recibe una Pokéball (1 % de shiny) se captura siempre y entra al equipo como compañero; los demás se van con una nube de hojas y el profesor regala Poké Balls antes de volver a su rutina.
+- Las pruebas apagan todo esto (`starter_ceremony = false` en `world/main.gd`) y usan un compañero al azar; la cinemática y la ceremonia tienen su propia prueba (`tests/test_starter`).

@@ -927,6 +927,13 @@ func ensure_area(point: Vector3) -> void:
 	_focus_key = Vector2i(1 << 20, 0)
 
 
+## A quién sigue la construcción por zonas (por defecto, el jugador): la cinemática del
+## inicio lo redirige mientras la cámara visita lugares lejanos (ver IntroCinematic), para
+## que esas zonas se construyan en vez de las del jugador. null vuelve al jugador.
+func set_focus(node: Node3D) -> void:
+	_focus = node
+
+
 func _run_task(key: Vector2i, lod: int, ponds: Array) -> void:
 	var data := _generate(key, lod, ponds)
 	_mutex.lock()
