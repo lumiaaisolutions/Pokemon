@@ -94,3 +94,12 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano.
 8. **Tienda Pokémon sin puerta y con una pared negra** (la caja interior que tapa caras faltantes se ve): mejor diseño, que parezca real y tenga su puerta.
 9. **Prueba intermitente (resuelta):** la del viajero fallaba cuando el jugador caía en el agua o el viajero ya había pasado; la de la horda y la de huir esperaban cuadros de física y bajo carga (con el juego abierto) varios caben en uno. Ahora esperan cuadros reales.
+
+### Decisiones de Fernando (2026-10-10, noche)
+- **Cinemática:** viaje y reunión: el profesor recorre 3–4 lugares (pradera, bosque, costa, montaña), conoce en cada uno a un candidato, vuelven al pueblo y la cámara termina en la plaza donde te espera. **30–45 s, se puede saltar** (Esc / Start); se ve una vez por partida nueva.
+- **Zona del inicial:** **pared invisible** alrededor de la plaza con aviso (sin corral); la gente se aparta y no se atraviesa en medio.
+- **Guía:** **tutorial paso a paso**: el profesor habla en la caja de diálogo, comenta a cada candidato al acercarte (tipo y carácter) e indica en pantalla cada paso ("Mantén clic derecho para apuntar" → "Lanza con R"); al elegir te felicita, te da Poké Balls y se va a su rutina.
+- **Burbujas:** **contexto y charlas**: charla breve entre vecinos que se cruzan, frases al pelear ("¡Usa Placaje!", "¡Esquiva!"), reacciones a sucesos cercanos ("¡Está eligiendo su inicial!", "¡Un shiny!", "¡Una horda!") y por hora o clima; solo cerca de ti, máximo 3 a la vez.
+- **IA salvaje:** **según su carácter**: rápidos o de poca defensa esquivan y atacan a distancia; fuertes cuerpo a cuerpo embisten y se retiran; todos rodean, toman distancia, esquivan ataques que ven venir y usan movimientos de estado cuando conviene.
+- **Física:** **todo el mobiliario** (bancas, macetas, cercas, faroles, mesas, puestos, cajas) sólido para jugador, gente y Pokémon; al saltar te quedas encima de los bajos.
+- **Edificios:** **completar el modelo**: cubrir las caras faltantes de los modelos B2W2 con paredes que imiten su textura en vez de la caja negra, y verificar que la puerta quede al frente, hacia la calle, donde está el punto de "Entrar".
