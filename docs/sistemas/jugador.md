@@ -56,8 +56,18 @@
 ## Ayudas de botones (detalle)
 - `InputHints` (autoload) detecta el último dispositivo y nombra cada acción ("Q" o "△"). El HUD muestra ayudas según el contexto (explorar, apuntar, nadar, bucear, desmayado) y la tarjeta del compañero (vida, si está fuera, guardado o debilitado).
 
-## Campamento, comida y hambre (pedido de Fernando, 2026-10-10 · por diseñar)
+## Campamento, comida y hambre (pedido de Fernando, 2026-10-10 · diseñado, por hacer)
 - Sacar la **tienda de campaña** y **descansar hasta el día** (solo de noche): repone la vida del jugador y de sus Pokémon.
 - Sacar el campamento para **cocinar comida**; la comida se **compra o se consigue en el mapa** y recupera vida.
 - **Indicador de hambre** como en Minecraft: si se vacía, el jugador pierde vida con el tiempo; tiene **10 minutos** para conseguir comida (lo que dura su vida con hambre).
-- Detalles por preguntar a Fernando antes de hacerlo (recetas, cuánto baja el hambre, dónde se ve el indicador…).
+### Decisiones (2026-10-10)
+- **Barra de hambre:** 10 muslitos a la derecha de los corazones (como Minecraft). Se vacía en **2 días del juego** (48 min de juego); correr, nadar y pelear la bajan un poco más rápido. Vacía: pierdes vida poco a poco y en **10 min** te quedas sin vida.
+- **Comida, de dónde sale:**
+  - **Recolectar** bayas, setas y bonguris y comerlos crudos: recupera **muy poco**.
+  - **Comprar** en la Tienda Pokémon (pan, sándwiches, latas de curry, bebidas).
+  - **Cocinar** en el campamento: recetas que combinan ingredientes (curry, sándwich, estofado de bayas), llenan mucho más y dan un efecto extra.
+  - **Pescar con caña:** da pescado **crudo**, que hay que **cocinar en la fogata** de la tienda de campaña.
+  - **Restaurantes** en las ciudades.
+- **Tienda de campaña:** se arma con una tecla en un lugar plano **fuera de los pueblos**. **De noche** puedes dormir hasta las 7:00: recupera tu vida y la de tu equipo y guarda el punto de reaparición. **Dormir no recupera el hambre.** De día solo sirve para cocinar.
+  - **Si no la recoges, se queda ahí:** si te alejas, debes volver por ella o conseguir otra; si tienes más de una, cada una se queda donde la dejaste.
+- **Cocinar:** fogata con olla; eliges ingredientes en un menú, animación corta de remover y **tu equipo sale a comer contigo** (sube su vínculo).
