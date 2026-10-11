@@ -53,6 +53,15 @@ func _run() -> void:
 	var door := _door_point("Entrar: Centro Pokémon")
 	_check(door != Vector3.INF, "el Centro Pokémon debe tener puerta interactiva")
 
+	# Física de los edificios: ningún lado se atraviesa caminando (solo se entra por la
+	# puerta con "Entrar"); reportado por Fernando el 2026-10-10 ("puedo atravesar
+	# paredes"). Recorre los edificios con modelo del pueblo inicial y empuja al jugador
+	# contra cada lado que no es la puerta.
+	await _check_building_walls()
+	await _check_furniture_physics()
+	_player.respawn_at(start + Vector3.UP * 0.5)
+	await _frames(5)
+
 	# Entrar al Centro: interior lejos del mapa, suelo plano y punto para curar.
 	var companion := _main.get("companion") as PokemonActor
 	_player.global_position = door
@@ -307,8 +316,14 @@ func _run() -> void:
 	_services.interiors.exit_to(_services.interiors.current["return"])
 	await _wait_interior(false)
 
-	# Bicicleta, montura y vuelo.
-	_player.respawn_at(_world.start_position() + Vector3.UP * 0.5)
+	# Bicicleta, montura y vuelo. Lejos del aro de macetones y bancas de la plaza (física
+	# de mobiliario, 2026-10-10): si no, "move_back" podía chocar con uno a los pocos
+	# metros y la prueba de velocidad leía 0.
+	var plaza0 := Vector2(float(_world.layout.settlements[0]["x"]), float(_world.layout.settlements[0]["z"]))
+	var away0 := (Vector2(start.x, start.z) - plaza0)
+	away0 = away0.normalized() if away0.length() > 0.1 else Vector2(0, 1)
+	var bike_spot := start + Vector3(away0.x, 0, away0.y) * 15.0
+	_player.respawn_at(Vector3(bike_spot.x, _world.height_at(bike_spot.x, bike_spot.z) + 0.5, bike_spot.z))
 	await _frames(20)
 	GameState.add_item("bicycle", 1)
 	GameState.world_flags["ride_license"] = true
@@ -371,6 +386,106 @@ func _run() -> void:
 	var map_ui := _main.get_node("MapUi") as MapUi
 	map_ui.data.wait()
 	_check(map_ui.data.is_ready and map_ui.data.map_texture.get_width() == 512, "el mapa de la región es de 512 px (8 m/px)")
+
+
+## Física de los edificios (2026-10-10): camina al jugador contra cada lado de todos los
+## edificios con modelo del pueblo inicial (izquierda, derecha y atrás; la puerta, en
+## to_center, se entra a propósito con "Entrar" y no se prueba aquí) y comprueba que se
+## queda afuera, no atraviesa hacia el interior.
+func _check_building_walls() -> void:
+	var settlement: Dictionary = _world.layout.settlements[0]
+	var by: float = float(settlement["height"]) - 0.05 + 1.0
+	# Movimiento manual: Player._physics_process ya llama a move_and_slide() según el
+	# input de cámara; se apaga para empujarlo directo contra cada pared sin que el
+	# input (vacío) lo frene primero.
+	_player.set_physics_process(false)
+	for building: Dictionary in settlement["buildings"]:
+		var kind: String = building["kind"]
+		if not BuildingModels.has_kind(kind):
+			continue
+		var bx := float(building["x"])
+		var bz := float(building["z"])
+		var model := BuildingModels.instance(kind, int(building["color"]) + int(absf(bx)))
+		if model.is_empty():
+			continue
+		var size: Vector3 = model["size"]
+		var to_center := Vector2(float(settlement["x"]) - bx, float(settlement["z"]) - bz)
+		if to_center.length() < 0.1:
+			to_center = Vector2(0, 1)
+		to_center = to_center.normalized()
+		var side_axis := Vector2(to_center.y, -to_center.x)
+		var hx := size.x * 0.97 * 0.5
+		var hz := size.z * 0.97 * 0.5
+		var sides: Array = [["izquierda", -side_axis, hx], ["derecha", side_axis, hx], ["atrás", -to_center, hz]]
+		for side_def: Array in sides:
+			var axis: Vector2 = side_def[1]
+			var half: float = side_def[2]
+			var start_xz := Vector2(bx, bz) + axis * (half + 6.0)
+			_player.velocity = Vector3.ZERO
+			_player.global_position = Vector3(start_xz.x, by, start_xz.y)
+			await _frames(3)
+			for i in 150:
+				_player.velocity = Vector3(-axis.x, 0, -axis.y) * 6.0
+				_player.move_and_slide()
+				await get_tree().physics_frame
+			# offset: qué tan lejos del centro, sobre este eje, se quedó el jugador; si la
+			# pared frena, debe quedar en >= mitad del edificio (más el radio del cuerpo).
+			var final_xz := Vector2(_player.global_position.x, _player.global_position.z)
+			var offset := (final_xz - Vector2(bx, bz)).dot(axis)
+			_check(offset > half - 0.1, "%s de %s: no debe atravesar la pared de %s (quedó a %.2f m del centro, mitad %.2f m)" % [kind, settlement["name"], side_def[0], offset, half])
+	_player.set_physics_process(true)
+
+
+## Física del mobiliario (2026-10-10, "todo el mobiliario" sólido): el primer macetón de
+## la plaza del pueblo inicial (ver TownIdentity.decorate, i = 0) no se atraviesa
+## caminando, y al saltar sobre él el jugador queda parado encima.
+func _check_furniture_physics() -> void:
+	var settlement: Dictionary = _world.layout.settlements[0]
+	var angle := TAU * 0.0 / 6.0 + 0.3
+	var pot_xz := Vector2(float(settlement["x"]), float(settlement["z"])) + Vector2(cos(angle), sin(angle)) * 6.5
+	# Misma base que usa TownIdentity.decorate para los macetones (no surface_height_at:
+	# la plaza usa la altura del asentamiento, que puede diferir un poco del terreno real).
+	var ground_y := float(settlement["height"]) - 0.05
+	var dir := (Vector2(float(settlement["x"]), float(settlement["z"])) - pot_xz).normalized()
+	var start_xz := pot_xz - dir * 4.0
+	_player.set_physics_process(false)
+	# Caminando derecho hacia él no debe atravesarlo.
+	_player.velocity = Vector3.ZERO
+	_player.global_position = Vector3(start_xz.x, ground_y + 0.5, start_xz.y)
+	await _frames(3)
+	for i in 90:
+		_player.velocity = Vector3(dir.x, 0, dir.y) * 5.0
+		_player.move_and_slide()
+		await get_tree().physics_frame
+	var blocked := Vector2(_player.global_position.x, _player.global_position.z).distance_to(pot_xz)
+	_check(blocked > 0.8, "el macetón de la plaza no debe atravesarse caminando (quedó a %.2f m del centro)" % blocked)
+	# Saltando sobre él debe quedar parado encima (y por arriba de su base). El salto solo
+	# está por arriba de los 1.1 m del macetón entre ~0.2 y ~0.55 s de vuelo (con
+	# jump_velocity=7.5 y gravity=20); a 3 m/s y despegando 2 m antes del centro, el
+	# jugador pasa por encima del borde cercano ya arriba de esa altura y aterriza dentro.
+	var jump_xz := pot_xz - dir * 2.0
+	_player.global_position = Vector3(jump_xz.x, ground_y + 0.5, jump_xz.y)
+	_player.velocity = Vector3(dir.x, 0, dir.y) * 3.0
+	_player.velocity.y = _player.config.jump_velocity
+	_player.move_and_slide()
+	await get_tree().physics_frame
+	# Al aterrizar (arriba del macetón o, si falla, de vuelta en el suelo) se detiene ahí:
+	# si no, seguiría caminando y se bajaría por el otro lado antes de medir el resultado.
+	var landed := false
+	for i in 110:
+		if landed:
+			_player.velocity = Vector3.ZERO
+		elif _player.is_on_floor():
+			landed = true
+			_player.velocity = Vector3.ZERO
+		else:
+			_player.velocity.x = dir.x * 3.0
+			_player.velocity.z = dir.y * 3.0
+			_player.velocity.y -= _player.config.gravity * get_physics_process_delta_time()
+		_player.move_and_slide()
+		await get_tree().physics_frame
+	_check(_player.is_on_floor() and _player.global_position.y > ground_y + 0.8, "al saltar sobre el macetón debe quedar encima (y=%.2f, suelo=%.2f)" % [_player.global_position.y, ground_y])
+	_player.set_physics_process(true)
 
 
 func _door_point(prompt: String) -> Vector3:

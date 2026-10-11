@@ -3,6 +3,11 @@ extends Node3D
 ## Cámara de exploración en tercera persona elevada.
 ## Jerarquía: CameraRig (sigue al objetivo, gira en yaw) > Pitch > SpringArm3D > Camera3D.
 ## Mouse: clic para capturar el cursor, Esc para liberarlo.
+## El SpringArm (ver camera_rig.tscn) solo choca con terreno, frontera y la capa de
+## cámara (edificios y monumentos grandes, WorldBuilder.LAYER_CAMERA): el mobiliario
+## pequeño (bancas, macetas, cercas, faroles, puestos, cajas, ver Structures._collider y
+## _cylinder_collider) no lleva esa capa a propósito, para que la cámara no se pegue de
+## golpe al tropezar con un objeto chico (reportado por Fernando el 2026-10-10).
 
 @export var target_path: NodePath
 @export_group("Ángulos")
