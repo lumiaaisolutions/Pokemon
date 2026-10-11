@@ -38,6 +38,6 @@
 - Visual: 2 = sprites (las sombras de contacto no se proyectan sobre ellos).
 
 ## Rendimiento (M1, 1080p)
-- Alturas calculadas una vez; construcción del mundo en ~6.5 s (pendiente: pantalla de carga u optimización).
+- Alturas calculadas una vez; construcción del mundo en ~6.5 s, tapada por la pantalla de carga (ver [interfaz.md](interfaz.md#pantalla-de-carga-2026-10-11)).
 - Sombras del sol a 60 m con 2 divisiones; DOF de calidad baja.
 - 60 s con 27 salvajes: 16.7 ms de promedio y 29 ms de peor cuadro.

@@ -16,6 +16,12 @@ var companion: PokemonActor
 
 
 func _ready() -> void:
+	# Pantalla de carga (Fernando, 2026-10-11): tapa el mundo hasta que esté listo para
+	# jugar; corre en paralelo mientras el resto de esta función sigue montando la escena.
+	var loading := LoadingScreen.new()
+	loading.name = "LoadingScreen"
+	add_child(loading)
+	loading.start(self)
 	$Spawner.wild_contact.connect(_on_wild_contact)
 	GameState.wild_defeated.connect(_on_wild_defeated)
 	GameState.dex_changed.connect(_on_dex_changed)
