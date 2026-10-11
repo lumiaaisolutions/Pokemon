@@ -43,6 +43,20 @@ static func play(by: PokemonActor, to: Node3D, id: String, on_hit: Callable) -> 
 			fx._vines()
 		"bite":
 			fx._bite(String(MoveFamilies.BITES[id]))
+		"beam":
+			fx._beam(MoveFamilies.BEAMS[id])
+		"bolt":
+			fx._bolt(bool(MoveFamilies.BOLTS[id]))
+		"melee":
+			fx._melee(MoveFamilies.MELEE[id])
+		"sky":
+			fx._sky(MoveFamilies.SKY[id])
+		"ground":
+			fx._ground_attack(String(MoveFamilies.GROUND[id]))
+		"gust":
+			fx._gust(MoveFamilies.GUSTS[id])
+		"twister":
+			fx._twister()
 	return true
 
 
@@ -386,4 +400,309 @@ func _bite(tint_html: String) -> void:
 		if elapsed > 0.4:
 			top.modulate.a = 1.0 - (elapsed - 0.4) / 0.15
 			bottom.modulate.a = top.modulate.a
+	queue_free()
+
+
+# --- Lote 2 ------------------------------------------------------------------------------
+
+## Cinta de luz entre puntos (rayos y relámpagos), siempre de cara a la cámara.
+func _ribbon_mesh() -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = ImmediateMesh.new()
+	mesh.top_level = true
+	mesh.layers = 2
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mesh)
+	return mesh
+
+
+func _glow_material(color: Color, alpha: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(color.r, color.g, color.b, alpha)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return material
+
+
+func _draw_ribbon(mesh: MeshInstance3D, points: PackedVector3Array, width: float, material: Material, clear: bool) -> void:
+	var immediate := mesh.mesh as ImmediateMesh
+	if clear:
+		immediate.clear_surfaces()
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or points.size() < 2:
+		return
+	immediate.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, material)
+	for i in points.size():
+		var view := (camera.global_position - points[i]).normalized()
+		var along := (points[mini(i + 1, points.size() - 1)] - points[maxi(i - 1, 0)]).normalized()
+		var across := along.cross(view).normalized() * width * 0.5
+		immediate.surface_add_vertex(points[i] + across)
+		immediate.surface_add_vertex(points[i] - across)
+	immediate.surface_end()
+
+
+## Rayos (Rayo Hielo, Hiperrayo, Rayo Solar, Psicorrayo…): cinta del color con centro
+## blanco que tiembla; los ondulados serpentean.
+func _beam(data: Array) -> void:
+	var color := MoveFamilies.color_of(move_id, data[0])
+	var width: float = data[1]
+	var duration: float = data[2]
+	var wavy: bool = data[3]
+	var mesh := _ribbon_mesh()
+	var glow := _glow_material(color, 0.8)
+	var core := _glow_material(Color(1, 1, 1), 1.0)
+	var elapsed := 0.0
+	var struck := false
+	while elapsed < duration:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(attacker):
+			break
+		var origin := _center(attacker)
+		var goal := _center(target) if _alive(target) else origin + (attacker.get("_sprite") as DirectionalSprite).facing_world * 7.0
+		var grow := clampf(elapsed / 0.12, 0.0, 1.0)
+		var points := PackedVector3Array()
+		var side := (goal - origin).cross(Vector3.UP).normalized()
+		for i in 24:
+			var t := i / 23.0 * grow
+			var offset := side * sin(t * 18.0 - elapsed * 20.0) * 0.25 if wavy else Vector3.ZERO
+			points.append(origin.lerp(goal, t) + offset)
+		var flicker := 1.0 + sin(elapsed * 60.0) * 0.15
+		var fade := clampf((duration - elapsed) / 0.15, 0.0, 1.0)
+		_draw_ribbon(mesh, points, width * flicker * fade, glow, true)
+		_draw_ribbon(mesh, points, width * 0.35 * flicker * fade, core, false)
+		if not struck and grow >= 1.0:
+			struck = true
+			_strike("crack" if move_id in ["hyper-beam", "giga-impact"] else ("puddle" if move_id == "ice-beam" else ""))
+			PixelBurst.spawn(get_parent(), goal, PixelBurst.Kind.SMOKE if color.v > 0.6 else PixelBurst.Kind.DUST, 0.8)
+	queue_free()
+
+
+## Relámpagos (Rayo, Trueno…): zigzag amarillo que tiembla; Trueno cae del cielo.
+func _bolt(from_sky: bool) -> void:
+	var mesh := _ribbon_mesh()
+	var glow := _glow_material(Color(1.0, 0.9, 0.25), 0.9)
+	var core := _glow_material(Color(1, 1, 0.9), 1.0)
+	var elapsed := 0.0
+	var struck := false
+	var duration := 0.45 if not from_sky else 0.55
+	while elapsed < duration:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(attacker):
+			break
+		var goal := _center(target) if _alive(target) else _center(attacker) + (attacker.get("_sprite") as DirectionalSprite).facing_world * 6.0
+		var origin := goal + Vector3(0.6, 14.0, 0.0) if from_sky else _center(attacker)
+		var length := origin.distance_to(goal)
+		var count := clampi(int(length / 0.5), 4, 30)
+		var dir := (goal - origin) / maxf(length, 0.01)
+		var side := dir.cross(Vector3.UP if absf(dir.y) < 0.9 else Vector3.RIGHT).normalized()
+		var points := PackedVector3Array()
+		var sign := 1.0
+		for i in count + 1:
+			var t := float(i) / count
+			var inner := i != 0 and i != count
+			points.append(origin.lerp(goal, t) + (side * sign * _rng.randf_range(0.15, 0.45) if inner else Vector3.ZERO))
+			sign = -sign
+		_draw_ribbon(mesh, points, 0.3, glow, true)
+		_draw_ribbon(mesh, points, 0.1, core, false)
+		if not struck and elapsed > 0.08:
+			struck = true
+			_strike("scorch" if from_sky else "")
+			PixelBurst.spawn(get_parent(), goal, PixelBurst.Kind.SMOKE, 0.7)
+	queue_free()
+
+
+## Golpes y cortes (Puño Fuego, Cuchillada, Garra Dragón, Tijera X…): al alcanzar al rival,
+## la forma aparece sobre él (puño que se estrella, tajo que barre, zarpazo).
+func _melee(data: Array) -> void:
+	await _wait(0.12)
+	if not _alive(attacker) or not _alive(target):
+		queue_free()
+		return
+	var reach := MELEE_REACH + 0.4 * ((target as PokemonActor).species.size_scale if target is PokemonActor else 1.0)
+	if attacker.global_position.distance_to(target.global_position) > reach and move_id != "psycho-cut":
+		queue_free()
+		return
+	var shape: String = data[0]
+	var color := MoveFamilies.color_of(move_id, data[1])
+	var hits: int = data[2]
+	var size := 0.07 * maxf(1.0, (target as PokemonActor).species.size_scale if target is PokemonActor else 1.0)
+	for k in hits:
+		if not _alive(target):
+			break
+		var sprite := _sprite(PixelShapes.get_texture(shape, color), size)
+		var jitter := Vector3(_rng.randf_range(-0.4, 0.4), _rng.randf_range(-0.3, 0.3), 0.0) if hits > 1 else Vector3.ZERO
+		sprite.global_position = _center(target) + jitter
+		sprite.scale = Vector3.ONE * (0.3 if shape == "fist" else 0.6)
+		var tween := sprite.create_tween()
+		tween.tween_property(sprite, "scale", Vector3.ONE * (1.25 if shape == "fist" else 1.0), 0.08)
+		tween.tween_interval(0.12)
+		tween.tween_property(sprite, "modulate:a", 0.0, 0.12)
+		tween.tween_callback(sprite.queue_free)
+		if k == 0:
+			_strike("crack" if shape == "fist" and MoveFamilies.strong(move_id) else "")
+		PixelBurst.spawn(get_parent(), sprite.global_position, PixelBurst.Kind.DUST, 0.5)
+		await _wait(0.1)
+	if hits > 1 and _alive(target) and target is PokemonActor:
+		(target as PokemonActor).float_text("×%d" % hits, Color.WHITE, 0.4)
+	await _wait(0.4)
+	queue_free()
+
+
+## Desde el cielo (Avalancha, Meteoro Draco, Roca Afilada…): caen sobre el rival una tras otra.
+func _sky(data: Array) -> void:
+	var shape: String = data[0]
+	var count: int = data[1]
+	var mark: String = data[2]
+	var color := MoveFamilies.color_of(move_id, "")
+	if shape == "rock":
+		color = Color(0.62, 0.55, 0.45)
+	var struck := false
+	for k in count:
+		if not _alive(target):
+			break
+		var landing := _ground(target.global_position + Vector3(_rng.randf_range(-1.2, 1.2), 0, _rng.randf_range(-1.2, 1.2)) * (0.0 if k == 0 else 1.0))
+		var sprite := _sprite(PixelShapes.get_texture(shape, color), 0.12 if shape in ["rock", "meteor"] else 0.08)
+		if shape == "spike":
+			# Roca Afilada: los picos salen del suelo.
+			sprite.global_position = landing - Vector3.UP * 1.2
+			var rise := sprite.create_tween()
+			rise.tween_property(sprite, "global_position", landing + Vector3.UP * 0.5, 0.12)
+			rise.tween_interval(0.5)
+			rise.tween_property(sprite, "global_position", landing - Vector3.UP * 1.2, 0.2)
+			rise.tween_callback(sprite.queue_free)
+			await _wait(0.12)
+		else:
+			sprite.global_position = landing + Vector3(1.5, 12.0, 0.0)
+			var fall := sprite.create_tween()
+			fall.tween_property(sprite, "global_position", landing + Vector3.UP * 0.4, 0.45).set_ease(Tween.EASE_IN)
+			fall.tween_callback(sprite.queue_free)
+			await fall.finished
+		PixelBurst.spawn(get_parent(), landing + Vector3.UP * 0.3, PixelBurst.Kind.ROCK if shape in ["rock", "spike"] else PixelBurst.Kind.SMOKE, 0.9)
+		if not struck:
+			struck = true
+			_strike(mark)
+		await _wait(0.08)
+	await _wait(0.5)
+	queue_free()
+
+
+## Suelo: Terremoto (anillos que se abren por el suelo, temblor y grietas) o Surf (ola que
+## avanza del atacante al rival).
+func _ground_attack(kind: String) -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	var origin := _ground(attacker.global_position)
+	var goal := target.global_position
+	var distance := origin.distance_to(_ground(goal))
+	var struck := false
+	if kind == "quake":
+		var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
+		if rig != null and attacker.player != null and origin.distance_to(attacker.player.global_position) < 40.0:
+			rig.shake(1.0)
+		var texture := PixelShapes.get_texture("ring", Color(0.75, 0.6, 0.35))
+		for k in 3:
+			var ring := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = Vector2(2, 2)
+			ring.mesh = quad
+			var material := _glow_material(Color.WHITE, 1.0)
+			material.albedo_texture = texture
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			ring.material_override = material
+			ring.rotation.x = -PI * 0.5
+			add_child(ring)
+			ring.global_position = origin + Vector3.UP * 0.08
+			var grow := ring.create_tween()
+			grow.tween_property(ring, "scale", Vector3.ONE * (distance + 3.0), 0.7)
+			grow.parallel().tween_property(material, "albedo_color:a", 0.0, 0.7)
+			await _wait(0.15)
+		await _wait(0.2)
+		_strike("crack")
+		PixelBurst.spawn(get_parent(), goal + Vector3.UP * 0.3, PixelBurst.Kind.ROCK, 1.2)
+	else:
+		var wave := _sprite(PixelShapes.get_texture("wave", Color(0.3, 0.6, 1.0)), 0.1)
+		var elapsed := 0.0
+		while elapsed < 0.9:
+			await get_tree().process_frame
+			elapsed += get_process_delta_time()
+			var t := elapsed / 0.9
+			var at := origin.lerp(_ground(goal) + (_ground(goal) - origin).normalized() * 2.0, t)
+			wave.global_position = at + Vector3.UP * (1.0 + sin(t * PI) * 0.4)
+			wave.modulate.a = 1.0 if t < 0.8 else (1.0 - t) / 0.2
+			if not struck and t > 0.55:
+				struck = true
+				_strike("puddle")
+				PixelBurst.spawn(get_parent(), goal + Vector3.UP * 0.5, PixelBurst.Kind.SPLASH, 1.4)
+	await _wait(0.4)
+	queue_free()
+
+
+## Ráfagas (Hoja Afilada, Pin Misil, Semilladora…): varios proyectiles en abanico; el
+## primero hace el daño y los demás se ven (con contador ×N al final).
+func _gust(data: Array) -> void:
+	var shape: String = data[0]
+	var count: int = data[1]
+	var spread: float = data[2]
+	var spin: bool = data[3]
+	var color := MoveFamilies.color_of(move_id, "")
+	var frames: Array[Texture2D] = [PixelShapes.get_texture(shape, color)]
+	var landed := [0]
+	for i in count:
+		if not _alive(attacker):
+			break
+		var origin := _center(attacker)
+		var goal := _center(target) if _alive(target) else origin + (attacker.get("_sprite") as DirectionalSprite).facing_world * 7.0
+		var side := (goal - origin).cross(Vector3.UP).normalized()
+		var aim := goal + side * _rng.randf_range(-spread, spread) * 0.4 + Vector3.UP * _rng.randf_range(-spread, spread) * 0.2
+		var targets: Array[Node3D] = []
+		if _alive(target):
+			targets.append(target)
+		var on_hit := hit if i == 0 else (func(_node: Node3D) -> bool: return true)
+		var projectile := AttackProjectile.launch(get_parent(), origin + side * _rng.randf_range(-spread, spread) * 0.5, aim, int(Moves.get_move(move_id)["type"]), attacker, targets, on_hit)
+		projectile.set_look(frames, 0.055)
+		projectile.speed = 15.0
+		projectile.on_impact = func(at: Vector3) -> void:
+			landed[0] += 1
+			PixelBurst.spawn(get_parent(), at, PixelBurst.Kind.LEAVES if shape == "leaf" else PixelBurst.Kind.DUST, 0.4)
+			if landed[0] == 1 and is_inside_tree():
+				_impact("")
+		if spin:
+			projectile.create_tween().set_loops(8).tween_property(projectile, "rotation:y", TAU, 0.25).as_relative()
+		await _wait(0.07)
+	await _wait(1.2)
+	if count > 1 and landed[0] > 1 and _alive(target) and target is PokemonActor:
+		(target as PokemonActor).float_text("×%d" % landed[0], Color.WHITE, 0.4)
+	queue_free()
+
+
+## Remolino sobre el rival (Tornado, Vendaval, Torbellino, Bucle Arena…): embudo de
+## espirales que giran, angosto abajo y ancho arriba.
+func _twister() -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	var color: Color = {"whirlpool": Color(0.35, 0.65, 1.0), "sand-tomb": Color(0.85, 0.72, 0.45), "leaf-tornado": Color(0.45, 0.8, 0.3)}.get(move_id, Color(0.86, 0.92, 1.0))
+	var layers: Array[Sprite3D] = []
+	for k in 6:
+		layers.append(_sprite(PixelShapes.get_texture("swirl", color, k % 4), 0.05 + k * 0.018))
+	var elapsed := 0.0
+	var struck := false
+	while elapsed < 1.1:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(target):
+			break
+		var base := target.global_position
+		for k in layers.size():
+			var frame := int(elapsed * 18.0 + k) % 4
+			layers[k].texture = PixelShapes.get_texture("swirl", color, frame)
+			layers[k].global_position = base + Vector3.UP * (0.2 + k * 0.6) + Vector3(sin(elapsed * 8.0 + k) * 0.15, 0, 0)
+			layers[k].modulate.a = clampf((1.1 - elapsed) / 0.25, 0.0, 1.0)
+		if not struck and elapsed > 0.3:
+			struck = true
+			_strike()
 	queue_free()

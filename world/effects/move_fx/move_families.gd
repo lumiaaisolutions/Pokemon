@@ -40,6 +40,55 @@ const BITES := {
 	"psychic-fangs": "ff70b0", "fishious-rend": "70b0ff",
 }
 
+## Rayos rectos: [color (vacío = del tipo), ancho (m), duración (s), ondulado].
+const BEAMS := {
+	"ice-beam": ["a8e8ff", 0.35, 0.6, false], "hyper-beam": ["ffb050", 0.7, 0.9, false],
+	"solar-beam": ["fff080", 0.6, 0.8, false], "psybeam": ["ff70c0", 0.3, 0.6, true],
+	"aurora-beam": ["90f0ff", 0.35, 0.6, true], "signal-beam": ["c0ff60", 0.3, 0.6, true],
+	"charge-beam": ["ffe030", 0.3, 0.5, false], "flash-cannon": ["e0e8f0", 0.5, 0.6, false],
+	"dragon-pulse": ["7a5af0", 0.45, 0.6, true], "dark-pulse": ["3a2a40", 0.4, 0.6, true],
+	"tri-attack": ["ffffff", 0.35, 0.5, false],
+	"giga-impact": ["ffb050", 0.6, 0.6, false], "moongeist-beam": ["a070ff", 0.6, 0.9, false],
+}
+## Relámpagos: true = cae del cielo sobre el rival; false = sale del atacante.
+const BOLTS := {"thunderbolt": false, "thunder-shock": false, "thunder": true, "zap-cannon": false, "discharge": false, "spark": false, "bolt-strike": true}
+## Golpes y cortes: [forma, color (vacío = del tipo), golpes].
+const MELEE := {
+	"fire-punch": ["fist", "", 1], "ice-punch": ["fist", "", 1], "thunder-punch": ["fist", "", 1],
+	"mach-punch": ["fist", "", 1], "mega-punch": ["fist", "", 1], "dynamic-punch": ["fist", "", 1],
+	"focus-punch": ["fist", "", 1], "close-combat": ["fist", "", 4], 	"power-up-punch": ["fist", "", 1], "bullet-punch": ["fist", "", 1], "comet-punch": ["fist", "", 3],
+	"drain-punch": ["fist", "", 1], "hammer-arm": ["fist", "", 1], "meteor-mash": ["fist", "", 1],
+	"cross-chop": ["cross", "", 1], "x-scissor": ["cross", "", 1], "cross-poison": ["cross", "", 1],
+	"karate-chop": ["slash", "", 1], "brick-break": ["slash", "", 1], "slash": ["slash", "", 1],
+	"night-slash": ["slash", "", 1], "leaf-blade": ["slash", "", 1], "fury-cutter": ["slash", "", 2],
+	"aerial-ace": ["slash", "", 1], "cut": ["slash", "", 1], "sacred-sword": ["slash", "", 1],
+	"false-swipe": ["slash", "", 1], "psycho-cut": ["slash", "", 1], "razor-shell": ["slash", "", 1],
+	"dragon-claw": ["claw", "", 1], "shadow-claw": ["claw", "", 1], "metal-claw": ["claw", "", 1],
+	"crush-claw": ["claw", "", 1], "scratch": ["claw", "", 1], "fury-swipes": ["claw", "", 3],
+	"double-hit": ["slash", "", 2],
+}
+## Desde el cielo: [forma, cantidad, marca en el suelo].
+const SKY := {
+	"rock-slide": ["rock", 5, "crack"], "draco-meteor": ["meteor", 4, "scorch"], "rock-throw": ["rock", 2, ""],
+	"hail": ["icicle", 6, ""], "icicle-crash": ["icicle", 4, "crack"], "stone-edge": ["spike", 4, "crack"],
+	"head-smash": ["rock", 3, "crack"],
+}
+## Suelo: onda expansiva (Terremoto) u ola (Surf).
+const GROUND := {
+	"earthquake": "quake", "bulldoze": "quake", "stomping-tantrum": "quake",
+	"earth-power": "quake", "fissure": "quake", "surf": "wave", "water-pledge": "wave", "sparkling-aria": "wave",
+}
+## Ráfagas: [forma, cantidad, dispersión (m), gira].
+const GUSTS := {
+	"razor-leaf": ["leaf", 6, 1.2, true], "magical-leaf": ["leaf", 5, 1.0, true], "leaf-storm": ["leaf", 14, 2.0, true],
+	"pin-missile": ["needle", 4, 0.6, false], "bullet-seed": ["orb", 5, 0.6, false], "icicle-spear": ["icicle", 4, 0.6, false],
+	"rock-blast": ["rock", 3, 0.6, false], "mud-shot": ["orb", 3, 0.5, false], "air-cutter": ["slash", 2, 0.8, false],
+	"air-slash": ["slash", 1, 0.0, false], "gust": ["feather", 4, 1.0, true],
+	"spike-cannon": ["needle", 4, 0.6, false],
+}
+## Remolinos sobre el rival (Tornado, Vendaval).
+const TWISTERS := ["twister", "hurricane", "whirlpool", "sand-tomb", "leaf-tornado"]
+
 
 ## Familia del ataque ("" si no tiene: animación de siempre).
 static func family(id: String) -> String:
@@ -53,6 +102,20 @@ static func family(id: String) -> String:
 		return "vines"
 	if BITES.has(id):
 		return "bite"
+	if BEAMS.has(id):
+		return "beam"
+	if BOLTS.has(id):
+		return "bolt"
+	if MELEE.has(id):
+		return "melee"
+	if SKY.has(id):
+		return "sky"
+	if GROUND.has(id):
+		return "ground"
+	if GUSTS.has(id):
+		return "gust"
+	if TWISTERS.has(id):
+		return "twister"
 	return ""
 
 

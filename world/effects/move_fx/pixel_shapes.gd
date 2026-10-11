@@ -44,6 +44,30 @@ static func get_texture(name: String, base: Color = Color.WHITE, frame: int = 0)
 			image = _star(base)
 		"orb":
 			image = _orb(base)
+		"fist":
+			image = _fist(base)
+		"slash":
+			image = _slash(base)
+		"claw":
+			image = _claw(base)
+		"cross":
+			image = _cross(base)
+		"spike":
+			image = _spike(base)
+		"meteor":
+			image = _meteor(base)
+		"wave":
+			image = _wave(base)
+		"ring":
+			image = _ring(base)
+		"feather":
+			image = _feather(base)
+		"needle":
+			image = _needle(base)
+		"swirl":
+			image = _swirl(base, frame)
+		"icicle":
+			image = _icicle(base)
 		_:
 			image = _orb(base)
 	var texture := ImageTexture.create_from_image(image)
@@ -254,3 +278,131 @@ static func _orb(base: Color) -> Image:
 	_disc(image, 5.5, 5.5, 3.0, base.lightened(0.35))
 	_disc(image, 4.0, 4.0, 1.2, Color.WHITE)
 	return _outline(image, base.darkened(0.55))
+
+
+# --- Lote 2: golpes, cortes, cielo, suelo y viento -------------------------------------
+
+## Puño (golpes): guante blanco con aura del color del tipo alrededor.
+static func _fist(base: Color) -> Image:
+	var image := _canvas(19, 17)
+	# Aura del tipo: solo un borde de chispas alrededor del guante.
+	for i in 14:
+		var angle := TAU * i / 14.0
+		image.set_pixel(int(9.5 + cos(angle) * 8.0), int(8.5 + sin(angle) * 7.5), base)
+		image.set_pixel(int(9.5 + cos(angle) * 7.0), int(8.5 + sin(angle) * 6.5), base.lightened(0.3))
+	_poly(image, PackedVector2Array([Vector2(4, 5), Vector2(14, 4), Vector2(15, 12), Vector2(5, 13)]), Color(0.97, 0.95, 0.9))
+	for i in 3:
+		image.set_pixel(7 + i * 3, 5, Color(0.6, 0.55, 0.5))
+	_poly(image, PackedVector2Array([Vector2(3, 8), Vector2(6, 7), Vector2(6, 11), Vector2(3, 11)]), Color(0.9, 0.88, 0.82))
+	return _outline(image, Color(0.2, 0.18, 0.2))
+
+
+## Tajo: medialuna diagonal blanca con borde del color del tipo (Cuchillada, Tajo Umbrío…),
+## de arriba a la izquierda a abajo a la derecha, cruzando el cuerpo.
+static func _slash(base: Color) -> Image:
+	var image := _canvas(24, 24)
+	for i in 40:
+		var t := i / 39.0
+		var p := Vector2(3, 3).lerp(Vector2(21, 21), t) + Vector2(1, -1) * sin(t * PI) * 4.0
+		var w := sin(t * PI) * 2.2
+		_disc(image, p.x, p.y, w + 0.7, base)
+		_disc(image, p.x, p.y, maxf(w - 0.3, 0.3), Color.WHITE)
+	return image
+
+
+## Zarpazo: tres marcas paralelas (Garra Umbría, Garra Dragón).
+static func _claw(base: Color) -> Image:
+	var image := _canvas(20, 20)
+	for k in 3:
+		for i in 16:
+			var x := 4 + k * 5 + i * 0.4
+			var y := 2 + i
+			var w := 1.4 * sin(i / 15.0 * PI) + 0.4
+			_disc(image, x, y, w, base if k != 1 else base.lightened(0.3))
+	return image
+
+
+## Cruz (Tijera X, Corte Cruzado).
+static func _cross(base: Color) -> Image:
+	var image := _canvas(21, 21)
+	for i in 21:
+		_disc(image, i, i, 1.6, base)
+		_disc(image, 20 - i, i, 1.6, base)
+	for i in 21:
+		image.set_pixel(i, i, Color.WHITE)
+		image.set_pixel(20 - i, i, Color.WHITE)
+	return image
+
+
+## Pico de roca que sale del suelo (Roca Afilada, Avalancha en el suelo).
+static func _spike(base: Color) -> Image:
+	var image := _canvas(11, 18)
+	_poly(image, PackedVector2Array([Vector2(5.5, 0), Vector2(10.5, 17.5), Vector2(0.5, 17.5)]), base)
+	_poly(image, PackedVector2Array([Vector2(5.5, 2), Vector2(7, 17), Vector2(5, 17)]), base.lightened(0.3))
+	return _outline(image, base.darkened(0.6))
+
+
+## Meteoro: roca con estela de fuego (Meteoro Dragón, Puño Meteoro).
+static func _meteor(base: Color) -> Image:
+	var image := _canvas(16, 22)
+	_poly(image, PackedVector2Array([Vector2(8, 0), Vector2(13, 10), Vector2(3, 10)]), Color(1.0, 0.55, 0.15, 0.85))
+	_poly(image, PackedVector2Array([Vector2(8, 3), Vector2(11, 10), Vector2(5, 10)]), Color(1.0, 0.9, 0.4))
+	_disc(image, 8, 15, 6.0, base)
+	_disc(image, 6.5, 13.5, 2.0, base.lightened(0.3))
+	return _outline(image, base.darkened(0.6))
+
+
+## Ola (Surf): pared de agua con espuma arriba.
+static func _wave(base: Color) -> Image:
+	var image := _canvas(40, 24)
+	for x in 40:
+		var top := int(6 + 4 * sin(x * 0.35) + (2 if x < 8 else 0))
+		for y in range(top, 24):
+			image.set_pixel(x, y, base if y > top + 2 else base.lightened(0.35))
+		image.set_pixel(x, top, Color.WHITE)
+		if x % 5 == 0:
+			image.set_pixel(x, maxi(top - 1, 0), Color.WHITE)
+	return _outline(image, base.darkened(0.5))
+
+
+## Anillo de onda expansiva (Terremoto, explosiones).
+static func _ring(base: Color) -> Image:
+	var image := _canvas(32, 32)
+	for y in 32:
+		for x in 32:
+			var d := Vector2(x - 15.5, y - 15.5).length()
+			if d > 12.5 and d < 15.5:
+				image.set_pixel(x, y, Color(base.r, base.g, base.b, 0.85) if d > 13.5 else Color(1, 1, 1, 0.9))
+	return image
+
+
+static func _feather(base: Color) -> Image:
+	var image := _canvas(7, 13)
+	_poly(image, PackedVector2Array([Vector2(3.5, 0), Vector2(6.5, 6), Vector2(3.5, 12.5), Vector2(0.5, 6)]), base)
+	for y in 12:
+		image.set_pixel(3, y, base.darkened(0.3))
+	return _outline(image, base.darkened(0.6))
+
+
+static func _needle(base: Color) -> Image:
+	var image := _canvas(13, 5)
+	_poly(image, PackedVector2Array([Vector2(0, 2.5), Vector2(9, 0.5), Vector2(12.5, 2.5), Vector2(9, 4.5)]), base)
+	return _outline(image, base.darkened(0.6))
+
+
+## Remolino (Tornado, Ciclón): espiral en 4 cuadros que gira.
+static func _swirl(base: Color, frame: int) -> Image:
+	var image := _canvas(24, 24)
+	for i in 70:
+		var t := i / 69.0
+		var angle := t * TAU * 2.0 + frame * PI * 0.5
+		var r := 2.0 + t * 9.5
+		_disc(image, 12 + cos(angle) * r, 12 + sin(angle) * r * 0.55, 1.1, base if i % 6 != 0 else Color.WHITE)
+	return image
+
+
+static func _icicle(base: Color) -> Image:
+	var image := _canvas(7, 15)
+	_poly(image, PackedVector2Array([Vector2(0.5, 0), Vector2(6.5, 0), Vector2(3.5, 14.5)]), base)
+	_poly(image, PackedVector2Array([Vector2(2, 0.5), Vector2(3.5, 0.5), Vector2(3.5, 9)]), Color.WHITE)
+	return _outline(image, base.darkened(0.5))
