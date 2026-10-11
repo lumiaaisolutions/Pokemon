@@ -85,6 +85,10 @@ func _appear(reason: String) -> void:
 	_node.add_child(sprite)
 	sprite.setup(NpcLooks.sheet("hugh"), 3, 8, 0.057)
 	_node.set_meta("reason", reason)
+	# Combate obligatorio (decisión de Fernando): te detiene y saca a tu compañero.
+	var battle := _main.get_node_or_null("Battle") as BattleManager
+	if battle != null:
+		battle.spotted(_node)
 	AudioBus.play_sfx("spotted")
 	AudioBus.play_jingle("bw1_spotted")
 
@@ -127,8 +131,21 @@ func _fight() -> void:
 			"at": _node.global_position + (_player.global_position - _node.global_position).normalized() * 2.5 if _node != null else _player.global_position + Vector3(0, 0, -5),
 			"node": _node}
 	info["on_end"] = func(result: String) -> void: _leave(result)
-	if battle == null or not battle.start_trainer(info):
-		_leave("")
+	# Espera un momento a que se pueda pelear (tu compañero saliendo de su Ball).
+	for attempt in 12:
+		if battle == null or battle.start_trainer(info):
+			return
+		if attempt == 0:
+			battle.spotted(_node)
+		await get_tree().create_timer(0.25).timeout
+		if _node == null:
+			return
+	var dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	if dialog != null:
+		dialog.say(GameState.rival, "¿No tienes Pokémon en condiciones? Cúralos y peleamos la próxima vez.")
+	if battle != null:
+		battle.release_spotted()
+	_leave("")
 
 
 func _leave(result: String) -> void:

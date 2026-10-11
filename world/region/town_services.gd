@@ -134,9 +134,11 @@ func heal_at_center(door: Vector3) -> void:
 func heal_everyone() -> void:
 	for member: Dictionary in GameState.party:
 		member["hp_ratio"] = 1.0
+		member.erase("poison_until")
 	var p := player()
 	if p != null:
 		p.heal(9999.0)
+		GameState.cure_poison()
 	var c := companion()
 	if c != null:
 		c.recover(1.0)

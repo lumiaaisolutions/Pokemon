@@ -35,6 +35,12 @@ func _ready() -> void:
 	events.player_path = NodePath("../Player")
 	events.spawner_path = NodePath("../Spawner")
 	add_child(events)
+	# Pantano tóxico: el agua morada envenena (ver ToxicSwamp).
+	var toxic := ToxicSwamp.new()
+	toxic.name = "ToxicSwamp"
+	toxic.world_path = NodePath("../World")
+	toxic.player_path = NodePath("../Player")
+	add_child(toxic)
 	# Rocas pequeñas agrietadas que el compañero rompe (fase 5.8).
 	var rocks := BreakableRocks.new()
 	rocks.name = "BreakableRocks"

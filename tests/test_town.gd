@@ -192,7 +192,19 @@ func _run() -> void:
 			outsider = _species(id)
 			break
 	var migrant_species: SpeciesData = outsider if outsider != null else _species("swablu")
+	# Un punto en tierra firme, lejos del agua (junto al agua salen Pokémon de agua).
 	var land_point := _world.start_position() + Vector3(0, 0, 200)
+	for attempt in 40:
+		var candidate := _world.start_position() + Vector3(cos(attempt * 0.7), 0, sin(attempt * 0.7)) * (160.0 + attempt * 8.0)
+		var dry := true
+		for k in 8:
+			var probe := candidate + Vector3(cos(TAU * k / 8.0), 0, sin(TAU * k / 8.0)) * 60.0
+			if _world.water_depth_at(probe.x, probe.z) > -0.5 or _world.water_depth_at(candidate.x, candidate.z) > -0.5:
+				dry = false
+				break
+		if dry:
+			land_point = candidate
+			break
 	var day_now := GameState.game_day()
 	var fly_hour := GameState.clock_hour() + 1.0
 	var migration := migrations.start_migration(migrant_species, land_point, fly_hour)
@@ -212,7 +224,7 @@ func _run() -> void:
 		rig.look_at_sky(0.0)
 		migrations._move_flock(Migrations.FLOCK_SECONDS + 1.0)
 		_check(migrations.flock() == null, "la bandada se va del cielo tras pasar")
-	_check(migrations.species_at(land_point + Vector3(20, 0, 0)) == migrant_species, "donde aterrizó sale esa especie%s" % (" (de fuera de la región)" if outsider != null else ""))
+	_check(migrations.species_at(land_point + Vector3(20, 0, 0)) != null and migrations.species_at(land_point + Vector3(20, 0, 0)).identifier == migrant_species.identifier, "donde aterrizó sale esa especie%s" % (" (de fuera de la región)" if outsider != null else ""))
 	_check(migrations.species_at(land_point + Vector3(400, 0, 0)) == null, "lejos del aterrizaje no aplica")
 	_player.global_position = Vector3(land_point.x, _world.surface_height_at(land_point.x, land_point.z) + 0.5, land_point.z)
 	var migrant_hits := 0
@@ -221,7 +233,7 @@ func _run() -> void:
 		var spawned := spawner.spawn_one()
 		if spawned != null:
 			spawn_total += 1
-		if spawned != null and spawned.species == migrant_species:
+		if spawned != null and spawned.species.identifier == migrant_species.identifier:
 			migrant_hits += 1
 		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
 			node.queue_free()

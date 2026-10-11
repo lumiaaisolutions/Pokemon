@@ -233,7 +233,23 @@ func is_night() -> bool:
 
 
 ## Dormir: avanza hasta las 7:00 del día siguiente.
+## Veneno del pantano tóxico (ver ToxicSwamp): hasta cuándo sigue envenenado el jugador.
+var poison_until := -1.0
+
+
+func is_poisoned() -> bool:
+	return play_time < poison_until
+
+
+## Cura el veneno del jugador y de todo el equipo (Antídoto, Centro Pokémon, dormir).
+func cure_poison() -> void:
+	poison_until = -1.0
+	for member: Dictionary in party:
+		member.erase("poison_until")
+
+
 func sleep_until_morning() -> void:
+	cure_poison()
 	var hour := clock_hour()
 	var hours := (24.0 - hour) + 7.0 if hour >= 7.0 else 7.0 - hour
 	play_time += hours * 60.0

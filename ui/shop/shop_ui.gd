@@ -3,7 +3,7 @@ extends Control
 ## Tienda Pokémon: comprar (×1 o ×10) y vender a mitad de precio. Pausa el juego.
 ## El surtido crece con las medallas y cada día ofrece 4 MT distintas.
 
-const STOCK := ["poke-ball", "great-ball", "potion", "super-potion", "full-heal", "repel", "super-repel", "escape-rope", "honey",
+const STOCK := ["poke-ball", "great-ball", "potion", "antidote", "super-potion", "full-heal", "repel", "super-repel", "escape-rope", "honey",
 		"lava-cookie", "poke-doll", "quick-ball", "dusk-ball", "net-ball", "dive-ball", "nest-ball", "heal-ball",
 		"bread", "sandwich-shop", "curry-can", "soda", "tent", "good-rod"]
 ## Objetos que se desbloquean con medallas: [medallas, id].

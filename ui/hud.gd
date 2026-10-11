@@ -558,7 +558,7 @@ func _update_downed_panel() -> void:
 	_downed_panel.visible = down
 	# Tinte rojo que late suave mientras está en el suelo.
 	_downed_tint.color.a = (0.10 + 0.06 * sin(_time * 3.0)) if down else 0.0
-	_hearts_box.modulate = Color(1.0, 0.75 + 0.25 * sin(_time * 6.0), 0.85) if down else Color.WHITE
+	_hearts_box.modulate = Color(1.0, 0.75 + 0.25 * sin(_time * 6.0), 0.85) if down else (Color(0.95, 0.55, 1.15).lerp(Color(0.75, 0.4, 1.0), 0.5 + 0.5 * sin(_time * 5.0)) if GameState.is_poisoned() else Color.WHITE)
 	if not down:
 		return
 	var ratio := _player.health / _player.config.health_max

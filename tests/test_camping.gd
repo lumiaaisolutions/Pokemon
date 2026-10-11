@@ -176,6 +176,33 @@ func _run() -> void:
 	ItemEffects.cook(keep_recipe, _main, false)
 	_check(GameState.item_count(dish) == before + int(keep_recipe.get("amount", 1)), "cocinar y guardar deja el platillo en la Mochila")
 
+	# 10. Pantano tóxico.
+	_test_poison()
+
+
+## Pantano tóxico: veneno que baja la vida (hasta 1), inmunes, Antídoto y dormir lo curan.
+func _test_poison() -> void:
+	var toxic := _main.get_node("ToxicSwamp") as ToxicSwamp
+	_player.health = _player.config.health_max
+	GameState.poison_until = GameState.play_time + 5.0
+	_check(GameState.is_poisoned(), "el jugador queda envenenado")
+	toxic._update_player()
+	_check(_player.health < _player.config.health_max, "el veneno baja la vida del jugador")
+	_player.health = 1.2
+	for i in 5:
+		toxic._update_player()
+	_check(_player.health >= 1.0, "el veneno no deja al jugador sin vida (%.2f)" % _player.health)
+	_check(ToxicSwamp.immune(MenuStyle.species("grimer")) and ToxicSwamp.immune(MenuStyle.species("magnemite")), "los tipo Veneno y Acero no se envenenan")
+	_check(not ToxicSwamp.immune(MenuStyle.species("bidoof")), "un Bidoof sí se envenena")
+	GameState.add_item("antidote", 1)
+	var message := ItemEffects.use("antidote", _main)
+	_check(not GameState.is_poisoned() and message.contains("curó"), "el Antídoto cura el veneno (%s)" % message)
+	GameState.poison_until = GameState.play_time + 5.0
+	if not GameState.party.is_empty():
+		GameState.party[0]["poison_until"] = GameState.play_time + 5.0
+	GameState.sleep_until_morning()
+	_check(not GameState.is_poisoned() and (GameState.party.is_empty() or not GameState.party[0].has("poison_until")), "dormir cura el veneno del jugador y del equipo")
+
 
 ## Busca un lugar fuera de los asentamientos, en tierra firme, para armar la tienda.
 func _find_open_spot() -> Vector3:

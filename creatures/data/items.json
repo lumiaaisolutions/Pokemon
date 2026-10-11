@@ -224,6 +224,14 @@
       "desc": "Cura un 35 % de la vida de tu compañero."
     },
     {
+      "id": "antidote",
+      "name": "Antídoto",
+      "pocket": "curacion",
+      "price": 200,
+      "cure_poison": true,
+      "desc": "Cura el envenenamiento tuyo y de tu compañero (pantano tóxico)."
+    },
+    {
       "id": "super-potion",
       "name": "Superpoción",
       "pocket": "curacion",

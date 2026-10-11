@@ -73,6 +73,13 @@ static func use(id: String, main: Node) -> String:
 			companion.recover(entry["hp_ratio"])
 		GameState.use_item(id)
 		return "¡Tu compañero recuperó vida!"
+	if item.has("cure_poison"):
+		var companion_poisoned := companion != null and ToxicSwamp.actor_poisoned(companion)
+		if not GameState.is_poisoned() and not companion_poisoned:
+			return "Nadie está envenenado."
+		GameState.cure_poison()
+		GameState.use_item(id)
+		return "¡Se curó el envenenamiento!"
 	if item.has("cure_status"):
 		return "Tu compañero no está aturdido."
 	if item.has("heal_hearts") or item.has("feed"):
