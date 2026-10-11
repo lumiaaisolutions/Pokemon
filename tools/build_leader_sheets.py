@@ -8,6 +8,8 @@ Fuentes (sprites/npc_src/, no versionadas):
 - prof_hgss_trainers.png (HGSS "Trainer Overworlds", ripeado por Dragoon): celdas de
   12 cuadros (3 × 4) en una cuadrícula de 10 columnas ("H").
 - prof_plat_npcs.png (Platino "NPCs", ripeado por spaceemotion): columnas de 9 cuadros ("P").
+- sprites/overworld/bw_overworld_entities.png (BW "Overworld Entities", ripeado por Barubary):
+  bloques detectados por color ("W", índice de blocks(); Cilan es el 64), como los de 7 cuadros.
 
 Catálogo aprobado por Fernando (2026-10-10, ver docs/sistemas/regiones.md). Salida:
 art/npcs/lider_<id>.png y art/npcs/alto_<id>.png (96×256, como las de los NPC).
@@ -27,6 +29,9 @@ LEADERS = {
     "steven": "B77", "cynthia": "A51", "alder": "A72", "clay": "A20", "skyla": "A21", "iris": "A23", "marlon": "A54",
     "brycen": "A22", "chuck": "A58", "flannery": "A60", "fantina": "A62", "wallace": "A63", "giovanni": "A56",
     "burgh": "A53", "drayden": "A59", "roxie": "A52", "cress": "A44", "chili": "A45", "koga": "H37", "blue": "H49",
+    # Definitivos (2026-10-10): Cilan de la hoja de BW ("W" = bloque de bw_overworld_entities)
+    # y Volkner de la de Platino (antes usaban un aspecto provisional).
+    "cilan": "W64", "volkner": "P5.9",
 }
 ELITE = {"lance": "H40", "will": "H31", "bruno": "H38", "karen": "H39", "shauntal": "A24", "caitlin": "A26", "flint": "P5.13"}
 
@@ -107,8 +112,14 @@ def from_platinum(image, row, col):
     return sheet_of([cells[0], cells[5], cells[6]], left, [c.transpose(Image.FLIP_LEFT_RIGHT) for c in left], [cells[1], cells[3], cells[4]])
 
 
+BW1 = ROOT / "sprites" / "overworld" / "bw_overworld_entities.png"
+
+
 def build(code, bw, full, seven, hgss, plat):
     kind = code[0]
+    if kind == "W":
+        bw1 = Image.open(BW1).convert("RGBA")
+        return from_seven(bw1, blocks(bw1)[int(code[1:])])
     if kind == "A":
         return from_full(bw, full[int(code[1:])])
     if kind == "B":
