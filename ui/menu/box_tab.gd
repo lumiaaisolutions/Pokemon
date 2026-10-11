@@ -163,6 +163,7 @@ static func _detail(menu: GameMenu) -> Control:
 	if source == "box":
 		if GameState.party.size() < GameState.PARTY_MAX:
 			var to_party := UiKit.slant_button("Al equipo", UiKit.MINT)
+			to_party.tooltip_text = "Lo saca de la Caja y lo pone en tu equipo (hay %d/%d espacios)." % [GameState.party.size(), GameState.PARTY_MAX]
 			to_party.pressed.connect(func() -> void:
 				GameState.party.append(GameState.box.pop_at(index))
 				_selected = ["party", GameState.party.size() - 1]
@@ -170,6 +171,7 @@ static func _detail(menu: GameMenu) -> Control:
 			actions.add_child(to_party)
 		else:
 			var swap := UiKit.slant_button("Cambiar por el %d.º del equipo" % (menu.selected_member + 1), UiKit.MINT)
+			swap.tooltip_text = "Tu equipo ya tiene %d: este cambia de lugar con el elegido en la pestaña Equipo." % GameState.PARTY_MAX
 			swap.disabled = menu.selected_member == GameState.companion_index
 			swap.pressed.connect(func() -> void:
 				var member := clampi(menu.selected_member, 0, GameState.party.size() - 1)
@@ -182,6 +184,7 @@ static func _detail(menu: GameMenu) -> Control:
 		menu.selected_member = index
 		if GameState.party.size() > 1 and index != GameState.companion_index:
 			var to_box := UiKit.slant_button("A la caja", Color(0.5, 0.7, 1.0))
+			to_box.tooltip_text = "Lo guarda en la Caja (PC) y libera un espacio en tu equipo."
 			to_box.pressed.connect(func() -> void:
 				GameState.box.append(GameState.party.pop_at(index))
 				if GameState.companion_index > index:
@@ -191,6 +194,7 @@ static func _detail(menu: GameMenu) -> Control:
 			actions.add_child(to_box)
 		if index != GameState.companion_index:
 			var make := UiKit.slant_button("Hacer acompañante", UiKit.GOLD)
+			make.tooltip_text = "Te acompañará en el mundo y el combate (reemplaza al que tengas ahora)."
 			make.pressed.connect(func() -> void:
 				if menu.main != null and menu.main.has_method("swap_companion"):
 					menu.main.swap_companion(index)
@@ -199,6 +203,7 @@ static func _detail(menu: GameMenu) -> Control:
 	var can_release := source == "box" or (GameState.party.size() > 1 and index != GameState.companion_index)
 	if can_release:
 		var release := UiKit.slant_button("¿Seguro? Liberar" if _confirm_release else "Liberar", Color(1.0, 0.4, 0.4))
+		release.tooltip_text = "Lo suelta en la naturaleza para siempre. Toca dos veces para confirmar."
 		release.pressed.connect(func() -> void:
 			if not _confirm_release:
 				_confirm_release = true

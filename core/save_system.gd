@@ -30,8 +30,14 @@ func slot_info(slot: int) -> Dictionary:
 	var caught := 0
 	for id: String in dex:
 		caught += 1 if int(dex[id].get("caught", 0)) > 0 else 0
+	var regions: Array = data.get("regions", [])
+	var region_index := int(data.get("region_index", 0))
+	var region_name := String(regions[region_index].get("name", "?")) if region_index >= 0 and region_index < regions.size() else ""
+	var world_flags: Dictionary = data.get("world_flags", {})
 	return {"name": data.get("player_name", "?"), "character": data.get("character_id", ""),
 			"play_time": float(data.get("play_time", 0.0)), "caught": caught, "saved_at": data.get("saved_at", ""),
+			"money": int(data.get("money", 0)), "region": region_name, "badges": (world_flags.get("badges", []) as Array).size(),
+			"regions_unlocked": regions.filter(func(r: Dictionary) -> bool: return r.get("unlocked", false)).size(),
 			"companion": (data.get("party", [{}]) as Array)[int(data.get("companion_index", 0))].get("species", "") if not (data.get("party", []) as Array).is_empty() else ""}
 
 

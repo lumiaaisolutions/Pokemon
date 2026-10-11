@@ -523,6 +523,7 @@ static func type_chip(type: int) -> PanelContainer:
 	row.add_child(icon_rect(UiIcons.type_icon(type), Vector2(18, 18)))
 	var text := label(MenuStyle.TYPE_NAMES[type].to_upper() if type >= 0 and type < 18 else "?", 15, WHITE, true)
 	row.add_child(text)
+	chip.tooltip_text = "Tipo %s" % MenuStyle.TYPE_NAMES[type] if type >= 0 and type < 18 else "Tipo desconocido"
 	return chip
 
 
@@ -553,6 +554,9 @@ static func portrait_card(entry: Dictionary, selected: bool, compact: bool = fal
 	var species := MenuStyle.species(entry["species"])
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(118, 150) if not compact else Vector2(96, 96)
+	if species != null:
+		var ratio_tip := float(entry.get("hp_ratio", 1.0))
+		button.tooltip_text = "%s%s · Vida %d%% · Vínculo %d/10" % [species.display_name, "  ✦" if entry.get("shiny", false) else "", roundi(ratio_tip * 100.0), int(entry.get("bond", 1))]
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = (Color(0.9, 0.89, 0.85) if light else Color(0.82, 0.86, 0.95, 0.92)) if not selected else WHITE
 	normal.set_corner_radius_all(10)

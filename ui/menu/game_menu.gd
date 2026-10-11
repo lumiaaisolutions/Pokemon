@@ -406,7 +406,7 @@ func show_tab(index: int) -> void:
 		"Mapa":
 			page = _map_page()
 		"Controles":
-			page = HelpOverlay.build_content()
+			page = HelpOverlay.build_menu_content()
 		"Opciones":
 			page = OptionsTab.build()
 		"Guardar":
@@ -489,15 +489,25 @@ func _photo_booth_line() -> String:
 	return "%d (última con %s)" % [count, last] if last != "" else str(count)
 
 
+## Ficha de entrenador (nivel Dinero/Logros, pedido de Fernando el 2026-10-11): tarjeta
+## estilo Trainer Card con retrato, medallas en círculos, gráfica de la Pokédex y chips
+## con ícono por cada dato; se envuelve en scroll para caber a 1280×720.
 func _trainer_card() -> Control:
-	var center := CenterContainer.new()
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UiKit.card_style(18))
-	card.custom_minimum_size = Vector2(1100, 520)
-	center.add_child(card)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 40)
-	card.add_child(row)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiKit.light_style(UiKit.RED, 24, 4))
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(panel)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 32)
+	row.add_theme_constant_override("v_separation", 20)
+	panel.add_child(row)
+	# Retrato con marco y chip de dificultad encima.
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 10)
+	left.custom_minimum_size.x = 260
+	row.add_child(left)
 	var atlas := AtlasTexture.new()
 	atlas.atlas = PlayerCharacters.sheet(GameState.character_id)
 	atlas.region = Rect2(0, 0, 32, 32)
@@ -505,13 +515,38 @@ func _trainer_card() -> Control:
 	var portrait_style := UiKit.panel_style(true, 16)
 	portrait_style.bg_color = Color(0.85, 0.9, 1.0)
 	portrait.add_theme_stylebox_override("panel", portrait_style)
-	portrait.add_child(UiKit.icon_rect(atlas, Vector2(260, 260)))
-	row.add_child(portrait)
-	var info := VBoxContainer.new()
-	info.add_theme_constant_override("separation", 12)
-	row.add_child(info)
-	var entry := PlayerCharacters.find(GameState.character_id)
-	info.add_child(UiKit.label("FICHA DE ENTRENADOR", 30, UiKit.INK, true))
+	portrait.add_child(UiKit.icon_rect(atlas, Vector2(220, 220)))
+	portrait.tooltip_text = "Tu personaje: %s" % PlayerCharacters.find(GameState.character_id).get("name", GameState.character_id)
+	left.add_child(portrait)
+	var name_label := UiKit.label(GameState.player_name, 26, UiKit.INK, true)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	left.add_child(name_label)
+	var difficulty := UiKit.label(GameState.DIFFICULTIES[GameState.difficulty]["name"], 17, UiKit.ink(UiKit.GOLD), true)
+	difficulty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	difficulty.tooltip_text = "Dificultad de esta partida (se cambia en Opciones)."
+	left.add_child(difficulty)
+	# Derecha: título, medallas, Pokédex y chips de datos.
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 14)
+	right.custom_minimum_size.x = 560
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
+	right.add_child(UiKit.label("FICHA DE ENTRENADOR", 28, UiKit.RED_DARK, true))
+	# Medallas de la región actual: una ficha dorada por medalla obtenida, candado por faltante.
+	var badges_box := VBoxContainer.new()
+	badges_box.add_theme_constant_override("separation", 4)
+	right.add_child(badges_box)
+	badges_box.add_child(UiKit.label("Medallas en %s" % Regions.region_name(), 17, UiKit.TEXT_SOFT, true))
+	var badges_row := HBoxContainer.new()
+	badges_row.add_theme_constant_override("separation", 6)
+	badges_box.add_child(badges_row)
+	var badges := Regions.badges()
+	for i in Regions.GYMS:
+		var medal := UiKit.icon_badge(UiIcons.section("Logros"), UiKit.GOLD if i < badges else Color(0, 0, 0, 0.18), 34)
+		medal.tooltip_text = "Medalla %d: obtenida" % (i + 1) if i < badges else "Medalla %d: todavía no" % (i + 1)
+		badges_row.add_child(medal)
+	badges_row.add_child(UiKit.label(" %d/%d aquí · %d en total" % [badges, Regions.GYMS, Regions.total_badges()], 16, UiKit.TEXT_SOFT))
+	# Pokédex: barra de progreso con vistos y capturados.
 	var seen := 0
 	var caught := 0
 	var shinies := 0
@@ -519,40 +554,122 @@ func _trainer_card() -> Control:
 		seen += 1 if GameState.dex[id]["seen"] > 0 else 0
 		caught += 1 if GameState.dex[id]["caught"] > 0 else 0
 		shinies += 1 if GameState.dex[id]["shiny"] else 0
+	var total_species := maxi(DexData.all_species().size(), 1)
+	var dex_box := VBoxContainer.new()
+	dex_box.add_theme_constant_override("separation", 4)
+	right.add_child(dex_box)
+	dex_box.add_child(UiKit.label("Pokédex: %d vistos · %d capturados de %d" % [seen, caught, total_species], 17, UiKit.TEXT_SOFT, true))
+	var dex_bar := UiKit.bar(float(caught) / float(total_species), 420, UiKit.hp_color(1.0), 12)
+	dex_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dex_bar.tooltip_text = "Capturados / especies totales de la Pokédex nacional."
+	dex_box.add_child(dex_bar)
+	# Chips con ícono por cada dato (nada de listas de texto plano).
 	var minutes := int(GameState.play_time / 60.0)
-	var lines := [
-		["Nombre", GameState.player_name], ["Origen", entry["region"]], ["Tiempo jugado", "%d h %02d min" % [minutes / 60, minutes % 60]],
-		["Dinero", "$" + _thousands(GameState.money)], ["Pokédex", "%d vistos · %d capturados" % [seen, caught]],
-		["Shinies · Legendarios", "%d · %d" % [shinies, GameState.legendary_caught.size()]],
-		["Dificultad", GameState.DIFFICULTIES[GameState.difficulty]["name"]],
-		["Región", "%s (%d de %d abiertas)" % [Regions.region_name(), Regions.unlocked().size(), Regions.COUNT]],
-		["Medallas", "%d / 8 aquí · %d en total" % [Regions.badges(), Regions.total_badges()]],
-		["Cintas", "%d / 5" % (GameState.world_flags.get("ribbons", []) as Array).size()],
-		["Cabina de fotos", _photo_booth_line()],
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 10)
+	chips.add_theme_constant_override("v_separation", 10)
+	right.add_child(chips)
+	var data := [
+		["$", "$" + _thousands(GameState.money), "Tu dinero. Míralo con detalle en Dinero."],
+		["⏱", "%d h %02d min" % [minutes / 60, minutes % 60], "Tiempo jugado en esta partida."],
+		["🗺", "%s (%d/%d regiones)" % [Regions.region_name(), Regions.unlocked().size(), Regions.COUNT], "Dónde estás y cuántas regiones has desbloqueado."],
+		["✨", "%d shiny · %d legendarios" % [shinies, GameState.legendary_caught.size()], "Shinies capturados y legendarios distintos capturados."],
+		["🎀", "%d / 5 cintas" % (GameState.world_flags.get("ribbons", []) as Array).size(), "Cintas de concursos ganadas."],
+		["🎚", GameState.DIFFICULTIES[GameState.difficulty]["name"], "Dificultad (se adapta a tu nivel)."],
+		["📷", _photo_booth_line(), "Fotos de la cabina del Centro Pokémon."],
 	]
-	for line: Array in lines:
-		var item := HBoxContainer.new()
-		var key := UiKit.label(line[0], 20, Color(0.35, 0.4, 0.55), true)
-		key.custom_minimum_size.x = 280
-		item.add_child(key)
-		item.add_child(UiKit.label(str(line[1]), 22, UiKit.INK, true))
-		info.add_child(item)
-	return center
+	for entry: Array in data:
+		chips.add_child(_fiche_chip(String(entry[0]), String(entry[1]), String(entry[2])))
+	return scroll
 
 
+## Chip con emoji + valor y una explicación en su tooltip (Ficha de entrenador).
+func _fiche_chip(emoji: String, text: String, tip: String) -> Control:
+	var chip := PanelContainer.new()
+	var style := UiKit.light_style(Color(0, 0, 0, 0.1), 14, 0)
+	style.bg_color = Color(0, 0, 0, 0.05) if UiKit.light else Color(1, 1, 1, 0.08)
+	chip.add_theme_stylebox_override("panel", style)
+	chip.tooltip_text = tip
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	chip.add_child(line)
+	line.add_child(UiKit.label(emoji, 20, UiKit.INK, true))
+	line.add_child(UiKit.label(text, 17, UiKit.INK, true))
+	return chip
+
+
+## Mapa de la región (nivel Dinero/Logros, pedido de Fernando): tarjeta con una vista
+## previa en vivo del mapa (con niebla de lo explorado), leyenda y el botón para abrirlo
+## completo.
 func _map_page() -> Control:
-	var center := CenterContainer.new()
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 18)
-	center.add_child(box)
-	box.add_child(UiKit.icon_rect(Items.icon("town-map"), Vector2(140, 140)))
-	box.add_child(UiKit.label("Mapa de la región", 32, UiKit.WHITE, true))
-	box.add_child(UiKit.wrapped("Abre el mapa completo con la niebla de lo que has explorado. También con %s." % InputHints.hint("map"), 20, UiKit.MUTED))
-	var open_map := UiKit.big_button("Abrir el mapa", Items.icon("town-map"))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 24)
+	row.add_theme_constant_override("v_separation", 24)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(row)
+	var map_ui := main.get_node_or_null("MapUi") as MapUi if main != null else null
+	# Izquierda: vista previa en vivo (mismo mapa y niebla del mapa completo).
+	var preview_panel := PanelContainer.new()
+	preview_panel.add_theme_stylebox_override("panel", UiKit.light_style(Color(0.3, 0.55, 0.85), 18, 3))
+	row.add_child(preview_panel)
+	var preview_box := VBoxContainer.new()
+	preview_box.add_theme_constant_override("separation", 10)
+	preview_panel.add_child(preview_box)
+	preview_box.add_child(UiKit.label("Vista previa", 20, UiKit.INK, true))
+	if map_ui != null:
+		map_ui.data.wait()
+	var explored := map_ui.data.explored_ratio() if map_ui != null else 0.0
+	if map_ui != null and map_ui.data.map_texture != null:
+		var preview := ColorRect.new()
+		preview.custom_minimum_size = Vector2(380, 380)
+		var material := ShaderMaterial.new()
+		material.shader = load("res://ui/map/full_map.gdshader") as Shader
+		material.set_shader_parameter("map_tex", map_ui.data.map_texture)
+		material.set_shader_parameter("fog_tex", map_ui.data.fog_texture)
+		material.set_shader_parameter("view_center", Vector2(0.5, 0.5))
+		material.set_shader_parameter("view_size", 1.0)
+		preview.material = material
+		preview.tooltip_text = "Lo que has explorado de esta región. Ábrelo completo para ver nombres y marcar un destino."
+		preview_box.add_child(preview)
+	else:
+		var placeholder := UiKit.empty_slot(Vector2(380, 380))
+		preview_box.add_child(placeholder)
+	preview_box.add_child(UiKit.label("Explorado: %d %%" % roundi(explored * 100.0), 18, UiKit.TEXT_SOFT, true))
+	# Derecha: leyenda, waypoint y botón de abrir.
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 14)
+	right.custom_minimum_size.x = 380
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(right)
+	right.add_child(UiKit.label("Mapa de la región", 28, UiKit.INK, true))
+	right.add_child(UiKit.wrapped("El mapa completo tiene zoom (rueda o cruceta), se arrastra para moverse y muestra lugares, Centro, tienda y gimnasio al acercarte. Clic para marcar un destino (brújula en el minimapa); clic derecho lo quita.", 17, UiKit.TEXT_SOFT))
+	var legend := [
+		[Color(0.9, 0.25, 0.3), "Tu destino marcado"],
+		[Color(0.55, 0.85, 0.5), "Explorado"],
+		[Color(0.2, 0.22, 0.28), "Sin explorar todavía"],
+	]
+	for entry: Array in legend:
+		var legend_row := HBoxContainer.new()
+		legend_row.add_theme_constant_override("separation", 8)
+		var swatch := Panel.new()
+		swatch.custom_minimum_size = Vector2(18, 18)
+		var swatch_style := StyleBoxFlat.new()
+		swatch_style.bg_color = entry[0]
+		swatch_style.set_corner_radius_all(4)
+		swatch.add_theme_stylebox_override("panel", swatch_style)
+		legend_row.add_child(swatch)
+		legend_row.add_child(UiKit.label(String(entry[1]), 16, UiKit.TEXT_SOFT))
+		right.add_child(legend_row)
+	var waypoint := map_ui.waypoint() if map_ui != null else Vector3.INF
+	if waypoint != Vector3.INF:
+		right.add_child(UiKit.label("🚩 Objetivo: %s" % String(GameState.world_flags.get("waypoint_label", "marcado en el mapa")), 17, UiKit.ink(UiKit.GOLD), true))
+	var open_map := UiKit.action_button("Abrir el mapa completo", Items.icon("town-map"), Color(0.3, 0.55, 0.85))
+	open_map.tooltip_text = "Abre el mapa a pantalla completa. También con %s." % InputHints.hint("map")
 	open_map.pressed.connect(func() -> void:
 		close()
-		var map_ui := main.get_node_or_null("MapUi") if main != null else null
 		if map_ui != null:
 			map_ui.call("toggle_full_map"))
-	box.add_child(open_map)
-	return center
+	right.add_child(open_map)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return scroll
