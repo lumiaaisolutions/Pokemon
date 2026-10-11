@@ -62,6 +62,39 @@ static func pocket(id: String) -> Texture2D:
 	return Items.icon(sample)
 
 
+## Ícono de una acción de interfaz (botones de ui/kit/ui_kit.gd: action_button; campamento,
+## diálogo, menús…). Pedido de Fernando el 2026-10-10, ronda 3: "ícono pixel + texto".
+static func action(name: String) -> Texture2D:
+	if _cache.has("a:" + name):
+		return _cache["a:" + name]
+	var texture: Texture2D
+	match name:
+		"sleep":
+			texture = _draw(_moon)
+		"cook":
+			texture = _draw(_pot)
+		"pitch", "pack":
+			texture = _draw(_tent_icon)
+		"commune":
+			texture = _draw(_heart)
+		"upgrade":
+			texture = _draw(_hammer)
+		"stars":
+			texture = _star_icon()
+		"talk":
+			texture = _draw(_speech)
+		"none", "cancel":
+			texture = _draw(_cross)
+		_:
+			texture = _draw(_dot)
+	_cache["a:" + name] = texture
+	return texture
+
+
+static func _star_icon() -> Texture2D:
+	return _draw(_star)
+
+
 ## Ícono pequeño de un tipo: círculo de su color con su inicial.
 static func type_icon(type: int) -> Texture2D:
 	var key := "t:%d" % type
@@ -196,3 +229,66 @@ static func _exit(image: Image) -> void:
 
 static func _dot(image: Image) -> void:
 	_circle(image, 16, 16, 7, Color(0.8, 0.85, 1.0))
+
+
+## Luna creciente (Dormir): círculo claro con un círculo oscuro encimado para la sombra.
+static func _moon(image: Image) -> void:
+	_circle(image, 15, 16, 10, Color(0.95, 0.92, 0.7))
+	_circle(image, 20, 13, 9, Color(0, 0, 0, 0))
+
+
+## Olla sobre trípode (Cocinar).
+static func _pot(image: Image) -> void:
+	_rect(image, 9, 15, 14, 10, Color(0.35, 0.38, 0.45))
+	_rect(image, 9, 15, 14, 2, Color(0.5, 0.52, 0.6))
+	_rect(image, 6, 10, 20, 3, Color(0.42, 0.45, 0.52))
+	for x in [8, 23]:
+		_rect(image, x, 7, 2, 7, Color(0.3, 0.32, 0.38))
+
+
+## Tienda de campaña pequeña (Recoger/Armar).
+static func _tent_icon(image: Image) -> void:
+	for y in range(12, 26):
+		var half := int((y - 12) * 0.55)
+		_rect(image, 16 - half, y, half * 2 + 1, 1, Color(0.4, 0.68, 0.45))
+	_rect(image, 14, 22, 4, 4, Color(0.18, 0.2, 0.22))
+	_rect(image, 5, 25, 22, 3, Color(0.35, 0.28, 0.2))
+
+
+## Corazón (Convivir).
+static func _heart(image: Image) -> void:
+	for y in 32:
+		for x in 32:
+			var fx := (x - 16) / 9.0
+			var fy := (y - 14) / 9.0
+			if pow(fx * fx + fy * fy - 1.0, 3) - fx * fx * fy * fy * fy <= 0.0 and y < 27 and y > 6:
+				image.set_pixel(x, y, Color(0.95, 0.3, 0.4))
+
+
+## Martillo (Mejorar campamento).
+static func _hammer(image: Image) -> void:
+	_rect(image, 13, 10, 5, 18, Color(0.55, 0.37, 0.22))
+	_rect(image, 7, 5, 18, 9, Color(0.6, 0.65, 0.72))
+	_rect(image, 7, 5, 18, 3, Color(0.75, 0.8, 0.86))
+
+
+## Globo de diálogo (opción genérica de la caja de diálogo).
+static func _speech(image: Image) -> void:
+	_rect(image, 4, 6, 24, 16, Color(0.95, 0.95, 0.98))
+	_rect(image, 8, 22, 6, 6, Color(0.95, 0.95, 0.98))
+	_circle(image, 11, 14, 2, Color(0.3, 0.33, 0.4))
+	_circle(image, 16, 14, 2, Color(0.3, 0.33, 0.4))
+	_circle(image, 21, 14, 2, Color(0.3, 0.33, 0.4))
+
+
+## Cruz (Nada / cancelar).
+static func _cross(image: Image) -> void:
+	for i in range(-9, 10):
+		for t in range(-2, 3):
+			_set_safe(image, 16 + i + t, 16 + i, Color(0.8, 0.3, 0.3))
+			_set_safe(image, 16 + i + t, 16 - i, Color(0.8, 0.3, 0.3))
+
+
+static func _set_safe(image: Image, x: int, y: int, color: Color) -> void:
+	if x >= 0 and y >= 0 and x < 32 and y < 32:
+		image.set_pixel(x, y, color)

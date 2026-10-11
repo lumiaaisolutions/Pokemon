@@ -77,6 +77,9 @@ static func style_button(target: Button, selected: bool = false) -> void:
 		for state in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
 			target.add_theme_color_override(state, Color.WHITE)
 		target.add_theme_color_override("font_disabled_color", Color(0, 0, 0, 0.3))
+	# Se agranda un poco al pasar el cursor o enfocarlo (pedido de Fernando el
+	# 2026-10-10, ronda 3: botones de toda la interfaz).
+	UiKit._grow_on_focus(target)
 
 
 ## Píldora con el nombre del tipo en su color.

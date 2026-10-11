@@ -7,9 +7,14 @@ extends Control
 ## comer contigo (sube su vínculo). Pausa el juego, como la Tienda Pokémon.
 
 var main: Node
+## Campamento desde el que se abrió (si lo hay): al salir, si se cocinó algo, se ve el
+## vapor, las burbujas y el platillo sobre el tronco (ver world/npc/camp.gd.cook_flourish,
+## pedido de Fernando el 2026-10-10, ronda 3).
+var camp: Camp
 var _money: Label
 var _list: VBoxContainer
 var _message := ""
+var _last_dish := ""
 
 
 func open() -> void:
@@ -69,6 +74,8 @@ func _refresh() -> void:
 		var button := MenuStyle.button("Cocinar y comer", 18)
 		button.pressed.connect(func() -> void:
 			_message = ItemEffects.cook(recipe, main, true)
+			if _message.begins_with("¡Cocinaste"):
+				_last_dish = String(recipe["result"])
 			_refresh())
 		MenuStyle.style_button(button, ItemEffects.can_craft(recipe))
 		row.add_child(button)
@@ -93,4 +100,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _close() -> void:
 	get_tree().paused = false
+	if camp != null and is_instance_valid(camp) and _last_dish != "":
+		var companion := main.get("companion") as PokemonActor if main != null else null
+		camp.cook_flourish(companion, Items.icon(_last_dish))
 	queue_free()

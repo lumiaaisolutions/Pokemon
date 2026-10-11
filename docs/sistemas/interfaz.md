@@ -34,6 +34,13 @@ Fernando pidió el estilo de Pokémon Pokopia (sus imágenes, solo como referenc
 - **Leyenda de botones:** pestaña "◂ Controles / Ocultar controles ▸" y **toque de H** para desplegar u ocultar (se recuerda en Opciones); **mantener H** abre la ayuda completa.
 - **HUD claro:** paneles y píldoras crema con franja de color (una pasada automática pasa sus textos a tinta); los textos que flotan sobre el mundo siguen claros con contorno.
 
+## Botones de acción en toda la interfaz (pedido de Fernando, 2026-10-10 ronda 3 · hecho)
+Código: `ui/kit/ui_kit.gd` (`UiKit.action_button`, `UiKit._grow_on_focus`), `ui/kit/ui_icons.gd` (`UiIcons.action`), `ui/notices/dialog_box.gd`, `ui/camp/camp_menu_ui.gd`, `ui/camp/stargaze_overlay.gd`, `ui/menu/bag_tab.gd`, `ui/menu/menu_style.gd`.
+- **Un solo estilo para todo:** `UiKit.action_button(texto, ícono, color, elegido, activo)` — ícono pixel + texto en píldora redonda, color propio por acción (con su borde más claro), sombra, y se agranda con un pequeño rebote y brilla (fondo más claro y sombra del color) al pasar el cursor o enfocarlo, con los sonidos `ui_select` / `ui_decide` de siempre.
+- **Dónde se usa directamente** (ícono + color por acción): el **menú de la tienda de campaña** (`CampMenuUI`: Dormir, Cocinar, Recoger, Convivir, Mejorar campamento, Ver las estrellas, Nada — ver `docs/sistemas/jugador.md`), las **constelaciones** de Ver las estrellas, las **opciones de la caja de diálogo** (`DialogBox.open` ahora acepta `option_icons`/`option_colors`; si no se dan, usa un globo de diálogo genérico) y el **botón de acción de la Mochila** ("Comer", "Usar en tu compañero", "Lanzarás"… con el ícono del objeto y un color según lo que hace).
+- **En el resto del juego** (menú, cocina, tienda, mochila…): `UiKit.side_button`, `UiKit.slant_button` y `MenuStyle.style_button` (la base que usan `MenuStyle.button`, `ui/camp/cooking_ui.gd`, `ui/menu/bag_tab.gd` y las pantallas de tienda) ganaron el mismo "se agranda y brilla al enfocar" (`UiKit._grow_on_focus`) sin tener que rehacer cada pantalla: ya tenían ícono, color y sonido propios donde correspondía.
+- **Nuevos íconos** (`UiIcons.action`): dormir (luna), cocinar (olla), recoger/armar (tienda), convivir (corazón), mejorar (martillo), estrellas (la misma estrella de "Nueva partida") y nada/cancelar (cruz). El globo de diálogo genérico es el ícono "talk".
+
 ## Tablero de misiones (2026-10-10)
 Código: `core/mission_board.gd` (junta las misiones), `ui/notices/mission_panel.gd` (pantalla).
 - **En pantalla, a la izquierda** (debajo del panel de bienvenida si está): "MISIONES · [J] ver todas" y **3 tarjetas** con ícono, nombre y barra: las en curso con más avance.

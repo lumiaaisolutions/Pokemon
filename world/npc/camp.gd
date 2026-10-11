@@ -9,6 +9,8 @@ extends Node3D
 ## al amanecer la recoge (apaga el fuego con humo y la tienda se pliega).
 
 const TENT_COLORS := [Color(0.3, 0.62, 0.38), Color(0.32, 0.5, 0.82), Color(0.9, 0.55, 0.25), Color(0.75, 0.35, 0.4)]
+## Colores festivos de la tienda mejorada (CampManager.upgrade_camp, extras 2026-10-10 ronda 3).
+const UPGRADE_COLORS := [Color(0.85, 0.65, 0.15), Color(0.8, 0.2, 0.45)]
 ## Dónde está la fogata respecto a la tienda.
 const FIRE_OFFSET := Vector3(-2.2, 0, 1.4)
 
@@ -21,6 +23,11 @@ var _light: OmniLight3D
 var _extras: Node3D
 var _time := 0.0
 var _lit := false
+## Mejora del campamento (extras, 2026-10-10, ronda 3): 0 normal, 1 tienda grande y de
+## color festivo con mesa, 2 además baúl. Solo la tuya se mejora (ver CampManager).
+var level := 0
+var _fireflies: Array[Sprite3D] = []
+var _upgrade_extras: Node3D
 
 
 static func create(parent: Node, at: Vector3, color_index: int, with_pot: bool = false) -> Camp:
@@ -55,6 +62,22 @@ func _build(color_index: int, with_pot: bool) -> void:
 	_light.light_energy = 0.0
 	_light.position = FIRE_OFFSET + Vector3(0, 0.9, 0)
 	add_child(_light)
+	_upgrade_extras = Node3D.new()
+	_upgrade_extras.name = "UpgradeExtras"
+	add_child(_upgrade_extras)
+	# Luciérnagas de noche junto al campamento (extras, 2026-10-10 ronda 3): puntitos
+	# luminosos que suben y bajan despacio; solo se ven de noche.
+	for k in 5:
+		var firefly := Sprite3D.new()
+		firefly.texture = _firefly_texture()
+		firefly.pixel_size = 0.01
+		firefly.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		firefly.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		firefly.modulate = Color(1.0, 1.0, 0.75, 0.0)
+		firefly.position = Vector3(randf_range(-2.0, 2.0), randf_range(0.6, 1.8), randf_range(-2.0, 2.0))
+		firefly.set_meta("seed", randf() * TAU)
+		add_child(firefly)
+		_fireflies.append(firefly)
 
 
 ## Arma el campamento; actor (el sprite del viajero) se agacha mientras tanto.
@@ -67,7 +90,9 @@ func pitch(actor: Node3D = null) -> void:
 	tween.parallel().tween_property(_extras, "scale", Vector3.ONE, 0.3)
 	tween.tween_callback(func() -> void: PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.3, PixelBurst.Kind.DUST, 0.6))
 	tween.tween_property(_tent, "scale", Vector3.ONE, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(func() -> void: _set_lit(true))
+	tween.tween_callback(func() -> void:
+		_set_lit(true)
+		PixelBurst.spawn(get_parent(), global_position + FIRE_OFFSET + Vector3(0, 0.3, 0), PixelBurst.Kind.SPARK, 1.1))
 	tween.tween_property(_light, "light_energy", 1.5, 0.5)
 	if actor != null:
 		tween.parallel().tween_property(actor, "scale", Vector3.ONE, 0.25)
@@ -90,7 +115,8 @@ func _set_lit(on: bool) -> void:
 		flame.visible = on
 
 
-## Recoge el campamento y se borra al terminar.
+## Recoge el campamento (la fogata se apaga con humo, la tienda se dobla y "entra a la
+## mochila": se achica y se acerca a actor antes de borrarse) y se borra al terminar.
 func pack(actor: Node3D = null) -> void:
 	busy = true
 	var tween := create_tween()
@@ -105,15 +131,123 @@ func pack(actor: Node3D = null) -> void:
 	tween.parallel().tween_property(_extras, "scale", Vector3.ONE * 0.01, 0.3)
 	if actor != null:
 		tween.tween_property(actor, "scale", Vector3.ONE, 0.2)
+		# La tienda doblada vuela hacia la mochila (actor) y se encoge del todo.
+		tween.tween_property(_tent, "global_position", actor.global_position + Vector3(0, 0.9, 0), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(_tent, "scale", Vector3.ZERO, 0.3)
 	tween.tween_callback(func() -> void:
 		busy = false
 		queue_free())
 
 
+## Mejora el campamento (solo el tuyo; con materiales, ver CampManager.upgrade_camp):
+## nivel 1 agranda la tienda y le cambia el color por uno festivo y pone una mesa; nivel 2
+## además añade un baúl junto a la mochila (de momento decorativo: guardar ahí de verdad
+## queda para cuando Fernando lo pida). "Cocina más rápido" es, por ahora, de palabra en
+## el aviso al mejorar: cocinar ya es instantáneo y no hay todavía un tiempo que acortar.
+func upgrade(new_level: int) -> void:
+	level = new_level
+	for child in _upgrade_extras.get_children():
+		child.queue_free()
+	if level <= 0:
+		return
+	var tween := create_tween()
+	tween.tween_property(_tent, "scale", Vector3.ONE * (1.0 + level * 0.12), 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# Tienda de colores festivos al mejorar.
+	var canvas := _tent.get_node_or_null("Canvas") as MeshInstance3D
+	if canvas != null:
+		canvas.material_override = _material(_canvas_texture(UPGRADE_COLORS[mini(level - 1, UPGRADE_COLORS.size() - 1)]), Vector3(2, 2, 1))
+	if level >= 1:
+		_upgrade_extras.add_child(_table(Vector3(0.9, 0, 1.0)))
+	if level >= 2:
+		_upgrade_extras.add_child(_chest(Vector3(1.4, 0, -1.3)))
+	PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.5, PixelBurst.Kind.SPARK, 1.2)
+
+
+## Pequeña mesa de madera (mejora del campamento).
+static func _table(at: Vector3) -> Node3D:
+	var table := Node3D.new()
+	table.position = at
+	var wood := _material(_bark_texture(), Vector3(1, 1, 1))
+	table.add_child(_box(Vector3(0.9, 0.06, 0.6), Vector3(0, 0.55, 0), wood))
+	for sx in [-0.38, 0.38]:
+		for sz in [-0.24, 0.24]:
+			table.add_child(_box(Vector3(0.07, 0.55, 0.07), Vector3(sx, 0.27, sz), wood))
+	return table
+
+
+## Baúl (mejora del campamento, nivel 2); de momento decorativo.
+static func _chest(at: Vector3) -> Node3D:
+	var chest := Node3D.new()
+	chest.position = at
+	var wood := _material(_bark_texture(), Vector3(1, 1, 1))
+	var metal := _material(_metal_texture(), Vector3(1, 1, 1))
+	chest.add_child(_box(Vector3(0.6, 0.38, 0.4), Vector3(0, 0.19, 0), wood))
+	chest.add_child(_box(Vector3(0.64, 0.1, 0.44), Vector3(0, 0.43, 0), metal))
+	chest.add_child(_box(Vector3(0.06, 0.1, 0.06), Vector3(0, 0.3, 0.22), metal))
+	return chest
+
+
+## Cocinar en la fogata (pedido de Fernando el 2026-10-10, ronda 3): vapor y burbujas
+## sobre la olla, tu compañero mira con corazón y el platillo aparece en un plato sobre
+## el tronco. Se llama al cerrar el menú de cocina si se cocinó algo (ver CookingUI).
+func cook_flourish(companion: Node3D, dish_icon: Texture2D) -> void:
+	var pot_top := global_position + FIRE_OFFSET + Vector3(0, 1.3, 0)
+	var tween := create_tween()
+	for i in 3:
+		tween.tween_callback(func() -> void:
+			PixelBurst.spawn(get_parent(), pot_top, PixelBurst.Kind.SMOKE, 0.5)
+			PixelBurst.spawn(get_parent(), pot_top, PixelBurst.Kind.BUBBLES, 0.4))
+		tween.tween_interval(0.4)
+	if companion != null and is_instance_valid(companion):
+		tween.tween_callback(func() -> void: SpeechBubbles.say(companion, "♥", 1.8))
+	tween.tween_callback(_show_dish.bind(dish_icon))
+
+
+## Plato con el platillo recién cocinado, sobre el tronco de sentarse; se desvanece solo.
+func _show_dish(icon: Texture2D) -> void:
+	if icon == null:
+		return
+	var plate := Sprite3D.new()
+	plate.texture = icon
+	plate.pixel_size = 0.012
+	plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	plate.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	plate.position = FIRE_OFFSET + Vector3(-1.3, 0.55, 0.3)
+	add_child(plate)
+	var tween := create_tween()
+	tween.tween_interval(4.0)
+	tween.tween_property(plate, "modulate:a", 0.0, 0.6)
+	tween.tween_callback(plate.queue_free)
+
+
+static var _firefly_tex: Texture2D
+
+
+## Puntito de luz amarillo-verde (luciérnaga de noche junto al campamento).
+static func _firefly_texture() -> Texture2D:
+	if _firefly_tex != null:
+		return _firefly_tex
+	var image := Image.create_empty(6, 6, false, Image.FORMAT_RGBA8)
+	for y in 6:
+		for x in 6:
+			if Vector2(x - 2.5, y - 2.5).length() <= 2.2:
+				image.set_pixel(x, y, Color(0.85, 1.0, 0.5))
+	_firefly_tex = ImageTexture.create_from_image(image)
+	return _firefly_tex
+
+
 func _process(delta: float) -> void:
+	_time += delta
+	var night := GameState.is_night()
+	for firefly in _fireflies:
+		var phase: float = firefly.get_meta("seed")
+		var target_alpha := 0.85 if night else 0.0
+		firefly.modulate.a = move_toward(firefly.modulate.a, target_alpha, delta * 0.6)
+		if firefly.modulate.a > 0.01:
+			firefly.position.y += sin(_time * 1.4 + phase) * 0.003
+			firefly.position.x += cos(_time * 0.9 + phase) * 0.002
 	if not _lit:
 		return
-	_time += delta
 	var frame := int(_time * 8.0) % 3
 	for k in _flames.size():
 		var flame := _flames[k]
@@ -155,6 +289,7 @@ static func tent_model(color: Color) -> Node3D:
 	_tri(st, Vector3(-door_w * 0.12, door_h, d * 0.5), Vector3(door_w * 0.12, door_h, d * 0.5), c2, Vector2(0.45, 0.25), Vector2(0.55, 0.25), Vector2(0.5, 0))
 	st.generate_normals()
 	var shell := MeshInstance3D.new()
+	shell.name = "Canvas"
 	shell.mesh = st.commit()
 	shell.material_override = canvas
 	root.add_child(shell)
