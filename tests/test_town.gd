@@ -317,6 +317,12 @@ func _run() -> void:
 	_check(GameState.world_flags.get("ride_license", false), "con una medalla el profesor da la Licencia de Montura")
 	var revived := GameState.party.any(func(e: Dictionary) -> bool: return e["species"] == "omanyte") or GameState.box.any(func(e: Dictionary) -> bool: return e["species"] == "omanyte")
 	_check(revived and GameState.item_count("helix-fossil") == 0, "el profesor revive el Fósil Hélix")
+	# El profesor habla en la caja de diálogo (no con avisos sueltos): se cierra como lo
+	# haría el jugador, si no se queda "bloqueando" el movimiento para el resto de la prueba.
+	var professor_dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	_check(professor_dialog != null and professor_dialog.is_open(), "el profesor habla en la caja de diálogo")
+	if professor_dialog != null:
+		professor_dialog.close()
 
 	# Mina: mazmorra con tesoros.
 	var mine: Dictionary = _world.layout.places_of("mine")[0]
