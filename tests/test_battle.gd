@@ -68,7 +68,10 @@ func _run() -> void:
 
 	# 2. Huir: tu Pokémon sale del círculo.
 	_main.companion.global_position = _battle.center + Vector3(BattleManager.ARENA_RADIUS + 4.0, 0.5, 0)
-	await _frames(5)
+	for wait in 60:
+		await get_tree().process_frame
+		if not _battle.active:
+			break
 	_check(not _battle.active and _results.has("flee"), "salir del círculo debe terminar el combate huyendo")
 	_check(is_instance_valid(wild) and not _battle.can_start(wild), "el salvaje del que huiste te ignora un rato")
 	if is_instance_valid(wild):
@@ -119,7 +122,11 @@ func _run() -> void:
 				break
 			var current := _battle.opponent
 			current.receive_hit(current.hp + 100.0, _main.companion)
-			await _frames(6)
+			# Espera cuadros de proceso (bajo carga caben varios pasos de física en uno).
+			for wait in 60:
+				await get_tree().process_frame
+				if not _battle.active or _battle.opponent != current:
+					break
 			if k < WildSpawner.HORDE_SIZE - 1:
 				_check(_battle.active and _battle.opponent != current, "tras debilitar a uno sigue el siguiente de la horda (%d)" % k)
 		await _frames(10)
@@ -281,7 +288,8 @@ func _run() -> void:
 			walker = npcs.travelers()[0]
 			break
 	_check(not walker.is_empty(), "debe aparecer un viajero en los caminos")
-	# Algunos viajeros quedan junto a agua u obstáculos y no te alcanzan: se prueba con hasta 3.
+	# A veces el jugador cae en el agua (nadando no te retan) o el viajero ya pasó de largo:
+	# se prueba con hasta 3 viajeros.
 	var challenged := false
 	var tried := 0
 	while not walker.is_empty() and not challenged and tried < 3:

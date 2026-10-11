@@ -291,7 +291,8 @@ func show_toast(message: String) -> void:
 	if match != null and not match.get_string(1).begins_with("Rotom") and not message.begins_with("["):
 		dialog.say(match.get_string(1), match.get_string(2))
 		return
-	cards.show_notice(message.trim_prefix("[Rotom] ").trim_prefix("Rotom: "), "mission" if message.begins_with("[Rotom]") or message.begins_with("Rotom:") else "")
+	var text := message.trim_prefix("[Rotom] ").trim_prefix("Rotom: ")
+	cards.show_notice(text, NoticeCards.rotom_category(text) if message.begins_with("[Rotom]") or message.begins_with("Rotom:") else "")
 
 
 ## Aviso antiguo (etiqueta arriba al centro): ya no se muestra; queda por compatibilidad.

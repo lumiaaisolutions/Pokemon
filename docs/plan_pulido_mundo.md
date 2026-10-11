@@ -78,3 +78,19 @@ En la hoja de BW2 reconozco con certeza a Brock, Misty, Lt. Surge, Whitney, Braw
 4. ~~Viaje entre regiones en 3D estilo BW2~~ (**hecho**) → [regiones](sistemas/regiones.md).
 5. ~~Animaciones de ataques (25 familias)~~ (**hecho**) → [animaciones de ataques](sistemas/animaciones_ataques.md).
 6. ~~Campamento, comida y hambre~~ (**hecho**, con propuestas por confirmar) → [jugador](sistemas/jugador.md).
+
+## Pedidos tras probar el juego (2026-10-10, noche)
+Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
+1. **Calem con huecos blancos** en su sprite: la herramienta borraba el contorno negro y el blanco de los ojos como fondo. **Hecho** (`tools/protagonist_sheets.py`, `alpha_only`).
+2. **Avisos del Rotom con etiqueta "MISIÓN"**: tarjeta propia "ROTOM" para brotes, bandadas, lluvia de estrellas…; las misiones siguen como "MISIÓN". **Hecho** (`NoticeCards.rotom_category`).
+3. **Inicio y elección del inicial:**
+   - Mucha gente se atraviesa en medio de la zona del inicial.
+   - No debe dejarte salir de la zona hasta elegir inicial.
+   - Instrucciones claras de qué hacer (lanzar la Poké Ball a tu inicial).
+   - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. Detalles por preguntar a Fernando.
+4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial").
+5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas.
+6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia.
+7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano.
+8. **Tienda Pokémon sin puerta y con una pared negra** (la caja interior que tapa caras faltantes se ve): mejor diseño, que parezca real y tenga su puerta.
+9. **Prueba intermitente (resuelta):** la del viajero fallaba cuando el jugador caía en el agua o el viajero ya había pasado; la de la horda y la de huir esperaban cuadros de física y bajo carga (con el juego abierto) varios caben en uno. Ahora esperan cuadros reales.

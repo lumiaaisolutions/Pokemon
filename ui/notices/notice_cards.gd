@@ -13,6 +13,8 @@ const CATEGORIES := {
 	"item": ["Objeto", Color(0.3, 0.72, 0.4), "Mochila"],
 	"money": ["Dinero", Color(0.95, 0.68, 0.15), "Dinero"],
 	"mission": ["Misión", Color(0.95, 0.5, 0.2), "Rotom"],
+	## Noticias del Rotom Móvil que no son misiones (brotes, bandadas, lluvia de estrellas…).
+	"rotom": ["Rotom", Color(0.82, 0.3, 0.55), "Rotom"],
 	"achievement": ["Logro", Color(0.92, 0.72, 0.1), "Logros"],
 	"battle": ["Combate", Color(0.55, 0.35, 0.85), "Nueva partida"],
 	"pokemon": ["Tu Pokémon", Color(0.25, 0.6, 0.9), "Pokémon"],
@@ -65,6 +67,12 @@ static func category_of(text: String) -> String:
 	if t.contains("guardad") or t.contains("partida"):
 		return "save"
 	return "info"
+
+
+## Noticia del Rotom: es "Misión" si habla de misiones, actividades o megapiedras; si no, "Rotom".
+static func rotom_category(text: String) -> String:
+	var t := text.to_lower()
+	return "mission" if t.contains("misión") or t.contains("actividad") or t.contains("megapiedra") else "rotom"
 
 
 func show_notice(text: String, category: String = "") -> void:
