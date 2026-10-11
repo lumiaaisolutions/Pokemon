@@ -35,3 +35,4 @@
 - Antes de dar algo por hecho: capturas desde varios ángulos (de día y de noche, por fuera y por dentro) y revisarlas.
 - Pruebas automáticas cuando se pueda (colisiones de edificios, nada flotando, luz mínima).
 - Cada problema nuevo que reporte Fernando se agrega aquí si es una regla general.
+- **Nada parpadea ni desaparece** al moverse o girar la cámara (z-fighting, recorte, visibilidad); **sin sombras negras sólidas**; los objetos se ven bien **desde todos los lados** y **no atoran** al jugador (agregada 2026-10-11).
