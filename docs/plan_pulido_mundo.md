@@ -250,3 +250,5 @@ Pruebas (`tests/test_battle.tscn`, `tests/test_interiors.tscn`, `tests/test_worl
 - Centro Pokémon: pared invisible a mitad del cuarto (un borde que solo se pasa saltando) y zona negra junto a la máquina; la enfermera y el Chansey quedan tapados por el mostrador (revisar todos los NPC detrás de mostradores o muebles).
 - Los árboles no se ven estilo BW2 (en arreglo con el follaje 3D).
 - Pendientes que Fernando pidió terminar: esquina del núcleo visible tras el techo en 5 modelos, unificar los dos estilos de botón píldora, medir FPS con calidad alta, verificar caminando las escaleras de la Tienda y el Centro; al final, limpiar "Por preguntar" del plan y nota del cerebro + bitácora con BRÚJULA.
+- Edificios únicos de los pueblos (Mercado y demás) hechos de cajas lisas sin diseño: deben usar modelos B2W2; zonas de los pueblos ×2 vacías: llenarlas de decoración estilo BW2 (asignado a la rama mundo-completo).
+- Centro Pokémon, segundo piso: barra blanca plana, escaleras con borde invisible que obliga a saltar, vacío negro a la izquierda, NPC tapado por el mostrador (rama bugs-prueba).
