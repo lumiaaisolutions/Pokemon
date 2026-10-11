@@ -46,6 +46,12 @@ func _ready() -> void:
 	rocks.name = "BreakableRocks"
 	rocks.world_path = NodePath("../World")
 	add_child(rocks)
+	# Desfiladeros: atajos a cielo abierto tapados por una roca grande (plan de pulido).
+	var passes := MountainPasses.new()
+	passes.name = "MountainPasses"
+	passes.world_path = NodePath("../World")
+	passes.navigation_path = NodePath("../Navigation")
+	add_child(passes)
 	# Migraciones: bandadas que cruzan el cielo y aterrizan un día (fase 5.8).
 	var migrations := Migrations.new()
 	migrations.name = "Migrations"

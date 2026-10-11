@@ -215,7 +215,7 @@ func _dream_hint() -> String:
 		"Soñaste con una sombra enorme cruzando el cielo nocturno: los legendarios solo se dejan ver en noches muy despejadas.",
 	]
 	if (GameState.world_flags.get("boulders", {}) as Dictionary).is_empty():
-		options.append("Soñaste con una roca enorme temblando: en alguna cueva de la región, un compañero de tipo Lucha, Roca, Tierra o Acero podría abrirte paso.")
+		options.append("Soñaste con una roca enorme temblando: en alguna cueva o desfiladero de la región, un compañero de tipo Lucha, Roca, Tierra o Acero podría abrirte paso.")
 	return options[randi() % options.size()]
 
 

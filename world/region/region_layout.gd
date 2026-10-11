@@ -54,6 +54,13 @@ var roads: Array[PackedVector2Array] = []
 var road_kinds: PackedInt32Array = PackedInt32Array()
 ## Lugares especiales: {"kind", "name", "x", "z", "radius", ...}.
 var places: Array[Dictionary] = []
+## Desfiladeros (plan de pulido, decisión "Túneles" 2026-10-10): atajos de 40–80 m que
+## atraviesan una cresta de montaña, cañón o meseta junto a un camino existente. A cielo
+## abierto, sin pantalla de carga: ver pass_info/_carve_pass y world/rocks/mountain_passes.gd
+## (que pone la roca grande, el pasto, el cofre y los Pokémon de roca).
+## Cada entry: {"id", "ax","az","bx","bz" (bocas), "mid_x","mid_z", "length",
+## "floor_a","floor_b" (altura natural de cada boca), "rock_end" ("a" o "b", la boca tapada)}.
+var passes: Array[Dictionary] = []
 ## Punto de inicio (en el pueblo inicial).
 var start := Vector2.ZERO
 
@@ -79,6 +86,15 @@ const RIVER_BANK := 7.0
 const LAKE_BANK := 10.0
 const WATER_EDGE := 0.92
 const ROAD_WIDTH := 3.2
+## Desfiladero: piso plano de ~2×PASS_WIDTH, pared empinada de PASS_WALL_BAND y de vuelta
+## al terreno natural en el margen; PASS_RADIUS es desde dónde empieza a tallarse.
+const PASS_WIDTH := 2.6
+const PASS_WALL_BAND := 3.4
+const PASS_WALL_HEIGHT := 16.0
+const PASS_MARGIN := 8.0
+const PASS_RADIUS := PASS_WIDTH + PASS_WALL_BAND + PASS_MARGIN
+const PASS_MIN_RIDGE := 11.0
+const PASS_BIOMES := [Biome.MOUNTAIN, Biome.CANYON, Biome.MESA]
 const TOWN_NAMES := ["Pueblo Raíz", "Ciudad Aurora", "Villa Musgo", "Pueblo Brisa", "Ciudad Coral", "Aldea Ceniza", "Pueblo Escarcha",
 	"Ciudad Ámbar", "Villa Rocío", "Pueblo Duna", "Ciudad Arrecife", "Aldea Hongo", "Pueblo Ocaso", "Ciudad Cumbre", "Villa Pétalo", "Pueblo Lumen"]
 
@@ -101,6 +117,7 @@ func _init(world_seed: int, world_size: float = 4096.0) -> void:
 	_place_settlements(rng)
 	_connect_roads(rng)
 	_place_places(rng)
+	_place_passes(rng)
 	# Lagos congelados en la tundra (hielo que se puede pisar).
 	for lake in lakes:
 		_frozen[lake] = biome_at(lake.x, lake.y) == Biome.TUNDRA
@@ -227,6 +244,9 @@ func height_at(x: float, z: float) -> float:
 			h = _carve(h, d, lake.z, LAKE_BANK, lake.w + 0.05, 0.0, 0.8)
 		else:
 			h = _carve(h, d, lake.z, LAKE_BANK, lake.w, 3.0, 0.8)
+	var crossing := pass_info(x, z)
+	if not crossing.is_empty():
+		h = _carve_pass(h, float(crossing["d"]), float(crossing["floor"]))
 	return h
 
 
@@ -633,6 +653,94 @@ func _place_places(rng: RandomNumberGenerator) -> void:
 		caves[i + 1]["exit"] = caves[i]["id"]
 		# Una boca de cada par la tapa una roca grande (fase 5.8): al romperla, atajo.
 		caves[i]["blocked"] = true
+
+
+## Desfiladeros: 4-6 atajos de 40-80 m que cortan una cresta de montaña, cañón o meseta,
+## cerca de un camino existente (decisión "Túneles", docs/plan_pulido_mundo.md). Se busca
+## primero la cresta de verdad (el punto medio claramente más alto que las dos bocas; si
+## no, no habría nada que atajar) y luego se exige que haya un camino no muy lejos; así no
+## depende de la suerte de que el muestreo caiga justo junto a uno de los pocos caminos en
+## un mapa de 4 × 4 km. No quedan cerca de otro lugar especial, pueblo u otro desfiladero.
+func _place_passes(rng: RandomNumberGenerator) -> void:
+	if roads.is_empty():
+		return
+	var wanted := rng.randi_range(4, 6)
+	var half := size * 0.5 - 160.0
+	var attempts := 0
+	while passes.size() < wanted and attempts < 40000:
+		attempts += 1
+		var mid := Vector2(rng.randf_range(-half, half), rng.randf_range(-half, half))
+		if not biome_at(mid.x, mid.y) in PASS_BIOMES:
+			continue
+		var angle := rng.randf() * TAU
+		var dir := Vector2(cos(angle), sin(angle))
+		var length := rng.randf_range(40.0, 80.0)
+		var a := mid - dir * length * 0.5
+		var b := mid + dir * length * 0.5
+		var inner := size * 0.5 - 60.0
+		if absf(a.x) > inner or absf(a.y) > inner or absf(b.x) > inner or absf(b.y) > inner:
+			continue
+		if biome_at(a.x, a.y) == Biome.SEA or biome_at(b.x, b.y) == Biome.SEA:
+			continue
+		var h_mid := base_height(mid.x, mid.y)
+		var h_a := base_height(a.x, a.y)
+		var h_b := base_height(b.x, b.y)
+		if h_a < sea_level + 2.0 or h_b < sea_level + 2.0:
+			continue
+		if h_mid - minf(h_a, h_b) < PASS_MIN_RIDGE:
+			continue
+		var road_d := road_info(mid.x, mid.y).x
+		if road_d < 15.0 or road_d > 300.0:
+			continue
+		if places.any(func(p: Dictionary) -> bool: return Vector2(float(p["x"]), float(p["z"])).distance_to(mid) < 70.0):
+			continue
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(mid) < float(s["radius"]) + 70.0):
+			continue
+		if passes.any(func(p: Dictionary) -> bool: return Vector2(float(p["mid_x"]), float(p["mid_z"])).distance_to(mid) < 200.0):
+			continue
+		passes.append({
+			"id": "pass:%d" % passes.size(), "ax": a.x, "az": a.y, "bx": b.x, "bz": b.y,
+			"mid_x": mid.x, "mid_z": mid.y, "length": length,
+			"floor_a": h_a, "floor_b": h_b, "rock_end": "a" if h_a <= h_b else "b",
+		})
+
+
+## Desfiladero que pasa por (x, z) (vacío si ninguno a menos de PASS_RADIUS):
+## {"entry", "d" (distancia al eje), "t" (0 en la boca "a", 1 en la "b"), "floor" (altura
+## tallada del piso ahí, interpolada entre las dos bocas)}.
+func pass_info(x: float, z: float) -> Dictionary:
+	var point := Vector2(x, z)
+	for entry: Dictionary in passes:
+		var a := Vector2(float(entry["ax"]), float(entry["az"]))
+		var b := Vector2(float(entry["bx"]), float(entry["bz"]))
+		var ab := b - a
+		var t := clampf((point - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+		var d := point.distance_to(a + ab * t)
+		if d < PASS_RADIUS:
+			return {"entry": entry, "d": d, "t": t, "floor": lerpf(float(entry["floor_a"]), float(entry["floor_b"]), t)}
+	return {}
+
+
+## Punto (x, z) donde va la roca grande que tapa la boca más baja del desfiladero, un poco
+## hacia adentro del corredor (para que se vea justo en la entrada).
+static func pass_rock_point(entry: Dictionary) -> Vector2:
+	var a := Vector2(float(entry["ax"]), float(entry["az"]))
+	var b := Vector2(float(entry["bx"]), float(entry["bz"]))
+	return a.lerp(b, 0.1) if String(entry["rock_end"]) == "a" else b.lerp(a, 0.1)
+
+
+## Talla el piso y las paredes del desfiladero en la distancia d al eje: plano y bajo en el
+## centro (PASS_WIDTH), pared empinada de roca (PASS_WALL_BAND) y de vuelta al terreno
+## natural en el margen — sin huecos ni escalones (todo liso y continuo en los bordes).
+static func _carve_pass(h: float, d: float, floor_h: float) -> float:
+	if d <= PASS_WIDTH:
+		return floor_h
+	var wall_top := floor_h + PASS_WALL_HEIGHT
+	if d <= PASS_WIDTH + PASS_WALL_BAND:
+		var t := smoothstep(PASS_WIDTH, PASS_WIDTH + PASS_WALL_BAND, d)
+		return lerpf(floor_h, maxf(wall_top, h), t)
+	var t2 := smoothstep(PASS_WIDTH + PASS_WALL_BAND, PASS_RADIUS, d)
+	return lerpf(maxf(wall_top, h), h, t2)
 
 
 func _place_ok(kind: String, x: float, z: float) -> bool:

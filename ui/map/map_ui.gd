@@ -377,6 +377,15 @@ func _markers() -> Array:
 		var mystic: bool = place["kind"] in ["portal", "floating_ruins", "sanctuary"]
 		result.append({"uv": data.world_to_uv(point), "kind": "place", "title": Structures.place_title(place), "text": "Lugar especial",
 				"color": Color(0.7, 0.5, 1.0) if mystic else Color(1.0, 0.82, 0.3), "min_zoom": 1.8})
+	# Desfiladeros: igual que los demás lugares, solo al descubrirlos (plan de pulido).
+	for pass_entry: Dictionary in _world.layout.passes:
+		var mid := Vector3(float(pass_entry["mid_x"]), 0, float(pass_entry["mid_z"]))
+		if not data.is_revealed(mid):
+			continue
+		var is_open := BreakableRock.boulder_broken(String(pass_entry["id"]))
+		result.append({"uv": data.world_to_uv(mid), "kind": "place", "title": "Desfiladero",
+				"text": "Atajo abierto" if is_open else "Atajo tapado por una roca enorme",
+				"color": Color(0.55, 0.85, 0.45) if is_open else Color(0.75, 0.6, 0.5), "min_zoom": 1.8})
 	return result
 
 

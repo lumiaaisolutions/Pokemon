@@ -205,7 +205,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 2. ~~Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios~~ (**hecho** 2026-10-10, rama `mundo-3d`; pendiente revisión visual con capturas por bioma).
 3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso). **Hecho.**
 4. Faroles más fuertes de noche y el molino que cambiaba de color; Cilan y Volkner con sus sprites definitivos.
-5. Túneles-desfiladero tapados por rocas grandes.
+5. ~~Túneles-desfiladero tapados por rocas grandes.~~ (**hecho** 2026-10-11, rama `tuneles` → [mundo grande](sistemas/mundo_grande.md#desfiladeros-2026-10-11-rama-tuneles)).
 6. Campamento animado y extras; botones nuevos en todas las interfaces. **Hecho** (rama `campamento-ui`) → [jugador](sistemas/jugador.md), [interfaz](sistemas/interfaz.md).
 7. Rotom Teléfono con apps y menú con tarjetas visuales.
 8. Tienda y Centro Pokémon con todas sus funciones.
