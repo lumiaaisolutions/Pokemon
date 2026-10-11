@@ -82,6 +82,9 @@ func build() -> Control:
 	var ids := _pocket_items(_pocket)
 	if ids.is_empty():
 		list.add_child(UiKit.label("Este bolsillo está vacío.", 20, UiKit.MUTED))
+	# Si el objeto elegido se acabó (o es de otro bolsillo), su detalle desaparece.
+	if not ids.has(_selected):
+		_selected = ""
 	if _selected == "" and not ids.is_empty():
 		_selected = GameState.selected_ball if ids.has(GameState.selected_ball) else ids[0]
 	for id in ids:
