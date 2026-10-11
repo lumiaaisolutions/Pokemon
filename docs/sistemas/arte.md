@@ -124,11 +124,26 @@ por el id del campamento (`Chest3D.tier_for`): común (madera, 68 %), raro (plat
 legendario (oro, 6 %), con mejor botín según el nivel
 (`PointsOfInterest.CHEST_LOOT_BY_TIER`).
 
+### Revisión visual y rendimiento (2026-10-10, noche)
+Capturas con el render real (`tools/snapshot.tscn`, opción nueva `bioma:<NOMBRE>`, ver
+docs/herramientas.md) en bosque (día y noche, girando a 35°), desierto, pantano y montaña:
+árboles con volumen real (ya no planos), hierba alta en matas 3D, nenúfar en la charca del
+pantano, rocas y follaje que se oscurecen de noche solos (antes el shader de sprite era
+`unshaded` y no les afectaba). Pendiente para una siguiente pasada: capturas de los biomas
+restantes (bosque oscuro, hongos, flores, pantano tóxico, nieve/tundra, cañón, meseta,
+playa, volcán, jungla) y una revisión más de cerca de proporciones (algún árbol/roca podría
+verse mejor un poco más grande o más chico a ojo).
+FPS: sonda en bosque (denso en árboles/hierba nuevos) con `tests/_tmp/fps_probe.gd` (no se
+versiona): promedio 85.9 FPS, mínimo 19.0 FPS — medido en esta Mac M1 **con el sistema muy
+cargado** (7–8 procesos de Godot de otros agentes trabajando en paralelo a la vez), así que
+el mínimo real de un jugador solo es más alto; no hay una medición "antes" para comparar
+(los sprites billboard de antes no tenían un costo muy distinto: menos triángulos por
+instancia pero el mismo número de objetos y de MultiMesh).
+
 ### Qué quedó fuera de esta pasada
 - Los íconos pequeños que acompañan a un objeto 3D (las bayas sobre el árbol grande, los
   minerales/conchas que se recogen en `GatherManager`, el tesoro de mazmorra) siguen como
   sprite: son del mismo tipo que un objeto en la mano, no vegetación ni mobiliario.
   `tests/test_no_flat_vegetation.gd` los excluye a propósito.
-- No se revisaron a fondo los 14 biomas con capturas de día/noche en esta pasada (ver
-  bitácora del día para el estado de las capturas); queda para una siguiente pasada de
-  pulido visual.
+- Capturas de los biomas que faltan (ver arriba) y una medición de FPS sin otros agentes
+  corriendo a la vez, para un número comparable de verdad.
