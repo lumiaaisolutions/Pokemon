@@ -103,3 +103,19 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 - **IA salvaje:** **según su carácter**: rápidos o de poca defensa esquivan y atacan a distancia; fuertes cuerpo a cuerpo embisten y se retiran; todos rodean, toman distancia, esquivan ataques que ven venir y usan movimientos de estado cuando conviene.
 - **Física:** **todo el mobiliario** (bancas, macetas, cercas, faroles, mesas, puestos, cajas) sólido para jugador, gente y Pokémon; al saltar te quedas encima de los bajos.
 - **Edificios:** **completar el modelo**: cubrir las caras faltantes de los modelos B2W2 con paredes que imiten su textura en vez de la caja negra, y verificar que la puerta quede al frente, hacia la calle, donde está el punto de "Entrar".
+
+### Tienda Pokémon por dentro (pedido y decisiones de Fernando, 2026-10-10 noche)
+**Problemas reportados (bugs, se arreglan):**
+- Interior vacío y oscuro; zonas negras (huecos sin pared, se ve el vacío); un área "sin diseño" y un florero flotando (no debe pasar en ningún interior).
+- El Kecleon "vendedor" no está en el mostrador, no debería vender y usa un sprite de frente que no es del estilo del mundo.
+- Una de las dos escaleras al segundo piso tiene una pared invisible (la otra sí deja subir); algo encimado bajo la escalera.
+
+**Decisiones:**
+- **Luz:** propia y cálida dentro de todos los edificios (lámparas de techo y luz ambiente clara), sin depender de la hora; por las ventanas se ve si es de día o de noche.
+- **Pokémon en el mundo:** solo sprites de mundo (hojas de caminar estilo B2W2); nada de sprites de frente en el mundo. Un Pokémon de interior, solo como mascota de alguien (p. ej. el Kecleon acompaña al dependiente).
+- **Gente:** dependientes humanos en el mostrador (uno de objetos generales y otro de lo de la ciudad: MT, Balls especiales, comida); clientes con rutina (entran, miran estantes, compran, se van, con burbujas); personal con funciones (consejos de objetos, oferta del día rotativa, un niño que intercambia o regala algo una vez al día); segundo piso útil (mostrador propio: medicinas y MT arriba, Balls y comida abajo; zona de descanso).
+- **Extras elegidos:** estantes con objetos reales (íconos de lo que venden; al acercarte dice qué es y su precio y lo compras ahí); tarjeta de puntos (Premier Ball por cada 10 Balls, premios mayores después); tablón de anuncios (rumores, brotes, ofertas y peticiones de vecinos que se vuelven misiones cortas); horario 9:00–21:00, cerrada de noche con aviso, fila en la mañana; tu compañero reacciona a los estantes y a veces "pide" algo (comprarlo sube el vínculo); pedidos por encargo (llegan en 1–2 días, aviso del Rotom); existencias limitadas por día (los clientes también compran; se reabastece cada mañana); música de tienda de BW2, sonido de puerta, ruido de gente y jingle de compra; vender lo recolectado con precio del día (sube y baja, en el tablón); mostrador de regalos (regalar a vecinos, líderes o profesor según sus gustos, favores y amistad); eventos de temporada (decoración y rebajas avisadas por el Rotom); ladrón ocasional del equipo villano (si lo alcanzas y le ganas, recompensa); máquina de bebidas (llenan hambre, suben un poco el vínculo, a veces suelta dos) y cabina de fotos con tu compañero (queda en tu Ficha); ruleta diaria de premios con cualquier compra; "empleado del mes": tras muchas compras te saludan por tu nombre, rumores exclusivos y aviso antes de las rebajas.
+
+### Noche (reportado 2026-10-10)
+- Los faroles alumbran poco y muchas zonas se ven muy oscuras de noche: más luz de faroles (alcance y fuerza) y un mínimo de luz ambiente para que nunca se vea negro.
+- El molino (y cualquier modelo que no se oscurece) se ve de otro color de noche: debe seguir la luz del día y la noche como lo demás.
