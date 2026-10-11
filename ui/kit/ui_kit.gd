@@ -22,6 +22,15 @@ const RED := Color(0.89, 0.22, 0.25)
 const RED_DARK := Color(0.68, 0.12, 0.16)
 const TEXT := Color(0.2, 0.2, 0.26)
 const TEXT_SOFT := Color(0.45, 0.45, 0.52)
+## Colores por tipo de acción para pill_button() (Tienda y Centro Pokémon, 2026-10-10).
+const ACTION_BUY := Color(0.3, 0.68, 0.4)
+const ACTION_SELL := Color(0.85, 0.55, 0.2)
+const ACTION_TALK := Color(0.32, 0.55, 0.88)
+const ACTION_HEAL := Color(0.9, 0.42, 0.48)
+const ACTION_GIFT := Color(0.68, 0.45, 0.85)
+const ACTION_INFO := Color(0.3, 0.68, 0.68)
+const ACTION_DANGER := Color(0.8, 0.28, 0.28)
+const ACTION_FUN := Color(0.9, 0.7, 0.2)
 
 ## Estilo claro en toda la interfaz (Pokopia, acordado con Fernando el 2026-10-10):
 ## los colores de texto pensados para fondo oscuro se pasan a tinta (ver ink()).
@@ -555,6 +564,53 @@ static func light_style(border: Color = RED, radius: int = 18, border_width: int
 	style.shadow_size = 8
 	style.shadow_offset = Vector2(0, 3)
 	return style
+
+
+## Botón en píldora con ícono + texto (decisión de Fernando, 2026-10-10: la Tienda y el
+## Centro Pokémon usan este estilo para sus acciones): color propio por tipo de acción,
+## con sombra; al pasar el mouse o enfocarlo se agranda un poco y brilla (más claro), con
+## el mismo sonido de la interfaz (_sounds). icon puede ser null (solo texto).
+static func pill_button(text: String, icon: Texture2D, color: Color, size: int = 20) -> Button:
+	var button := Button.new()
+	button.text = ("  " + text) if icon != null else text
+	if icon != null:
+		button.icon = icon
+		button.expand_icon = false
+		button.add_theme_constant_override("icon_max_width", 28)
+	button.add_theme_font_override("font", font(true))
+	button.add_theme_font_size_override("font_size", size)
+	button.custom_minimum_size.y = 46
+	button.pivot_offset = button.custom_minimum_size * 0.5
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = color
+	normal.set_corner_radius_all(23)
+	normal.content_margin_left = 18
+	normal.content_margin_right = 18
+	normal.content_margin_top = 8
+	normal.content_margin_bottom = 8
+	normal.shadow_size = 6
+	normal.shadow_color = Color(0, 0, 0, 0.25)
+	var glow := normal.duplicate() as StyleBoxFlat
+	glow.bg_color = color.lightened(0.28)
+	glow.shadow_size = 10
+	glow.shadow_color = color.lightened(0.2)
+	glow.shadow_color.a = 0.6
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", glow)
+	button.add_theme_stylebox_override("focus", glow)
+	button.add_theme_stylebox_override("pressed", glow)
+	var on_color := Color.WHITE if color.v < 0.75 else INK
+	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		button.add_theme_color_override(state, on_color)
+	var grow := func(on: bool) -> void:
+		var tween := button.create_tween()
+		tween.tween_property(button, "scale", Vector2.ONE * (1.08 if on else 1.0), 0.12)
+	button.mouse_entered.connect(grow.bind(true))
+	button.mouse_exited.connect(grow.bind(false))
+	button.focus_entered.connect(grow.bind(true))
+	button.focus_exited.connect(grow.bind(false))
+	_sounds(button)
+	return button
 
 
 ## Círculo de color con un ícono dentro (categoría de un aviso, retrato).

@@ -1,6 +1,6 @@
 # Pueblos, lugares e interiores
 
-[← Índice](../README.md) · Estado: **hecho** (2026-10-10). Código: `world/region/structures.gd`, `town_services.gd`, `interiors.gd`, `ui/shop/shop_ui.gd`.
+[← Índice](../README.md) · Estado: **hecho** (2026-10-11). Código: `world/region/structures.gd`, `town_services.gd`, `interiors.gd`, `mart_services.gd`, `center_services.gd`, `ui/shop/shop_ui.gd`, `ui/shop/shelf_popup.gd`, `ui/center/heal_animation_ui.gd`.
 
 ## Interacción
 Cerca de una puerta, mostrador, persona o lugar, el HUD muestra la acción (`[E] Entrar: Centro Pokémon`) y **interact** (E / ✕) la hace. Algunos puntos se usan nadando (barco hundido). Al llegar a un pueblo o lugar, un cartel muestra su nombre.
@@ -8,8 +8,8 @@ Cerca de una puerta, mostrador, persona o lugar, el HUD muestra la acción (`[E]
 ## Edificios de los asentamientos
 | Edificio | Dónde | Qué hace |
 |---|---|---|
-| Centro Pokémon | Pueblos, ciudades y aldeas | Cura a todo el equipo y al jugador, fija ahí la reaparición y autoguarda; PC con la Caja |
-| Tienda | Pueblos y ciudades (8:00–21:00) | Compra ×1/×10 y vende a mitad de precio; más surtido con medallas y 4 MT distintas cada día |
+| Centro Pokémon | Pueblos, ciudades y aldeas (24 h) | Cura a todo el equipo (animado) y al jugador, fija ahí la reaparición y autoguarda; PC con la Caja, recordador de movimientos, café, intercambios, entrenamiento, excursiones, cabina de fotos y (arriba) club de combate — ver [todas sus funciones](#centro-pokémon-todas-sus-funciones-2026-10-11) |
+| Tienda | Pueblos y ciudades (9:00–21:00) | Compra ×1/×10 y vende a mitad de precio; más surtido con medallas y 4 MT distintas cada día; estantes, tarjeta de puntos, tablón, pedidos por encargo y (arriba) dependiente de la ciudad — ver [todas sus funciones](#tienda-pokémon-por-dentro-todas-sus-funciones-2026-10-11) |
 | Gimnasio | Ciudades (7:00–22:00) | Líder de un tipo (fijo por semilla); reto de 3 Pokémon, más fuertes con cada medalla; medalla y dinero |
 | Sala de Concursos | Ciudades | Puntaje por dominio de movimientos, variedad de tipos y vínculo; con 14+ gana la cinta (1 intento por día) |
 | Laboratorio | Pueblo inicial | El profesor entrega premios de investigación, la **bicicleta**, las **licencias de montura y vuelo** y **revive fósiles** |
@@ -29,7 +29,7 @@ Cerca de una puerta, mostrador, persona o lugar, el HUD muestra la acción (`[E]
 - **Ruinas flotantes:** a 40 m de altura, solo volando; fragmento de cielo y descubrimiento.
 - **Árbol milenario**, **faros**, **volcanes** (humo en el cráter), **fuentes** y **aguas termales** (curan poco a poco).
 - **Zona Safari:** $500 por 30 Safari Balls (×1.5) que se devuelven al salir; Pokémon raros dentro.
-- **Guardería:** deja un Pokémon (no el compañero) y gana 2 Puntos de Entrenamiento por día.
+- **Guardería:** deja un Pokémon (no el compañero) y gana 2 Puntos de Entrenamiento por día; al recogerlo, 15 % de probabilidad de que además aparezca un huevo ya nacido (ver [huevo de la guardería](#tienda-pokémon-por-dentro-todas-sus-funciones-2026-10-11) → decisión anotada en `docs/decisiones_sin_preguntar.md`).
 - **Ranchos** (Leche Mu-mu, Miltank, Mareep…), **huertos de bayas** (4 filas, cada una una vez al día), **comerciantes viajeros** en los caminos (5 objetos raros al día, precio ×1.5), **oasis** con palmeras.
 - **Territorios Alfa** y **santuarios** de legendarios: ver [clima y eventos](clima_y_eventos.md) y [legendarios](legendarios.md).
 
@@ -48,8 +48,50 @@ Código: `world/region/interiors.gd` (`_model_room`, `_floor_rect`, `_ceiling_he
 - **Zonas negras:** las paredes del contorno (antes solo colisión invisible) ahora también tienen una caja visible con un color parecido al de las paredes del modelo (promedio de sus texturas no hay a mano), y un faldón oscuro bajo el borde del piso, para tapar los huecos que dejan los modelos de la DS. El muro del lado de la entrada es bajo (como en las salas de piezas) para no tapar la cámara ni la puerta.
 - **Personal correcto:** la enfermera y el dependiente son humanos (`NpcLooks.for_role("enfermera"/"vendedor", rng)`) detrás del mostrador; el Chansey/Blissey y el Kecleon son su mascota junto a ellos, con `_pokemon_pet` (hoja de caminar de mundo, `DirectionalSprite`), nunca con su sprite de frente. `_npc` ya no acepta un Pokémon de frente (se quitó ese camino).
 - **Caja de diálogo:** el profesor (tienda del laboratorio), el entrenador del gimnasio ya vencido, el juez de la Sala de Concursos y el tutor de movimientos hablan en `DialogBox` con su nombre y retrato; antes salían como avisos sueltos (`GameState.notice`).
-- **Pendiente de verificar en el juego:** las dos escaleras de la tienda y del Centro (de dos pisos) — el arreglo del piso y del contorno ataja la causa descrita (el muro del contorno cortaba una escalera porque el piso detectado no llegaba hasta ahí), pero no se automatizó una prueba que suba por cada escalera de cada variante del modelo.
+- **Escaleras verificadas (2026-10-11):** la prueba automática `tests/test_interiors.gd::_check_stairs` confirma, con la navegación horneada de la sala (misma colisión real), que hay camino de la entrada al segundo piso en la tienda y el Centro; ver [segundo piso](#segundo-piso-de-la-tienda-y-el-centro-2026-10-11).
 - **Prueba:** `tests/test_interiors.gd` entra al Centro, la Tienda, una casa, el laboratorio y un gimnasio, y revisa que haya luz propia, que la cámara quede dentro de la sala, que no haya ningún NPC con sprite de frente y (en el Centro y la Tienda) que el personal sea el correcto.
+- **Cámara de golpe sin zoom retrasado (2026-10-11):** `CameraRig.snap()` (`world/camera/camera_rig.gd`) ahora también fija `_arm.spring_length` al momento, no solo la posición; antes el zoom de la sala se alcanzaba poco a poco en `_process` y el primer cuadro al entrar podía verse con el zoom de afuera. Encontrado revisando capturas de la Tienda y el Centro; sigue pendiente un posible reinicio del *yaw* al entrar (ver `docs/decisiones_sin_preguntar.md`, fila "Cámara de golpe sin zoom retrasado").
+
+## Segundo piso de la Tienda y el Centro (2026-10-11)
+Código: `Interiors._ceiling_info` (antes `_ceiling_height`, ahora también devuelve el rectángulo del piso de arriba), `Interiors.has_upper_floor/upper_point/upper_size`. Los modelos reales de B2W2 de la tienda (`mall`) y el Centro (`center`) son de dos pisos de verdad (con su propia escalera/escalera mecánica, vista en las capturas): el mismo cálculo que antes solo medía la altura del techo para la cámara ahora también guarda, si encuentra una losa ancha real por encima de la cabeza, el desplazamiento de esa losa (piso de arriba) en el mismo espacio de coordenadas que la puerta y el resto de puntos de la sala. `Interiors.room_point/room_marker/room_npc` son versiones públicas de los ayudantes internos (`_point/_marker/_npc`) para que `MartServices` y `CenterServices` puedan poner estantes, mostradores y personal ahí sin que `Interiors` tenga que conocer la lógica de cada función.
+- **Prueba de las dos escaleras:** `tests/test_interiors.gd::_check_stairs` le pregunta a la navegación horneada de la sala (la misma colisión real por la que camina el jugador, incluida la escalera) si hay un camino de la entrada al segundo piso; un intento de caminar "a ciegas" con `move_and_slide()` pegado a cada pared no encontró una ruta fija que sirviera para los dos modelos reales (sus escaleras no están en el mismo lugar relativo). Decisión anotada en `docs/decisiones_sin_preguntar.md`.
+
+## Tienda Pokémon por dentro: todas sus funciones (2026-10-11)
+Código: `world/region/mart_services.gd` (`MartServices`, hijo de `TownServices` igual que `Interiors`), estantes y mostradores puestos desde `Interiors._build_room` (caso `"mart"`). Decisiones de Fernando del 2026-10-10 noche, todas hechas:
+- **Dos dependientes:** el general (abajo, mostrador de siempre) vende curación, señuelos y comida (`MartServices.GENERAL_SHELVES`); el de la ciudad (arriba, segundo piso real del modelo) vende MT, Balls especiales y comida regional (`CITY_SHELVES`). Los dos saludan distinto si ya compraste 15 veces o más ("empleado del mes": te saluda por tu nombre y te cuenta un rumor exclusivo).
+- **Estantes con objetos reales:** ícono flotante sobre cada estante (`place_shelf`); al acercarte y pulsar interact se abre `ShelfPopupUI` (`ui/shop/shelf_popup.gd`) con su nombre, descripción, precio del día y existencias, y botones en píldora (`UiKit.pill_button`) para comprar ×1 o ×5 ahí mismo.
+- **Existencias limitadas por día:** `STOCK_PER_DAY` (6) unidades por objeto de estante, guardadas en `GameState.world_flags["mart"]["stock"]` con el día en que se repusieron; se reinician solas al cambiar de día. Los clientes de la tienda también compran solos cada 25–45 s mientras estás dentro (`_customer_buys`), bajando una existencia al azar.
+- **Tarjeta de puntos:** `MartServices.loyalty()`/`_add_loyalty`: una Premier Ball (objeto nuevo, `creatures/data/items.json`) por cada 10 Balls compradas (en cualquier mostrador o estante); cada 5 Premier Ball, un Caramelo Raro de premio mayor. Se muestra en el encabezado de la tienda (`ShopUI.loyalty_text`).
+- **Tablón de anuncios:** `open_board` (caja de diálogo): oferta del día (20 % de descuento en un objeto que rota cada día, `daily_offer`), un rumor, un aviso de brote si hay una migración próxima, el aviso de temporada del Rotom y una petición de un vecino (misión corta: trae N de un objeto a cambio de dinero y otro objeto, `request_for`/`fulfill_request`).
+- **Oferta del día:** un objeto del surtido con 20 % de descuento, distinto cada día (determinista por el día y el pueblo).
+- **Niño que regala o intercambia una vez al día:** `kid_corner`, con una opción de regalo y otra de intercambio fijo (p. ej. una Baya Zidra por un Huevo Suerte), elegible en la caja de diálogo.
+- **Pedidos por encargo:** `open_orders`/`_place_order`/`_check_orders`: pagas por adelantado (10 % más caro) y llega en 1–2 días; al entrar a la tienda, si ya llegó, un aviso "📱 Rotom" lo entrega.
+- **Máquina de bebidas:** `drink_machine`, $200, llena un poco el hambre, sube un poco el vínculo si tu compañero está fuera, y a veces (15 %) suelta dos.
+- **Música, puerta y ambiente:** `world/music/music_director.gd` ya no comparte pista con el Centro (`"mart": "bw2_pokemart"`, antes `"bw1_pokecenter"`); el sonido de puerta ya existía (`AudioBus.play_sfx("door")` en `Interiors.enter/exit_to`); `AudioBus.ambient_player()` (nuevo) deja listo un bucle de "ruido de gente" si algún día se agrega el archivo (no truena nada si no existe, como el resto de la música local).
+- **Vender lo recolectado al precio del día:** `collectible_price` (±30 % fijo por día y objeto) para Trozos Estrella, Perlas, polvo de estrella y esquirlas; se usa como precio de venta en el mostrador general (`ShopUI.sell_price_overrides`).
+- **Mostrador de regalos:** `gift_counter`/`_offer_gift`: tres gustos fijos (vecino, líder del gimnasio, profesor); regalar el objeto correcto sube un poco la reputación.
+- **Eventos de temporada:** `seasonal_discount`/`seasonal_announcement`: los primeros 3 días de cada estación hay 15 % de descuento general y un aviso del Rotom la primera vez que entras.
+- **Ladrón ocasional del equipo villano:** `maybe_spawn_thief`/`_process`/`_catch_thief`: una vez al día, con 30 % de probabilidad, un ladrón aparece junto a un estante y camina hacia la puerta; si lo alcanzas antes (`THIEF_ESCAPE_SECONDS` = 14 s) le ganas en un combate corto de un Pokémon Siniestro o Veneno (recompensa en dinero y un Caramelo Raro); si llega a la puerta, escapa.
+- **Ruleta diaria:** `_roulette_spin`, un premio al azar con cualquier compra (una vez por día).
+- **Compañero reacciona a los estantes:** `_companion_reacts`, al comprar un objeto hay 35 % de probabilidad de que tu compañero "lo pida" con una burbuja y suba un poco el vínculo.
+- **Segundo piso útil:** mostrador propio del dependiente de la ciudad y una zona de descanso, puestos en `interiors.upper_point(...)` (ver arriba).
+- **Horario 9:00–21:00:** `TownNPCs.is_open("mart", hour)` (antes 8:00); cerrada de noche con aviso (`TownServices.enter_interior`), con una línea extra entre 8:30 y 9:00 ("ya hay gente haciendo fila") — simplificado a un aviso, sin NPC de fila (ver `docs/decisiones_sin_preguntar.md`).
+
+## Centro Pokémon: todas sus funciones (2026-10-11)
+Código: `world/region/center_services.gd` (`CenterServices`), puesto desde `Interiors._build_room` (caso `"center"`). Decisiones de Fernando del 2026-10-10 noche, todas hechas:
+- **Curación clásica animada:** `animated_heal` (`ui/center/heal_animation_ui.gd`): un recuadro con una Poké Ball por Pokémon de tu equipo se enciende una a una (~3 s en total) con el jingle de BW1, y al terminar cura a todo el equipo (igual que antes, `heal_at_center`: autoguarda y fija la reaparición), cura al jugador y el veneno, y un té le quita un poco el hambre. Abierto 24 h (no pasa por `TownNPCs.is_open`).
+- **PC de las Cajas:** ya existía (`services.open_menu_tab.bind("Caja")`).
+- **Recordador de movimientos:** `move_reminder`, nuevo objeto **Escama Corazón** (`heart-scale`, `creatures/data/items.json`; aparece como tesoro de mazmorra) o $1000; elige entre los movimientos que tu compañero desbloqueó pero no trae equipados ahora mismo.
+- **Café y zona de descanso:** `cafe` ($150, bebida + un poco de hambre + un poco de vínculo) y un entrenador que descansa (`resting_trainer`): platicar o un combate amistoso corto (un Pokémon, con premio).
+- **Mostrador de intercambios del día:** `trade_counter`/`daily_trade`: una especie común de "otra región" a cambio de una tuya, distinta cada día.
+- **Revisión de vínculo y salud con la enfermera:** `checkup`, vínculo, salud y hambre de tu compañero, con un consejo.
+- **Guardería y huevos:** la guardería (lugar aparte, ya existía) ahora a veces (15 %, si pasó al menos un día) encuentra un huevo que ya nació, de una especie "bebé" (`TownServices.DAYCARE_EGG_SPECIES`); igual que revivir un fósil, llega directo a la Caja (el juego no tiene incubadora todavía, ver decisión anotada).
+- **Sala de entrenamiento con muñecos:** `training_room`/`_practice`, sube el dominio (`Moves.rank`/`register_use`) de un movimiento elegido practicando 3 veces contra los muñecos.
+- **Taquilla de excursiones:** `excursion_desk`, $400, te lleva a ver la bandada migratoria más cercana si hay una aterrizada hoy; una vez por día.
+- **Fotógrafo (cabina de fotos):** `photo_booth`, cuenta cuántas fotos te tomaste con tu compañero y con quién fue la última; se ve en la Ficha (`ui/menu/game_menu.gd::_photo_booth_line`).
+- **Segundo piso con club de combate:** `combat_club`/`_club_duel`, retos amistosos (un Pokémon) con tabla de récords de racha (`club_streak`/`club_record`), guardada en `GameState.world_flags["center"]`.
+- **Tablón de la región:** `region_board`, brotes, si el líder de la ciudad está en su gimnasio hoy, y recuerda que las peticiones de vecinos están en el tablón de la Tienda.
+- **Visitas de líderes curando a su equipo:** `maybe_visitor`/`talk_visitor`, 25 % de probabilidad al día de que el líder de la ciudad aparezca dentro a curar a su equipo (solo para platicar, no es el reto del gimnasio).
 
 ## Retos (gimnasio, Liga, base)
 Sale un Pokémon del entrenador a la vez y ataca; al debilitarlo sale el siguiente. **No se pueden capturar** (la ball rebota). Si te desmayas, el reto termina. Liga: requiere las 8 medallas; Alto Mando y Campeón (11 Pokémon fuertes).

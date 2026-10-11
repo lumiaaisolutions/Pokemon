@@ -167,10 +167,15 @@ func set_target(node: Node3D) -> void:
 		_arm.add_excluded_object((_target as CollisionObject3D).get_rid())
 
 
-## Coloca la cámara de golpe sobre su objetivo (teletransportes, interiores).
+## Coloca la cámara de golpe sobre su objetivo (teletransportes, interiores). También el
+## zoom de golpe (bug encontrado el 2026-10-11 con las capturas de la Tienda y el
+## Centro: _arm.spring_length solo se acercaba al zoom nuevo poco a poco en _process, así
+## que justo al entrar la cámara quedaba un instante con la distancia de afuera y el
+## ángulo de la sala, a veces metida en el piso o muy cerca de él).
 func snap() -> void:
 	if _target != null:
 		global_position = _focus_point()
+	_arm.spring_length = _zoom
 
 
 ## Pitch actual en grados (hacia abajo). Lo usan las pruebas.

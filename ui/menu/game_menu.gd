@@ -478,6 +478,16 @@ func party_row(on_pick: Callable, highlight: int) -> HBoxContainer:
 	return row
 
 
+## Cabina de fotos del Centro Pokémon (acordado con Fernando el 2026-10-10: "queda en
+## la Ficha"): cuántas fotos te has tomado ahí con tu compañero y con quién fue la última.
+func _photo_booth_line() -> String:
+	var count := int(GameState.world_flags.get("center", {}).get("photo_booth_count", 0))
+	if count <= 0:
+		return "Aún ninguna (en el Centro Pokémon)"
+	var last := String(GameState.world_flags.get("center", {}).get("photo_booth_last", ""))
+	return "%d (última con %s)" % [count, last] if last != "" else str(count)
+
+
 func _trainer_card() -> Control:
 	var center := CenterContainer.new()
 	var card := PanelContainer.new()
@@ -517,6 +527,7 @@ func _trainer_card() -> Control:
 		["Región", "%s (%d de %d abiertas)" % [Regions.region_name(), Regions.unlocked().size(), Regions.COUNT]],
 		["Medallas", "%d / 8 aquí · %d en total" % [Regions.badges(), Regions.total_badges()]],
 		["Cintas", "%d / 5" % (GameState.world_flags.get("ribbons", []) as Array).size()],
+		["Cabina de fotos", _photo_booth_line()],
 	]
 	for line: Array in lines:
 		var item := HBoxContainer.new()

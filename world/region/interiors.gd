@@ -186,6 +186,24 @@ func _point(pos: Vector3, prompt: String, action: Callable, radius: float = 2.2)
 	(current["points"] as Array).append(structures.add_point(ORIGIN + pos, prompt, action, radius))
 
 
+## Igual que _point pero público: MartServices y CenterServices construyen estantes,
+## mostradores y puntos del segundo piso desde fuera de Interiors, y así el punto se
+## limpia solo al salir (como cualquier otro de la sala).
+func room_point(local: Vector3, prompt: String, action: Callable, radius: float = 2.2) -> void:
+	_point(local, prompt, action, radius)
+
+
+## Como _marker, pero utilizable desde MartServices/CenterServices.
+func room_marker(local: Vector3, texture: Texture2D, size_m: float = 0.42) -> Sprite3D:
+	return _marker(current["root"], local, texture, size_m)
+
+
+## NPC humano del mundo (nunca de frente) en una posición de la sala actual, usable desde
+## MartServices/CenterServices.
+func room_npc(local: Vector3, trainer_id: String) -> Sprite3D:
+	return _npc(current["root"], local, trainer_id)
+
+
 # --- Piezas ----------------------------------------------------------------------------
 
 func _material(color: Color, emission: float = 0.0) -> StandardMaterial3D:
@@ -283,7 +301,8 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	# Techo real sobre ese piso (los modelos de B2W2 son edificios de verdad, algunos de
 	# dos pisos como la tienda y el Centro): sin esto la cámara alta y lejana de las salas
 	# de piezas atravesaba el techo o el piso de arriba y se veía un amasijo de triángulos.
-	var ceiling := _ceiling_height(model, meshes, floor_rect)
+	var ceiling_info := _ceiling_info(model, meshes, floor_rect)
+	var ceiling: float = ceiling_info["height"]
 	var center := floor_rect.get_center()
 	model.position = Vector3(-center.x, -floor_rect.position.y, -center.z)
 	root.add_child(model)
@@ -365,6 +384,17 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	current["cam_pitch"] = clampf(rad_to_deg(atan2(vertical, horizontal)), 14.0, 60.0)
 	current["cam_zoom"] = clampf(sqrt(vertical * vertical + horizontal * horizontal), 3.0, 11.0)
 	_ceiling_lamps(root, size, ceiling)
+	# Segundo piso (tienda y Centro, acordado con Fernando el 2026-10-10): si el techo
+	# detectado es en realidad la planta de arriba (losa ancha real, no el techo final del
+	# edificio), se guarda su desplazamiento en el espacio de la sala (mismo origen que la
+	# puerta y los puntos del piso de bajo) para que MartServices/CenterServices puedan
+	# poner ahí el segundo mostrador, la zona de descanso o el club de combate.
+	current["size"] = size
+	var upper_rect: AABB = ceiling_info["rect"]
+	if kind in ["mart", "center"] and upper_rect.size.x > 0.0:
+		current["ceiling_y"] = ceiling
+		current["upper_offset"] = Vector3(upper_rect.get_center().x - center.x, ceiling, upper_rect.get_center().z - center.z)
+		current["upper_size"] = Vector2(upper_rect.size.x, upper_rect.size.z)
 	return size
 
 
@@ -471,17 +501,20 @@ func _main_height_cluster(levels: Array) -> Array:
 	return best
 
 
-## Altura del techo sobre floor_rect (metros): el primer nivel horizontal ancho por
-## encima de la cabeza (los modelos de B2W2 traen edificios de dos pisos, como la
-## tienda y el Centro, con el piso de arriba haciendo de techo del de abajo). Si no
-## encuentra uno claro (sala abierta o con un solo trozo de techo pequeño), un valor
-## generoso para no limitar de más la cámara.
+## Altura del techo sobre floor_rect (metros) y, si lo hay, el rectángulo del piso de
+## arriba (metros, mismo espacio sin desplazar que floor_rect): el primer nivel
+## horizontal ancho por encima de la cabeza. Los modelos de B2W2 traen edificios de dos
+## pisos, como la tienda y el Centro (segundo piso con mostrador propio y zona de
+## descanso, acordado con Fernando el 2026-10-10), con el piso de arriba haciendo de
+## techo del de abajo: ese mismo nivel es la planta del segundo piso. Si no encuentra uno
+## claro (sala abierta o con un solo trozo de techo pequeño), un valor generoso para no
+## limitar de más la cámara y sin rectángulo de piso de arriba.
 const DEFAULT_CEILING := 6.0
-func _ceiling_height(model: Node3D, meshes: Array, floor_rect: AABB) -> float:
+func _ceiling_info(model: Node3D, meshes: Array, floor_rect: AABB) -> Dictionary:
 	var floor_level := floor_rect.position.y
 	var floor_area := floor_rect.size.x * floor_rect.size.z
 	if floor_area <= 0.0:
-		return DEFAULT_CEILING
+		return {"height": DEFAULT_CEILING, "rect": AABB()}
 	var by_height := {}
 	var rects := {}
 	for node in meshes:
@@ -517,8 +550,8 @@ func _ceiling_height(model: Node3D, meshes: Array, floor_rect: AABB) -> float:
 		# Debe cubrir casi todo el piso en ambos lados (una sola losa ancha), no varios
 		# muebles sueltos a la misma altura que por separado suman bastante área.
 		if r.size.x * r.size.z >= floor_area * 0.2 and r.size.x >= floor_rect.size.x * 0.5 and r.size.z >= floor_rect.size.z * 0.5:
-			return level - floor_level
-	return DEFAULT_CEILING
+			return {"height": level - floor_level, "rect": r}
+	return {"height": DEFAULT_CEILING, "rect": AABB()}
 
 
 ## Lámparas de techo cálidas: los modelos de B2W2 solo traen geometría y texturas, sin
@@ -578,6 +611,37 @@ func _pokemon_pet(root: Node3D, at: Vector3, species_id: String) -> void:
 	sprite.setup(species.overworld_sheet, 2, 4, PokemonActor.PIXEL_SIZE * species.size_scale * 32.0 / species.overworld_cell, species.foot_offset_px)
 
 
+## Ícono flotante sobre un estante o mueble (objeto real a la venta, premio de la
+## ruleta...): billboard que siempre mira a la cámara, como el de los tesoros de mazmorra.
+func _marker(root: Node3D, at: Vector3, texture: Texture2D, size_m: float = 0.42) -> Sprite3D:
+	var sprite := Sprite3D.new()
+	sprite.texture = texture
+	sprite.pixel_size = size_m / maxf(texture.get_width(), 1.0)
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.shaded = false
+	sprite.position = at
+	root.add_child(sprite)
+	return sprite
+
+
+## Punto del segundo piso (tienda y Centro): local + el desplazamiento real del piso de
+## arriba detectado por _model_room(). Vector3.INF si esta sala no tiene uno (modelo sin
+## segundo piso claro): quien llama debe comprobarlo con has_upper_floor() antes de usarlo.
+func has_upper_floor() -> bool:
+	return current.has("upper_offset")
+
+
+func upper_point(local: Vector3) -> Vector3:
+	if not has_upper_floor():
+		return Vector3.INF
+	return (current["upper_offset"] as Vector3) + local
+
+
+func upper_size() -> Vector2:
+	return current.get("upper_size", Vector2.ZERO)
+
+
 ## Salas de edificios. Devuelve el punto de aparición (relativo al mundo).
 func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: Dictionary, rng: RandomNumberGenerator) -> Vector3:
 	var size: Vector2 = {"center": Vector2(18, 14), "mart": Vector2(14, 11), "house": Vector2(10, 9), "cabin": Vector2(8, 7),
@@ -605,19 +669,96 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_block(root, Vector3(8, 1.1, 1.2), Vector3(0, 0.55, back + 1.0), Color(0.9, 0.4, 0.45))
 			# La enfermera (humana) atiende el mostrador; un Chansey o Blissey la ayuda
 			# junto a la máquina, de mascota, con su hoja de caminar de mundo (nunca de frente).
+			# Curación clásica animada (entregas el equipo y las Balls se encienden una a
+			# una), más la revisión de vínculo y salud, el recordador y el café, todo
+			# acordado con Fernando el 2026-10-10.
 			_npc(root, Vector3(0, 0, back), NpcLooks.for_role("enfermera", rng))
 			_pokemon_pet(root, Vector3(1.6, 0, back + 0.6), "chansey" if rng.randf() < 0.5 else "blissey")
-			_point(Vector3(0, 0.5, back + 2.4), "Curar a tu equipo", services.heal_at_center.bind(current["return"]))
+			_point(Vector3(0, 0.5, back + 2.4), "Curar a tu equipo", services.center_services.animated_heal.bind(current["return"]))
+			_point(Vector3(1.6, 0.5, back + 2.4), "Hablar con la enfermera (vínculo y salud)", services.center_services.checkup)
 			_block(root, Vector3(1.4, 1.6, 1.0), Vector3(size.x * 0.5 - 1.5, 0.8, back), Color(0.3, 0.35, 0.45), true, 0.2)
 			_point(Vector3(size.x * 0.5 - 1.5, 0.5, back + 1.6), "Usar el PC (Caja)", services.open_menu_tab.bind("Caja"))
+			_point(Vector3(size.x * 0.5 - 3.0, 0.5, back + 1.6), "Recordador de movimientos", services.center_services.move_reminder)
+			var trade_x := clampf(-size.x * 0.5 + 2.0, -6.0, -1.5)
+			_npc(root, Vector3(trade_x, 0, back + 1.0), "cientifica")
+			_point(Vector3(trade_x, 0.5, back + 2.2), "Mostrador de intercambios del día", services.center_services.trade_counter, 1.8)
+			# Café y zona de descanso: la máquina de bebidas y un entrenador que platica o
+			# acepta un combate amistoso mientras su equipo descansa.
+			var cafe_at := Vector3(0, 0, back + size.y * 0.45)
+			_point(cafe_at + Vector3(0, 0.5, 0), "Café ($%d)" % CenterServices.CAFE_PRICE, services.center_services.cafe, 1.8)
+			var rest_look := NpcLooks.pick(["joven_a", "chica_a", "dama_a", "guay_a"], rng)
+			var rest_at := Vector3(2.4, 0, back + size.y * 0.45)
+			_npc(root, rest_at, rest_look)
+			_point(rest_at + Vector3(0, 0.5, 1.2), "Hablar con el entrenador que descansa", services.center_services.resting_trainer.bind(rest_look), 1.8)
+			# Sala de entrenamiento con muñecos y taquilla de excursiones.
+			var train_at := Vector3(-2.6, 0, back + size.y * 0.6)
+			_point(train_at, "Sala de entrenamiento (muñecos)", services.center_services.training_room, 1.8)
+			var excursion_at := Vector3(2.8, 0, back + size.y * 0.65)
+			_npc(root, excursion_at, "marinero")
+			_point(excursion_at + Vector3(0, 0.5, 1.2), "Taquilla de excursiones ($%d)" % CenterServices.EXCURSION_PRICE, services.center_services.excursion_desk, 1.8)
+			# Cabina de fotos (queda en la Ficha) y tablón de la región.
+			_point(Vector3(-size.x * 0.5 + 1.6, 0.5, back + size.y * 0.3), "Cabina de fotos con tu compañero", services.center_services.photo_booth, 1.6)
+			_point(Vector3(size.x * 0.5 - 1.6, 0.5, back + size.y * 0.3), "Tablón de la región", services.center_services.region_board.bind(settlement), 1.6)
+			# Visita ocasional: el líder de la ciudad viene a curar a su equipo.
+			var visitor_id := services.center_services.maybe_visitor(settlement)
+			if visitor_id != "":
+				var visitor_at := Vector3(-1.2, 0, back + size.y * 0.2)
+				_npc(root, visitor_at, Leaders.look(visitor_id))
+				_point(visitor_at + Vector3(0, 0.5, 1.2), "Hablar con el líder %s" % Leaders.name_of(visitor_id), services.center_services.talk_visitor.bind(visitor_id), 1.8)
+			# Segundo piso real del modelo: club de combate (retos amistosos con tabla de
+			# récords de racha) y más zona de descanso.
+			if has_upper_floor():
+				var up_size := upper_size()
+				var club_at := upper_point(Vector3(0, 0, -minf(up_size.y, 10.0) * 0.1))
+				var ref_look := NpcLooks.pick(["karateka_a", "karateka_b"], rng)
+				_npc(root, club_at, ref_look)
+				_point(club_at + Vector3(0, 0.5, 1.4), "Club de combate (retos amistosos)", services.center_services.combat_club, 1.8)
+				_point(upper_point(Vector3(0, 0, minf(up_size.y, 10.0) * 0.3)), "Zona de descanso de arriba.",
+						func() -> void: GameState.notice.emit("Te sientas un momento en la zona de descanso de arriba."), 1.8)
 		"mart":
 			_block(root, Vector3(5, 1.1, 1.2), Vector3(-3, 0.55, back + 1.0), Color(0.3, 0.5, 0.85))
-			# El dependiente (humano) atiende el mostrador; el Kecleon es su mascota, no vende.
+			# El dependiente general (humano) atiende el mostrador de abajo; el Kecleon es
+			# su mascota, no vende. Todas las funciones nuevas (tarjeta de puntos, tablón,
+			# estantes, niño, pedidos, bebidas, regalos, ladrón...) viven en MartServices.
 			_npc(root, Vector3(-3, 0, back), NpcLooks.for_role("vendedor", rng))
 			_pokemon_pet(root, Vector3(-1.4, 0, back + 0.6), "kecleon")
-			_point(Vector3(-3, 0.5, back + 2.4), "Comprar y vender", services.open_shop)
-			for i in 3:
-				_block(root, Vector3(1.0, 2.0, 6.0), Vector3(1.5 + i * 2.2, 1.0, 0.5), Color(0.75, 0.6, 0.45))
+			_point(Vector3(-3, 0.5, back + 2.4), "Comprar y vender", services.mart.open_counter.bind(settlement, "general"))
+			_point(Vector3(1.4, 0.5, back + 2.4), "Tablón de anuncios", services.mart.open_board.bind(settlement))
+			_point(Vector3(2.9, 0.5, back + 2.4), "Mostrador de regalos", services.mart.gift_counter)
+			_point(Vector3(4.4, 0.5, back + 2.4), "Pedidos por encargo", services.mart.open_orders.bind(settlement))
+			var drink_x := clampf(size.x * 0.5 - 1.2, 2.0, 6.0)
+			_point(Vector3(drink_x, 0.5, back + size.y * 0.35), "Máquina de bebidas ($%d)" % MartServices.DRINK_PRICE, services.mart.drink_machine, 1.8)
+			var kid_at := Vector3(-drink_x, 0, back + size.y * 0.35)
+			_npc(root, kid_at, "nino")
+			_point(kid_at + Vector3(0, 0.5, 1.2), "Hablar con el niño", services.mart.kid_corner.bind(settlement), 1.8)
+			# Estantes con objetos reales (ícono flotante; al acercarte dice qué es y su
+			# precio y lo compras ahí): repartidos por las dos paredes laterales.
+			var shelf_x := clampf(size.x * 0.5 - 1.0, 2.0, 6.5)
+			var shelf_depths := [back + size.y * 0.55, back + size.y * 0.75]
+			var shown_shelves: Array = MartServices.GENERAL_SHELVES.slice(0, 4)
+			for i in shown_shelves.size():
+				var z: float = shelf_depths[i / 2]
+				if z > size.y * 0.5 - 1.8:
+					continue
+				var side := -1.0 if i % 2 == 0 else 1.0
+				services.mart.place_shelf(Vector3(side * shelf_x, 0, z), settlement, shown_shelves[i])
+			# Dependiente de la ciudad (MT, Balls especiales y comida regional) y sus
+			# estantes, en el segundo piso real del modelo (mostrador propio y zona de
+			# descanso, acordado con Fernando el 2026-10-10).
+			if has_upper_floor():
+				var up_size := upper_size()
+				var counter_up := upper_point(Vector3(0, 0, -minf(up_size.y, 10.0) * 0.2))
+				_npc(root, counter_up, NpcLooks.for_role("vendedor", rng))
+				_point(counter_up + Vector3(0, 0.5, 1.4), "Comprar: MT, Balls especiales y comida de la ciudad", services.mart.open_counter.bind(settlement, "city"), 1.8)
+				var up_shelf_x := clampf(up_size.x * 0.5 - 1.0, 1.6, 6.0)
+				var up_shown: Array = MartServices.CITY_SHELVES.slice(0, 2)
+				for i in up_shown.size():
+					var side := -1.0 if i == 0 else 1.0
+					services.mart.place_shelf(upper_point(Vector3(side * up_shelf_x, 0, minf(up_size.y, 10.0) * 0.15)), settlement, up_shown[i])
+				_point(upper_point(Vector3(0, 0, minf(up_size.y, 10.0) * 0.3)), "Zona de descanso: aquí los clientes toman un respiro.",
+						func() -> void: GameState.notice.emit("Te sientas un momento en la zona de descanso de arriba."), 1.8)
+			services.mart.start_ambient(root)
+			services.mart.maybe_spawn_thief(settlement, root, Vector3(shelf_x * 0.6, 0, back + size.y * 0.6), door)
 		"house", "cabin":
 			_block(root, Vector3(2.0, 0.6, 3.0), Vector3(size.x * 0.5 - 1.6, 0.3, back + 0.6), Color(0.85, 0.85, 0.95))
 			_point(Vector3(size.x * 0.5 - 1.6, 0.5, back + 2.4), "Dormir (hasta la mañana)", services.rest.bind(current["return"]))

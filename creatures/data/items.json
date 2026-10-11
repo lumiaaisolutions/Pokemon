@@ -73,6 +73,16 @@
       "desc": "La ball de siempre para capturar Pokémon salvajes."
     },
     {
+      "id": "premier-ball",
+      "name": "Premier Ball",
+      "pocket": "pokeballs",
+      "price": 20,
+      "ball": {
+        "rate": 1.0
+      },
+      "desc": "Ball blanca conmemorativa. La Tienda Pokémon la regala por tu tarjeta de puntos (una por cada 10 Balls compradas)."
+    },
+    {
       "id": "great-ball",
       "name": "Super Ball",
       "pocket": "pokeballs",
@@ -762,6 +772,13 @@
       "price": 0,
       "key": true,
       "desc": "Amuleto de una leyenda olvidada."
+    },
+    {
+      "id": "heart-scale",
+      "name": "Escama Corazón",
+      "pocket": "coleccionables",
+      "price": 100,
+      "desc": "Escama que brilla como un corazón. El recordador de movimientos del Centro Pokémon la acepta a cambio de dinero."
     },
     {
       "id": "shiny-charm",

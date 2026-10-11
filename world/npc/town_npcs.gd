@@ -963,7 +963,8 @@ func all_npcs() -> Array:
 static func is_open(kind: String, hour: float) -> bool:
 	match kind:
 		"mart":
-			return hour >= 8.0 and hour < 21.0
+			# Decisión de Fernando (2026-10-10): horario 9:00–21:00 (antes 8:00).
+			return hour >= 9.0 and hour < 21.0
 		"gym", "contest":
 			return hour >= 7.0 and hour < 22.0
 	return true

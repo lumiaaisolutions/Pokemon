@@ -96,6 +96,8 @@ static func icon(id: String) -> Texture2D:
 		texture = _orb_icon(Color(0.72, 0.5, 1.0))
 	elif id.begins_with("stone-") or id == "key-stone":
 		texture = _orb_icon(Color(0.95, 0.55, 0.85) if id.begins_with("stone-") else Color(0.5, 0.75, 1.0))
+	elif id == "heart-scale":
+		texture = _orb_icon(Color(0.95, 0.4, 0.55))
 	else:
 		texture = _orb_icon(Color(0.7, 0.7, 0.7))
 	_icons[id] = texture

@@ -27,6 +27,11 @@ const SAFARI_POOL := ["kangaskhan", "tauros", "scyther", "pinsir", "chansey", "d
 
 var structures: Structures
 var interiors: Interiors
+## Funciones de la Tienda y el Centro Pokémon más allá de curar/comprar y vender
+## (pedido y decisiones de Fernando, 2026-10-10 noche): ver mart_services.gd y
+## center_services.gd.
+var mart: MartServices
+var center_services: CenterServices
 ## Lugares que curan: {"pos", "radius", "title"}.
 var _healing_spots: Array[Dictionary] = []
 var _trial: Dictionary = {}
@@ -42,6 +47,14 @@ func _ready() -> void:
 	interiors.structures = structures
 	interiors.services = self
 	add_child(interiors)
+	mart = MartServices.new()
+	mart.name = "MartServices"
+	mart.services = self
+	add_child(mart)
+	center_services = CenterServices.new()
+	center_services.name = "CenterServices"
+	center_services.services = self
+	add_child(center_services)
 
 
 func main() -> Node:
@@ -116,7 +129,11 @@ func enter_interior(kind: String, settlement: Dictionary, data: Dictionary) -> v
 		return
 	var hour := GameState.clock_hour()
 	if not TownNPCs.is_open(kind, hour):
-		GameState.notice.emit("%s está cerrado. Abre a las %s." % [Structures.BUILDING_NAMES.get(kind, "El lugar"), "8:00" if kind == "mart" else "7:00"])
+		# Fila en la mañana (decisión de Fernando, 2026-10-10): media hora antes de abrir
+		# ya hay gente esperando en la puerta. Simplificado a un aviso (sin NPC extra en
+		# fila), anotado en docs/decisiones_sin_preguntar.md.
+		var queue_note := " Ya hay gente haciendo fila esperando a que abra." if kind == "mart" and hour >= 8.5 and hour < 9.0 else ""
+		GameState.notice.emit("%s está cerrado. Abre a las %s.%s" % [Structures.BUILDING_NAMES.get(kind, "El lugar"), "9:00" if kind == "mart" else "7:00", queue_note])
 		return
 	interiors.enter(kind, settlement, data, p.global_position + Vector3.UP * 0.3)
 
@@ -819,8 +836,15 @@ func safari_species() -> Array[SpeciesData]:
 	return pool
 
 
+## Pokémon "bebé" que puede aparecer en un huevo de la guardería (si existen en el juego).
+const DAYCARE_EGG_SPECIES := ["pichu", "cleffa", "igglybuff", "azurill", "budew", "happiny", "munchlax", "riolu", "mantyke", "togepi"]
+const DAYCARE_EGG_CHANCE := 0.15
+
+
 ## Guardería: deja un Pokémon del equipo (que no sea tu compañero) y gana Puntos de
-## Entrenamiento por cada día del juego; al volver te lo devuelven.
+## Entrenamiento por cada día del juego; al volver te lo devuelven. A veces, mientras lo
+## cuidan, aparece un huevo que ya nació (decisión de Fernando, 2026-10-10: el juego no
+## tiene incubadora todavía, así que llega directo a la Caja, como un fósil revivido).
 func daycare(_place: Dictionary) -> void:
 	var stay: Dictionary = _flags().get("daycare", {})
 	if not stay.is_empty():
@@ -831,7 +855,18 @@ func daycare(_place: Dictionary) -> void:
 		entry["training_free"] = int(entry.get("training_free", 0)) + gained
 		(GameState.party if GameState.party.size() < 6 else GameState.box).append(entry)
 		_flags().erase("daycare")
-		GameState.notice.emit("Guardería: ¡aquí está %s! Ganó %d Puntos de Entrenamiento en %d días." % [MenuStyle.species(entry["species"]).display_name, gained, days])
+		var text := "Guardería: ¡aquí está %s! Ganó %d Puntos de Entrenamiento en %d días." % [MenuStyle.species(entry["species"]).display_name, gained, days]
+		if days > 0 and _rng.randf() < DAYCARE_EGG_CHANCE:
+			var egg_options: Array[SpeciesData] = []
+			for id: String in DAYCARE_EGG_SPECIES:
+				var species := MenuStyle.species(id)
+				if species != null:
+					egg_options.append(species)
+			if not egg_options.is_empty():
+				var baby: SpeciesData = egg_options[_rng.randi() % egg_options.size()]
+				var where := GameState.add_caught(baby, false, 1.0)
+				text += " ¡Y de paso encontraron un huevo! Ya nació: %s (va a tu %s)." % [baby.display_name, where]
+		GameState.notice.emit(text)
 		return
 	if GameState.party.size() < 2:
 		GameState.notice.emit("Guardería: necesitas otro Pokémon en tu equipo además de tu compañero.")
