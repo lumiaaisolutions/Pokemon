@@ -389,7 +389,7 @@ func _process(delta: float) -> void:
 	if c.controlled and trainer.is_empty() and out.length() > ARENA_RADIUS + 1.0:
 		opponent.set_meta("fled_until", GameState.play_time + FLEE_IGNORE)
 		opponent.lose_track(FLEE_IGNORE)
-		GameState.notice.emit("¡Escapaste del combate!" if trainer.is_empty() else "Te retiraste del combate contra %s." % trainer["name"])
+		GameState.notice.emit("¡Escapaste del combate!")
 		AudioBus.play_sfx("flee")
 		_end("flee")
 		return

@@ -233,5 +233,6 @@ func refresh() -> void:
 		_hints.text = "Mantén %s y suelta en la zona dorada: lanzamiento excelente   ·   %s Esquivar (Nate)   ·   Suelta %s para volver a tu Pokémon" % [
 				InputHints.hint("throw"), InputHints.hint("dodge"), InputHints.hint("aim")]
 	else:
-		_hints.text = "%s Mover   ·   %s Esquivar   ·   %s Fijar objetivo   ·   %s Apuntar Pokéball   ·   Mantén %s Cambiar   ·   %s Mochila   ·   Sal del círculo para huir" % [
-				InputHints.hint("move_forward"), InputHints.hint("dodge"), InputHints.hint("lock_on"), InputHints.hint("aim"), InputHints.hint("companion"), InputHints.hint("bag")]
+		var flee_hint := "Sal del círculo para huir" if battle.trainer.is_empty() else "No puedes huir de un entrenador"
+		_hints.text = "%s Mover   ·   %s Esquivar   ·   %s Fijar objetivo   ·   %s Apuntar Pokéball   ·   Mantén %s Cambiar   ·   %s Mochila   ·   %s" % [
+				InputHints.hint("move_forward"), InputHints.hint("dodge"), InputHints.hint("lock_on"), InputHints.hint("aim"), InputHints.hint("companion"), InputHints.hint("bag"), flee_hint]

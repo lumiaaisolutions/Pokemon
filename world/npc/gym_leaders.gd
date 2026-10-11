@@ -444,7 +444,12 @@ func friendly_battle(leader: Dictionary) -> bool:
 	var id: String = leader["id"]
 	var battle := _main.get_node_or_null("Battle") as BattleManager
 	if battle == null or not battle.ready_to_fight():
-		GameState.notice.emit("Líder %s: Saca a tu Pokémon y peleamos." % Leaders.name_of(id))
+		var dialog := _dialog()
+		var wait_text := "Saca a tu Pokémon y peleamos."
+		if dialog != null:
+			dialog.open("Líder " + Leaders.name_of(id), [wait_text], Leaders.portrait(id))
+		else:
+			GameState.notice.emit("Líder %s: %s" % [Leaders.name_of(id), wait_text])
 		return false
 	var node: Node3D = leader["node"]
 	var region := Regions.index()

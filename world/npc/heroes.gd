@@ -253,8 +253,17 @@ static func _pre_evolution(identifier: String) -> String:
 func _challenge(hero: Dictionary) -> void:
 	var battle := _main.get_node_or_null("Battle") as BattleManager
 	var id: String = hero["id"]
+	var name: String = PlayerCharacters.find(id)["name"]
 	if battle == null or not battle.ready_to_fight():
-		GameState.notice.emit("%s: Saca a tu Pokémon y peleamos." % PlayerCharacters.find(id)["name"])
+		var dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+		var wait_text := "Saca a tu Pokémon y peleamos."
+		if dialog != null:
+			var portrait := AtlasTexture.new()
+			portrait.atlas = PlayerCharacters.sheet(id)
+			portrait.region = Rect2(0, 0, 32, 32)
+			dialog.open(name, [wait_text], portrait)
+		else:
+			GameState.notice.emit("%s: %s" % [name, wait_text])
 		hero["busy"] = false
 		return
 	var badges := Regions.total_badges()

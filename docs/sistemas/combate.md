@@ -65,3 +65,7 @@ Elegidas por Fernando: Puntos de Entrenamiento, objetos, vínculo y dominio, inv
 ## Jefes y dificultad adaptable (Fase 6)
 Los guardianes de bioma, el líder del equipo villano y la dificultad que se ajusta sola
 a cómo vas jugando están en [jefes.md](jefes.md).
+
+## Auditoría QA 2026-10-11
+- **Ayuda de huir contra entrenadores:** la fila de ayudas de `BattleUI` decía "Sal del círculo para huir" incluso en combates de entrenador, de los que no se puede huir (regla ya aplicada al aviso y al bloqueo físico en `BattleManager`, pero no al texto de ayuda). Ahora `battle_ui.gd` condiciona el texto a `battle.trainer.is_empty()`: en combate silvestre sigue diciendo "Sal del círculo para huir"; contra un entrenador dice "No puedes huir de un entrenador".
+- **Código muerto en el aviso de huida:** `battle_manager.gd` tenía un ternario `"¡Escapaste del combate!" if trainer.is_empty() else "Te retiraste..."` dentro de un bloque que solo se ejecuta cuando `trainer.is_empty()` ya es verdadero (la salida del círculo contra un entrenador se bloquea antes, más arriba en `_process`): la rama "Te retiraste..." nunca podía mostrarse. Se dejó solo `GameState.notice.emit("¡Escapaste del combate!")`.

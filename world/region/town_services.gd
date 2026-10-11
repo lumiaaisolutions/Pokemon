@@ -392,13 +392,18 @@ func ask_leader(settlement: Dictionary) -> void:
 
 func gym_challenge(settlement: Dictionary, arena: Vector3) -> void:
 	var city: String = settlement.get("name", "")
+	var id := structures.leader_of(settlement)
 	if badges().has(city):
-		GameState.notice.emit("Líder: ya tienes la medalla de %s. ¡Sigue tu camino!" % city)
+		var dialog := _dialog()
+		var beaten_text := "Ya tienes la medalla de %s. ¡Sigue tu camino!" % city
+		if dialog != null:
+			dialog.open("Líder " + Leaders.name_of(id), [beaten_text], Leaders.portrait(id))
+		else:
+			GameState.notice.emit("Líder: " + beaten_text)
 		return
 	if not leader_in_gym(settlement):
 		GameState.notice.emit("El líder no está en el gimnasio. Pregúntale al guía dónde anda.")
 		return
-	var id := structures.leader_of(settlement)
 	var region := Regions.index()
 	var team := Leaders.gym_team(id, region, badges().size())
 	var info := {"id": "gym:" + id, "name": "Líder " + Leaders.name_of(id), "team": team,
@@ -471,7 +476,11 @@ func league_talk(slot: int, arena: Vector3) -> void:
 	var portrait: Texture2D = Leaders.portrait(hero) if champion else Leaders.portrait(id)
 	var dialog := _dialog()
 	if badges().size() < Regions.GYMS:
-		GameState.notice.emit("Guardia: necesitas las 8 medallas para retar a la Liga (tienes %d)." % badges().size())
+		var guard_text := "Necesitas las 8 medallas para retar a la Liga (tienes %d)." % badges().size()
+		if dialog != null:
+			dialog.open("Guardia", [guard_text], NpcLooks.portrait("policia"))
+		else:
+			GameState.notice.emit("Guardia: " + guard_text)
 		return
 	if slot < league_step():
 		if dialog != null:
@@ -479,7 +488,11 @@ func league_talk(slot: int, arena: Vector3) -> void:
 		return
 	if slot > league_step():
 		var next: String = members[league_step()]
-		GameState.notice.emit("Primero vence a %s." % (Leaders.name_of(next) if not next.begins_with("hero:") else "los del Alto Mando"))
+		var wait_text := "Primero vence a %s." % (Leaders.name_of(next) if not next.begins_with("hero:") else "los del Alto Mando")
+		if dialog != null:
+			dialog.open("Guardia", [wait_text], NpcLooks.portrait("policia"))
+		else:
+			GameState.notice.emit("Guardia: " + wait_text)
 		return
 	var lines := ["Soy %s, del Alto Mando. Mi especialidad es el tipo %s." % [Leaders.name_of(id), Leaders.type_name(id)]] if not champion \
 			else ["Así que llegaste hasta aquí... Soy el Campeón de %s." % Regions.region_name(), "Mi equipo es el más fuerte de la región. ¡Demuéstrame lo que vales!"]
@@ -710,12 +723,21 @@ func tutor() -> void:
 
 ## Rancho: Leche Mu-mu.
 func buy_milk() -> void:
+	var dialog := _dialog()
 	if GameState.money < 500:
-		GameState.notice.emit("Ranchero: la leche cuesta $500.")
+		var poor_text := "La leche cuesta $500."
+		if dialog != null:
+			dialog.open("Ranchero", [poor_text], NpcLooks.portrait("obrero_a"))
+		else:
+			GameState.notice.emit("Ranchero: " + poor_text)
 		return
 	GameState.add_money(-500, "Leche Mu-mu")
 	GameState.add_item("moomoo-milk", 1)
-	GameState.notice.emit("Ranchero: ¡recién ordeñada! (Leche Mu-mu +1)")
+	var bought_text := "¡Recién ordeñada! (Leche Mu-mu +1)"
+	if dialog != null:
+		dialog.open("Ranchero", [bought_text], NpcLooks.portrait("obrero_a"))
+	else:
+		GameState.notice.emit("Ranchero: " + bought_text)
 
 
 ## Huerto: cada fila se cosecha una vez por día.
