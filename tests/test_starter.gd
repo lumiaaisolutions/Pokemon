@@ -65,18 +65,25 @@ func _run() -> void:
 	if cinematic == null:
 		return
 
-	# Se puede saltar en cualquier momento con Esc o Start ("menu").
+	# Se deja correr un rato (el profesor ya viajó lejos) y luego se salta con Esc o
+	# Start ("menu"). Bug de Fernando (2026-10-11): al terminar aparecía bajo el suelo.
+	await get_tree().create_timer(8.0).timeout
 	Input.action_press("menu")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	Input.action_release("menu")
 	var skipped := false
-	for i in 300:
+	var deadline := Time.get_ticks_msec() + 20000
+	while Time.get_ticks_msec() < deadline:
 		await get_tree().process_frame
 		if not is_instance_valid(cinematic):
 			skipped = true
 			break
 	_check(skipped, "Esc o Start debe saltar la cinemática")
+	await get_tree().create_timer(3.0).timeout
+	var ground := _world.surface_height_at(_player.global_position.x, _player.global_position.z)
+	_check(_player.mode == Player.Mode.WALK and _player.global_position.y > ground - 0.5, "tras la cinemática el jugador queda sobre el suelo (modo %d, y %.1f, suelo %.1f)" % [_player.mode, _player.global_position.y, ground])
+	_check(_player.health >= _player.config.health_max - 0.01, "tras la cinemática el jugador no pierde vida")
 
 	# La ceremonia arranca en la plaza con los 4 candidatos que trajo el profesor (todo
 	# síncrono dentro de StarterCeremony.start, antes de su primer await): no se avanza

@@ -75,12 +75,19 @@ func _process(_delta: float) -> void:
 ## Juega la cinemática completa (o la salta) y devuelve los 4 candidatos elegidos, para
 ## que la ceremonia del inicial los use.
 func play() -> Array[SpeciesData]:
+	# Se puede saltar aunque un diálogo de la narración tenga el juego en pausa.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_rng.randomize()
 	var candidates := _pick_candidates()
 	DialogBox.blocking = true
 	var original_zoom: float = camera_rig.get("_zoom")
 	var original_yaw: float = camera_rig.get("_yaw_deg")
 	var original_pitch: float = camera_rig.get("_pitch_deg")
+	# El jugador queda congelado en su lugar: mientras la cámara viaja se descarga el
+	# terreno bajo él y, con física activa, caía bajo el suelo (aparecía sin aire y se
+	# desmayaba; reporte de Fernando 2026-10-11).
+	var home := player.global_position
+	player.process_mode = Node.PROCESS_MODE_DISABLED
 	world.set_focus(_dolly)
 	AudioBus.play_music("bw2_title")
 	if music != null:
@@ -92,6 +99,10 @@ func play() -> Array[SpeciesData]:
 	await _fade_to(1.0, FADE_TIME)
 	_cleanup_visit()
 	world.set_focus(null)
+	# De vuelta en la plaza: se reconstruye el terreno y el jugador queda sobre el suelo.
+	world.ensure_area(home)
+	player.process_mode = Node.PROCESS_MODE_INHERIT
+	player.respawn_at(Vector3(home.x, world.surface_height_at(home.x, home.z) + 0.3, home.z))
 	if is_instance_valid(camera_rig):
 		camera_rig.set_target(player)
 		camera_rig.set("_zoom", original_zoom)
