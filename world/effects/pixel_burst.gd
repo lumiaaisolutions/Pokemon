@@ -3,7 +3,7 @@ extends CPUParticles3D
 ## Nube de cuadritos pixel art de un solo disparo: hojas, polvo, salpicadura, arena o
 ## humo. La usan los Pokémon al esconderse y al desaparecer debilitados. Se libera sola.
 
-enum Kind { LEAVES, FOREST_LEAVES, DUST, ROCK, SPLASH, SAND, SMOKE, BUBBLES, HEAL }
+enum Kind { LEAVES, FOREST_LEAVES, DUST, ROCK, SPLASH, SAND, SMOKE, BUBBLES, HEAL, SPARK }
 
 const PIXEL := 0.057
 const COLORS := {
@@ -16,6 +16,8 @@ const COLORS := {
 	Kind.SMOKE: [Color(0.85, 0.85, 0.85), Color(0.7, 0.7, 0.7), Color(0.95, 0.95, 0.95)],
 	Kind.BUBBLES: [Color(0.85, 0.95, 1.0), Color(0.6, 0.85, 1.0), Color(1, 1, 1)],
 	Kind.HEAL: [Color(0.6, 1.0, 0.6), Color(1.0, 0.55, 0.65), Color(1, 1, 1)],
+	## Chispas de la fogata al encenderse (armar la tienda; decisión de Fernando 2026-10-10).
+	Kind.SPARK: [Color(1.0, 0.85, 0.3), Color(1.0, 0.5, 0.15), Color(0.9, 0.25, 0.1)],
 }
 
 
@@ -56,7 +58,13 @@ func _setup(kind: Kind, size: float) -> void:
 	spread = 70.0
 	initial_velocity_min = 1.0 * size
 	initial_velocity_max = 2.6 * size
-	gravity = Vector3(0, 1.2, 0) if kind == Kind.SMOKE else (Vector3(0, 3.0, 0) if kind in [Kind.BUBBLES, Kind.HEAL] else Vector3(0, -6.0, 0))
+	gravity = Vector3(0, 1.2, 0) if kind == Kind.SMOKE else (Vector3(0, 3.0, 0) if kind in [Kind.BUBBLES, Kind.HEAL] else (Vector3(0, -3.0, 0) if kind == Kind.SPARK else Vector3(0, -6.0, 0)))
+	if kind == Kind.SPARK:
+		# Chispas rápidas que suben y caen (fogata al encenderse).
+		lifetime = 0.6
+		spread = 50.0
+		initial_velocity_min = 1.8 * size
+		initial_velocity_max = 3.4 * size
 	if kind == Kind.HEAL:
 		# Destellos de curación: suben despacio.
 		lifetime = 1.2

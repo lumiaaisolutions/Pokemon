@@ -169,7 +169,9 @@ func _item_detail(box: VBoxContainer, id: String) -> void:
 		content.add_child(UiKit.label("★ Es la ball que lanzas", 19, UiKit.GOLD, true))
 	var label := ItemEffects.action_label(id)
 	if label != "":
-		var use := UiKit.slant_button(label, UiKit.MINT, 22)
+		# Botón de acción de la Mochila con el estilo de toda la interfaz (ícono del
+		# objeto + color propio; pedido de Fernando el 2026-10-10, ronda 3).
+		var use := UiKit.action_button(label, Items.icon(id), _action_color(label))
 		use.custom_minimum_size = Vector2(320, 54)
 		use.pressed.connect(func() -> void:
 			var result := ItemEffects.use(id, _menu.main)
@@ -196,6 +198,26 @@ func _item_detail(box: VBoxContainer, id: String) -> void:
 		content.add_child(wheel)
 	if _message != "":
 		content.add_child(UiKit.wrapped(_message, 20, UiKit.MINT))
+
+
+## Color del botón de acción de la Mochila según lo que hace (estilo de toda la interfaz:
+## color propio por acción, pedido de Fernando el 2026-10-10, ronda 3).
+func _action_color(label: String) -> Color:
+	if label.contains("Tirar"):
+		return Color(0.55, 0.3, 0.3)
+	if label.contains("Comer"):
+		return Color(0.85, 0.45, 0.15)
+	if label.contains("compañero") or label.contains("Enseñar"):
+		return Color(0.2, 0.55, 0.5)
+	if label.contains("lanzar"):
+		return Color(0.8, 0.25, 0.25)
+	if label.contains("Pescar"):
+		return Color(0.25, 0.45, 0.75)
+	if label.contains("Armar"):
+		return Color(0.5, 0.38, 0.25)
+	if label.contains("mapa") or label.contains("Montar"):
+		return Color(0.32, 0.4, 0.7)
+	return Color(0.3, 0.55, 0.45)
 
 
 func _fact(name: String, value: String) -> VBoxContainer:

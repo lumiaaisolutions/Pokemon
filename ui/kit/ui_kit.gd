@@ -359,6 +359,7 @@ static func side_button(text: String, icon: Texture2D, selected: bool) -> Button
 	button.add_theme_color_override("font_focus_color", on_active)
 	button.add_theme_color_override("font_pressed_color", on_active)
 	_sounds(button)
+	_grow_on_focus(button)
 	return button
 
 
@@ -407,6 +408,7 @@ static func slant_button(text: String, accent: Color = Color(1, 1, 1, 0.3), size
 		for state in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
 			button.add_theme_color_override(state, Color.WHITE)
 	_sounds(button)
+	_grow_on_focus(button)
 	return button
 
 
@@ -416,6 +418,80 @@ static func big_button(text: String, icon: Texture2D = null) -> Button:
 	button.custom_minimum_size = Vector2(420, 66)
 	button.add_theme_font_size_override("font_size", 26)
 	return button
+
+
+## Botón de acción para TODAS las interfaces del juego (pedido de Fernando el 2026-10-10,
+## ronda 3): ícono pixel + texto en píldora, color propio por acción, sombra; se agranda y
+## brilla al pasar el cursor o elegirlo (foco), con sonido. Úsalo para cualquier acción
+## concreta (Dormir, Cocinar, opciones de diálogo, botones de menú, mochila…): un solo
+## lugar para ese estilo en vez de repetirlo en cada pantalla.
+static func action_button(text: String, icon: Texture2D, color: Color, selected: bool = false, enabled: bool = true) -> Button:
+	var button := Button.new()
+	button.text = ("  " + text) if text != "" else text
+	button.icon = icon
+	button.expand_icon = false
+	button.disabled = not enabled
+	button.add_theme_constant_override("icon_max_width", 26)
+	button.add_theme_font_override("font", font(true))
+	button.add_theme_font_size_override("font_size", 19)
+	button.custom_minimum_size = Vector2(0, 50)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var base := color.darkened(0.08)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = base if not selected else color.lightened(0.1)
+	normal.set_corner_radius_all(25)
+	normal.content_margin_left = 20
+	normal.content_margin_right = 24
+	normal.content_margin_top = 10
+	normal.content_margin_bottom = 10
+	normal.border_color = color.lightened(0.45)
+	normal.set_border_width_all(2 if not selected else 3)
+	normal.shadow_color = Color(0, 0, 0, 0.32)
+	normal.shadow_size = 6
+	normal.shadow_offset = Vector2(0, 3)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = color.lightened(0.22)
+	hover.border_color = Color(1.0, 0.95, 0.7)
+	hover.shadow_color = color.lightened(0.3)
+	hover.shadow_size = 12
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = Color(0.4, 0.4, 0.42, 0.5)
+	disabled.border_color = Color(1, 1, 1, 0.1)
+	disabled.shadow_size = 0
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("focus", hover)
+	button.add_theme_stylebox_override("pressed", hover)
+	button.add_theme_stylebox_override("disabled", disabled)
+	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		button.add_theme_color_override(state, Color.WHITE)
+	button.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.45))
+	button.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.4))
+	button.add_theme_constant_override("shadow_offset_x", 1)
+	button.add_theme_constant_override("shadow_offset_y", 1)
+	_sounds(button)
+	_grow_on_focus(button)
+	return button
+
+
+## Agranda el botón con un pequeño rebote al pasar el cursor o enfocarlo (y lo regresa al
+## salir): parte del estilo de action_button, pedido de Fernando el 2026-10-10.
+static func _grow_on_focus(button: Button) -> void:
+	if button.has_meta("_grows_on_focus"):
+		return
+	button.set_meta("_grows_on_focus", true)
+	button.pivot_offset = button.size * 0.5
+	button.resized.connect(func() -> void: button.pivot_offset = button.size * 0.5)
+	var set_scale := func(on: bool) -> void:
+		if not button.is_inside_tree():
+			return
+		var tween := button.create_tween()
+		tween.tween_property(button, "scale", Vector2(1.07, 1.07) if on else Vector2.ONE, 0.12) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	button.mouse_entered.connect(set_scale.bind(true))
+	button.mouse_exited.connect(set_scale.bind(false))
+	button.focus_entered.connect(set_scale.bind(true))
+	button.focus_exited.connect(set_scale.bind(false))
 
 
 # --- Datos de Pokémon -----------------------------------------------------------------

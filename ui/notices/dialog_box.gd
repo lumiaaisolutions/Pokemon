@@ -24,6 +24,10 @@ var _options_row: HBoxContainer
 var _lines: Array[String] = []
 var _index := 0
 var _options: Array = []
+## Ícono y color por opción (ui/kit/ui_icons.gd action()): opcional; si falta, se usa el
+## globo de diálogo genérico en un acento neutro (pedido de Fernando el 2026-10-10, ronda 3).
+var _option_icons: Array = []
+var _option_colors: Array = []
 var _on_choice: Callable
 var _shown := 0.0
 var _auto_close := 0.0
@@ -106,12 +110,17 @@ func is_open() -> bool:
 
 ## Abre un diálogo. lines: frases que se avanzan con E. options: textos de las opciones
 ## al final (on_choice recibe el índice). blocking: el jugador no se mueve mientras tanto.
-func open(speaker: String, lines: Array, portrait: Texture2D = null, options: Array = [], on_choice: Callable = Callable(), blocking_dialog: bool = true) -> void:
+## option_icons/option_colors: un ícono (UiIcons.action) y color por opción, en el mismo
+## orden (opcional; botones con el estilo de UiKit.action_button, pedido de Fernando el
+## 2026-10-10, ronda 3). Si faltan, se usa un globo de diálogo genérico.
+func open(speaker: String, lines: Array, portrait: Texture2D = null, options: Array = [], on_choice: Callable = Callable(), blocking_dialog: bool = true, option_icons: Array = [], option_colors: Array = []) -> void:
 	_lines.clear()
 	for line in lines:
 		_lines.append(String(line))
 	_index = 0
 	_options = options
+	_option_icons = option_icons
+	_option_colors = option_colors
 	_on_choice = on_choice
 	_blocking = blocking_dialog
 	blocking = blocking_dialog
@@ -181,31 +190,14 @@ func _line_done() -> void:
 		(_options_row.get_child(0) as Button).grab_focus.call_deferred()
 
 
+## Píldora de opción con el estilo de toda la interfaz (UiKit.action_button): ícono +
+## texto, color por opción (o uno genérico si no se dio ninguno), con sombra y que se
+## agranda y brilla al pasar o elegir (pedido de Fernando el 2026-10-10, ronda 3).
 func _option_button(text: String, index: int) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.add_theme_font_override("font", UiKit.font(true))
-	button.add_theme_font_size_override("font_size", 21)
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = UiKit.CREAM
-	normal.border_color = UiKit.RED
-	normal.set_border_width_all(3)
-	normal.set_corner_radius_all(22)
-	normal.content_margin_left = 22
-	normal.content_margin_right = 22
-	normal.content_margin_top = 8
-	normal.content_margin_bottom = 8
-	var focus := normal.duplicate() as StyleBoxFlat
-	focus.bg_color = UiKit.RED
-	focus.border_color = Color(1.0, 0.85, 0.3)
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", focus)
-	button.add_theme_stylebox_override("focus", focus)
-	button.add_theme_stylebox_override("pressed", focus)
-	button.add_theme_color_override("font_color", UiKit.RED_DARK)
-	for state in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, Color.WHITE)
-	button.focus_entered.connect(func() -> void: AudioBus.play_sfx("ui_select"))
+	var icon: Texture2D = UiIcons.action(String(_option_icons[index])) if index < _option_icons.size() else UiIcons.action("talk")
+	var color: Color = _option_colors[index] if index < _option_colors.size() else UiKit.RED
+	var button := UiKit.action_button(text, icon, color)
+	button.add_theme_font_size_override("font_size", 19)
 	button.mouse_entered.connect(button.grab_focus)
 	button.pressed.connect(_choose.bind(index))
 	return button

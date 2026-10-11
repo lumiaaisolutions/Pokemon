@@ -179,6 +179,10 @@ func _run() -> void:
 	# 10. Pantano tóxico.
 	_test_poison()
 
+	# 11. Campamento animado (dormir, cocinar, recoger, armar), Convivir y mejora
+	# (acordado con Fernando el 2026-10-10, ronda 3).
+	await _test_camp_cutscenes()
+
 
 ## Pantano tóxico: veneno que baja la vida (hasta 1), inmunes, Antídoto y dormir lo curan.
 func _test_poison() -> void:
@@ -202,6 +206,72 @@ func _test_poison() -> void:
 		GameState.party[0]["poison_until"] = GameState.play_time + 5.0
 	GameState.sleep_until_morning()
 	_check(not GameState.is_poisoned() and (GameState.party.is_empty() or not GameState.party[0].has("poison_until")), "dormir cura el veneno del jugador y del equipo")
+
+
+## Campamento animado (ronda 3, 2026-10-10): dormir, cocinar, recoger y armar siguen
+## funcionando igual que antes (el resultado se aplica de inmediato) aunque ahora tengan
+## una escena; dormir se puede saltar con E; Convivir sube el vínculo una vez al día;
+## mejorar el campamento sube de nivel y cobra.
+func _test_camp_cutscenes() -> void:
+	if _camp.tents().is_empty():
+		_failures.append("no hay una tienda armada para probar las animaciones del campamento")
+		return
+	var entry: Dictionary = _camp.tents()[0]
+
+	# Dormir con la escena: igual que sin ella, avanza hasta las 7:00; se puede saltar.
+	GameState.play_time = (21.0 - GameState.START_HOUR) * 60.0
+	GameState.party = [{"species": "eevee", "shiny": false, "hp_ratio": 0.3}]
+	GameState.companion_index = 0
+	_camp.sleep(entry)
+	_check(GameState.clock_hour() >= 6.9 and GameState.clock_hour() <= 7.1, "dormir con la escena animada también avanza hasta las 7:00")
+	_check(_camp._cutscene_skip.is_valid(), "dormir deja una escena que se puede saltar")
+	Input.action_press("interact")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Input.action_release("interact")
+	_check(not _camp._cutscene_skip.is_valid(), "E salta la escena de dormir")
+	_check(not DialogBox.blocking, "al saltar la escena de dormir el jugador se puede mover de nuevo")
+	await _frames(3)
+
+	# Cocinar: vapor, burbujas y el platillo sobre el tronco no fallan.
+	var camp: Camp = entry["camp"]
+	var recipe: Dictionary = Items.cook_recipes()[0]
+	var before_cook_fx := PixelBurst.spawned_total
+	camp.cook_flourish(_main.get("companion") as PokemonActor, Items.icon(String(recipe["result"])))
+	await _frames(3)
+	_check(PixelBurst.spawned_total > before_cook_fx, "cocinar anima vapor y burbujas sobre la olla")
+
+	# Convivir: sube el vínculo de todo el equipo, pero solo una vez al día.
+	GameState.world_flags.erase("camp_commune_day")
+	var bond_before := float(GameState.party[0].get("bond_xp", 0.0))
+	_camp.commune(entry)
+	var bond_after := float(GameState.party[0].get("bond_xp", 0.0))
+	_check(bond_after > bond_before, "convivir junto a la fogata sube el vínculo del equipo")
+	_camp.commune(entry)
+	_check(float(GameState.party[0].get("bond_xp", 0.0)) == bond_after, "convivir solo sube el vínculo una vez al día")
+
+	# Mejorar el campamento: sube de nivel y cobra dinero.
+	GameState.money = 5000
+	var level_before := int(entry.get("level", 0))
+	_camp.upgrade_camp(entry)
+	_check(int(entry.get("level", 0)) == level_before + 1, "mejorar el campamento sube de nivel (%d)" % int(entry.get("level", 0)))
+	_check(GameState.money < 5000, "mejorar el campamento cuesta dinero")
+
+	# Recoger (fogata apagándose con humo) y volver a armar (chispas al encenderla). La
+	# animación corre en cuadros reales (Tween), no de física: se espera con create_timer
+	# (ver docs/reglas_calidad.md).
+	var before_pack_fx := PixelBurst.spawned_total
+	_camp.pack_tent(entry)
+	await get_tree().create_timer(0.5).timeout
+	_check(PixelBurst.spawned_total > before_pack_fx, "recoger la tienda anima humo al apagar la fogata")
+	_check(_camp.tents().is_empty(), "recoger la tienda la quita del campamento")
+	var spot := _find_open_spot()
+	if spot != Vector3.INF:
+		var before_pitch_fx := PixelBurst.spawned_total
+		var pitch_result: Dictionary = _camp.pitch_tent(spot)
+		_check(bool(pitch_result.get("ok", false)), "se puede volver a armar la tienda tras recogerla")
+		await get_tree().create_timer(1.6).timeout
+		_check(PixelBurst.spawned_total > before_pitch_fx, "armar la tienda anima chispas al encender la fogata")
 
 
 ## Busca un lugar fuera de los asentamientos, en tierra firme, para armar la tienda.
