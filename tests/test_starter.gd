@@ -58,7 +58,10 @@ func _run() -> void:
 	var to := target.global_position + Vector3.UP * 0.5
 	var gravity := float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 	ball.linear_velocity = (to - from) / 0.5 + Vector3.UP * 0.5 * gravity * 0.5
-	await _frames(int((CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + 2.0) * 60))
+	# Margen generoso: el rayo rojo que atrapa al Pokémon (_absorb), la caída al suelo y la
+	# pausa entre cada sacudida (0.3 s) suman más que solo SHAKES × SHAKE_TIME; con el
+	# margen justo la prueba fallaba por muy poco bajo carga (varios agentes a la vez).
+	await _frames(int((CaptureRules.SHAKES * (PokeballProjectile.SHAKE_TIME + 0.3) + 4.0) * 60))
 	var companion := _main.get("companion") as PokemonActor
 	_check(companion != null and companion.species == species, "el elegido debe ser el compañero")
 	_check(companion != null and companion.role == PokemonActor.Role.COMPANION, "el elegido sigue al jugador como compañero")

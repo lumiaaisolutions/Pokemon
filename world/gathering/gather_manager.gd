@@ -140,16 +140,22 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	node.set_meta("regrow_day", int((GameState.world_flags.get("gather", {}) as Dictionary).get(id, -1)))
 	parent.add_child(node)
 	node.global_position = at
-	# Base: arbusto, árbol o roca (estilo B2W2).
+	# Base: arbusto, árbol o roca en 3D (cruz de 2 planos para el follaje; malla de
+	# BreakableRock con color plano para la roca; regla 1 de docs/reglas_calidad.md).
 	if BASES.has(kind[0]):
-		var base := Sprite3D.new()
+		var base := MeshInstance3D.new()
 		base.name = "Base"
-		base.texture = load(BASES[kind[0]])
-		base.pixel_size = _world.config.pixel_size * (1.4 if kind[0] == "Árbol de bonguri" else 1.0)
-		base.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		base.layers = 2
-		SpriteMaterials.apply(base)
-		base.material_override = SpriteMaterials.for_texture(base.texture, Color.WHITE, 0.0, kind[0] != "Roca con minerales")
+		var texture := load(BASES[kind[0]]) as Texture2D
+		if kind[0] == "Roca con minerales":
+			var size := texture.get_size() * _world.config.pixel_size
+			base.mesh = PropModels3D.rock_mesh("gather:" + id, Vector3(size.x, size.y, size.x))
+			base.position.y = size.y * 0.5
+			base.material_override = PropModels3D.solid_material(Color(0.55, 0.48, 0.42))
+		else:
+			var scale_factor := 1.4 if kind[0] == "Árbol de bonguri" else 1.0
+			base.mesh = PropModels3D.cross_mesh(texture, _world.config.pixel_size * scale_factor)
+			base.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, true, false)
+		base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		node.add_child(base)
 	# Frutos (íconos pequeños sobre la base).
 	var fruit := Node3D.new()

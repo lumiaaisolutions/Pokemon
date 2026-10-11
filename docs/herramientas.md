@@ -20,7 +20,8 @@
 | `copy_item_icons.py` | Íconos de los objetos del catálogo (`creatures/data/items.json`) |
 | `build_moves.py` | Movimientos (nombre en español, tipo, potencia, clase, efecto) y la lista oficial de cada especie |
 | `build_megas.py` | Catálogo de las 97 megas (`creatures/data/megas/`, `all_megas.tres`) y sus sprites de combate Gen 5 |
-| `snapshot.tscn` | Captura de pantalla con el render real. Opciones: `desmayo`, `arriba`, `borde`, `cima`, `ayuda`, `surf`, `barra`, `menu:N`, `hora:H`, `pueblo`, `vuelo`, `interior:<tipo>` (center, mart, cave, sewer…), `clima:N` y `lugar:<tipo>` (ranch, league, grotto…) |
+| `snapshot.tscn` | Captura de pantalla con el render real. Opciones: `desmayo`, `arriba`, `borde`, `cima`, `ayuda`, `surf`, `barra`, `menu:N`, `hora:H`, `pueblo`, `vuelo`, `interior:<tipo>` (center, mart, cave, sewer…), `clima:N`, `lugar:<tipo>` (ranch, league, grotto…) y `bioma:<NOMBRE>` (enum `RegionLayout.Biome`, p. ej. `FOREST`, `SWAMP`, `TOXIC_SWAMP`, `TUNDRA`; opcional `giro:N` grados de yaw) |
+| `extract_b2w2_props.gd` | Explora los mapas de B2W2 (`art/models/b2w2_nature/b2w2map_*`) y guarda piezas sueltas reales en `art/models/b2w2_props/`; solo sirve para objetos no animados por hueso (ver docs/sistemas/arte.md, "Todo el mundo en 3D") |
 
 ## Pruebas (`tests/`, en headless)
 `tools/run_tests.sh` corre todas (unos 8 min). Un error de script cuenta como fallo y no deja a Godot trabado. Solo se hace commit si todas pasan.

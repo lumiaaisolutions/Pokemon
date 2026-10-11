@@ -1,7 +1,9 @@
 class_name BreakableRock
 extends StaticBody3D
 ## Roca rompible (fase 5.8, decisiones de Fernando 2026-10-10). En 3D de pocas caras con
-## textura pixel y grietas marcadas, distinta de las rocas decorativas (que son sprites).
+## textura pixel y grietas marcadas; las rocas decorativas (PropModels3D.rock_mesh, en
+## world_builder.gd y points_of_interest.gd) reusan esta misma forma pero con color plano,
+## sin grietas ni colisión especial.
 ## - Pequeña: la rompe cualquier compañero atacándola (teclas 1-4 de sus movimientos; ver
 ##   PokemonActor.command_move). La coloca BreakableRocks y reaparece a los 3 días.
 ## - Grande: tapa bocas de cuevas, cuevas chicas y túneles; solo la rompe un compañero de

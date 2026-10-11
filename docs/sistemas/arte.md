@@ -4,7 +4,7 @@
 
 ## Estilo
 - **HD-2D con gráficos de Pokémon Negro 2/Blanco 2** (decisión final del 2026-10-09). Se descartaron el greybox low-poly y el estilo naturalista de Leyendas Arceus.
-- Suelo 3D con texturas pixel art de B2W2; árboles, rocas, Pokémon y personajes como sprites billboard (eje Y).
+- Suelo 3D con texturas pixel art de B2W2; **todo el mundo es 3D de pocas caras salvo los Pokémon, los personajes y los NPC**, que siguen siendo sprites billboard (eje Y) — regla 1 de [reglas_calidad.md](../reglas_calidad.md), 2026-10-10. Ver "Todo el mundo en 3D" más abajo.
 - Todo comparte el mismo tamaño de píxel: **0.057 m/px (≈17.5 px/m)**, el de Nate.
 - Sprites sin sombreado (colores exactos de B2W2) y suelo con luz en escalones (cel).
 - Ambiente: tonemap lineal, niebla ligera, brillo suave y desenfoque a distancia (DOF de calidad baja).
@@ -38,3 +38,97 @@
 - Sprites de MT, Safari Ball, Leche Mu-mu y fósiles desde el paquete de íconos (`sprites/itemicons/`).
 - Uniformes globales: `time_tint` (hora) y `season_tint` (estación) para el pasto, la hierba alta y el follaje; los sprites tienen `glow` (luz propia) y `seasonal` (follaje).
 - Bicicleta pixel art generada (`Player._bike_texture`).
+
+## Todo el mundo en 3D (2026-10-10, noche)
+Regla 1 de [reglas_calidad.md](../reglas_calidad.md): árboles, rocas, arbustos, flores,
+cactus, hierba alta, cofres, troncos, recolectables y lugares de interés dejan de ser
+sprites/`QuadMesh` planos. Solo siguen siendo sprites los Pokémon, los personajes y los NPC
+(billboard, `sprite_billboard.gdshader`, sin tocar).
+
+### Qué había realmente en los mapas de B2W2 descargados
+Al revisar `art/models/b2w2_nature/b2w2map_*.dae` con la herramienta de extracción
+(`tools/extract_b2w2_props.gd`) se encontró que **los árboles, la hierba y las flores de
+B2W2 no son piezas 3D sueltas**: están pintados como superficies dentro de la malla del
+terreno de cada mapa (submallas con mallas con huesos/`skin` por material, p. ej.
+`ki02ax`/`ki02bx`/`ki02c`/`ki02dx` para los pinos, `kusa_ec1/2/3` para la hierba,
+`hana01_1` para las flores). Extraer esas piezas como objetos sueltos resultó poco fiable
+(el importador de Godot reestructura el esqueleto y las mallas no se separan de forma
+limpia). Lo que **sí** son objetos sueltos y reales en 3D: `rock_01`/`rock_02`/`searock_01`
+(rocas, dentro de los mapas, con el patrón `object_NN_<nombre>`) y 16 modelos sueltos de un
+solo `.dae` en `art/models/b2w2_nature/b2w2obj_*` (2 árboles muertos, 2 tocones, el árbol
+grande del bosque blanco, roca azul, roca de cueva, cerca, santuario, 4 letreros y 3
+faroles) — estos se usan tal cual, igual que `BuildingModels`.
+Decisión (ver [decisiones_sin_preguntar.md](../decisiones_sin_preguntar.md)): para el
+resto del follaje y las rocas decorativas, "3D propio de pocas caras con textura pixel"
+(la cláusula de la regla 1 para lo que no existe como modelo suelto), reusando las mismas
+texturas pixel que ya tenía el juego (no sprites nuevos).
+
+### `PropModels3D` (`world/region/prop_models.gd`)
+- **Modelos reales sueltos** (`instance(kind)`): los 16 `b2w2obj_*` de arriba, cargados y
+  centrados igual que `BuildingModels` (escala 0.08, materiales con filtro de píxel y
+  recorte de alfa). Los troncos muertos del pantano, pantano tóxico, bosque oscuro y
+  volcán alternan entre los dos árboles muertos reales.
+- **Follaje en cruz** (`cross_mesh`): 2 planos cruzados con la textura existente (como el
+  follaje de Minecraft): pocas caras, volumen real, se lee desde cualquier ángulo
+  horizontal. Lo usan los árboles, arbustos, flores, cactus, palmeras, hongos, juncos,
+  nenúfares (`pad_mesh`, horizontal con grosor) y la hierba alta.
+- **Rocas** (`rock_mesh`): la misma malla irregular de `BreakableRock.rock_mesh` (pocas
+  caras, octaedro con vértices al azar) con color plano en vez de textura; 10 formas fijas
+  reusadas en todo el mundo (no una malla nueva por roca: en un mundo de 4×4 km con miles
+  de rocas eso crecería sin límite en memoria).
+- **Troncos/conchas/huesos** (`log_mesh`, `shell_mesh`, `bones_mesh`): primitivas simples
+  (cilindro, cono, cajas cruzadas) con color plano.
+- **Cerca de campo** (`fence_mesh`): el modelo real de B2W2 (`BuildingModels` "fence"),
+  fundido en una sola malla para repetirlo en `MultiMesh`.
+- **Tablillas/letreros/boca de cueva** (`plaque_mesh`): lámina de pie con grosor (frente y
+  atrás con la textura), no un cartel plano.
+
+### Material y luz (`world/effects/foliage_material.gdshader`, `FoliageMaterials`)
+Las mallas de follaje usan luz normal (seguían con `sprite_billboard.gdshader`, que es
+`unshaded`): ahora los árboles y plantas se oscurecen de noche con el resto del mundo sin
+necesitar código aparte (la luz direccional ya baja de noche, ver `day_night.gd`). El tinte
+de estación (`season_tint`, antes solo en los sprites) se conserva igual en todo el árbol
+(tronco y copa juntos, como el sprite original), con el mismo uniforme global. Las rocas y
+troncos usan `StandardMaterial3D` con color plano (no son follaje, no cambian con la
+estación).
+
+### Hierba alta (`world/terrain/tall_grass_3d.gdshader`)
+Reemplaza `tall_grass.gdshader` (billboard): la mata ahora es una malla de cruz real
+(`PropModels3D.cross_mesh`) en el mismo `MultiMeshInstance3D` de antes. El viento y el
+empuje de los actores cercanos siguen igual (mismos uniformes `actors[16]`,
+`push_strength`), solo que el desplazamiento se aplica directo sobre los vértices reales en
+vez de reconstruir un plano orientado a cámara.
+
+### Rendimiento
+Los árboles/rocas individuales (con colisión propia) siguen siendo un `StaticBody3D` por
+pieza, igual que antes (mismo costo). La decoración, la hierba y los árboles lejanos (LOD)
+siguen en `MultiMeshInstance3D` con `visibility_range_end`, igual que antes — el cambio es
+la malla que dibuja cada instancia (una cruz de ~8 triángulos o una malla fundida en vez de
+un plano de 2 triángulos), no la cantidad de llamadas de dibujo. Las mallas de
+`PropModels3D` se cachean por textura/forma (no por instancia) para no multiplicar el uso
+de memoria con miles de copias del mundo.
+
+### Pokémon posados en árboles (`world/actors/ambush_manager.gd`, `pokemon_actor.gd`)
+Los árboles ya no son billboards que se inclinan al mirar desde arriba
+(`sprite_billboard.gdshader`), así que el Pokémon posado ya no necesita seguir esa
+inclinación cuadro a cuadro: `PokemonActor._in_front_of_canopy()` ahora solo aplica un
+empujón fijo hacia la cámara (antes seguía la fórmula del tilt del shader). La altura del
+árbol para decidir dónde posarse/colgar ya no sale de un `Sprite3D` (no existe): queda en
+`StaticBody3D.set_meta("obstacle_height", ...)` al construirlo (`WorldBuilder._obstacle`),
+y `AmbushManager.tree_height()` la lee de ahí.
+
+### Cofres 3D (`world/poi/chest_3d.gd`)
+Madera de pocas caras con herrajes metálicos (franjas y candado), bisagra que gira al
+abrir, destello y chispas doradas (decisión de Fernando, 2026-10-10). Tres variantes fijas
+por el id del campamento (`Chest3D.tier_for`): común (madera, 68 %), raro (plata, 20 %) y
+legendario (oro, 6 %), con mejor botín según el nivel
+(`PointsOfInterest.CHEST_LOOT_BY_TIER`).
+
+### Qué quedó fuera de esta pasada
+- Los íconos pequeños que acompañan a un objeto 3D (las bayas sobre el árbol grande, los
+  minerales/conchas que se recogen en `GatherManager`, el tesoro de mazmorra) siguen como
+  sprite: son del mismo tipo que un objeto en la mano, no vegetación ni mobiliario.
+  `tests/test_no_flat_vegetation.gd` los excluye a propósito.
+- No se revisaron a fondo los 14 biomas con capturas de día/noche en esta pasada (ver
+  bitácora del día para el estado de las capturas); queda para una siguiente pasada de
+  pulido visual.

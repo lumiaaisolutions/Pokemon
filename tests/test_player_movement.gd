@@ -270,6 +270,9 @@ func _run() -> void:
 	_check(_player.riding == null and squirtle.ridden_by == null, "al volver a tierra deja de surfear")
 
 
+## Ningún árbol, roca o decoración debe flotar: su base (pie de la malla 3D, y = 0 en su
+## espacio local) queda en o bajo el terreno en todo su contorno. Los árboles y rocas ya
+## no son sprites (PropModels3D, 2026-10-10): el radio sale de su CollisionShape3D.
 func _props_grounded() -> bool:
 	var ok := true
 	var roots := _world.near_chunks()
@@ -277,23 +280,19 @@ func _props_grounded() -> bool:
 		for child in (roots[key] as Node3D).get_children():
 			if child is StaticBody3D and (child.name.begins_with("Tree") or child.name.begins_with("Rock")):
 				var body := child as StaticBody3D
-				var sprite := body.get_node("Sprite") as Sprite3D
-				var radius := sprite.texture.get_width() * sprite.pixel_size * 0.5
+				var collision := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+				var radius: float = (collision.shape as CylinderShape3D).radius if collision != null and collision.shape is CylinderShape3D else 0.4
 				var p := body.global_position
-				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.01 or not _bottom_row_opaque(sprite.texture):
+				if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.01:
 					printerr("flota: %s en %s" % [body.name, p])
 					ok = false
 			elif child is MultiMeshInstance3D and child.name.begins_with("Decor"):
 				var instance := child as MultiMeshInstance3D
 				var multimesh := instance.multimesh
-				var quad := multimesh.mesh as QuadMesh
-				var texture: Texture2D = (quad.material as ShaderMaterial).get_shader_parameter("sprite_texture")
-				if not _bottom_row_opaque(texture):
-					printerr("sprite con fila inferior transparente: %s" % instance.name)
-					ok = false
+				var radius: float = maxf(multimesh.mesh.get_aabb().size.x, multimesh.mesh.get_aabb().size.z) * 0.5
 				for i in multimesh.instance_count:
 					var p := multimesh.get_instance_transform(i).origin
-					if p.y > _world.ground_base_height(p.x, p.z, quad.size.x * 0.5) + 0.01:
+					if p.y > _world.ground_base_height(p.x, p.z, radius) + 0.01:
 						printerr("decoración flotando: %s #%d en %s" % [instance.name, i, p])
 						return false
 	return ok

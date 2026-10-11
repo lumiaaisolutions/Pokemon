@@ -244,6 +244,41 @@ func _ready() -> void:
 		Weather.forced = int(args[5].substr(6))
 		for i in 200:
 			await get_tree().process_frame
+	# "bioma:NOMBRE": lleva al jugador al punto más cercano al inicio de ese bioma (nombre
+	# del enum RegionLayout.Biome, p. ej. "bioma:FOREST"); gira la cámara con "giro:N"
+	# grados de yaw como argumento extra (revisión de vegetación 3D, 2026-10-10).
+	if args.size() > 5 and args[5].begins_with("bioma:"):
+		var world := scene.get_node("World") as WorldBuilder
+		var player := scene.get_node("Player") as Player
+		var want: RegionLayout.Biome = RegionLayout.Biome[args[5].substr(6).to_upper()]
+		var o := world.start_position()
+		var found := Vector3.INF
+		for ring in range(0, 90):
+			for k in maxi(ring * 6, 1):
+				var a := TAU * k / maxf(ring * 6.0, 1.0)
+				var x := o.x + cos(a) * ring * 48.0
+				var z := o.z + sin(a) * ring * 48.0
+				if world.layout.biome_at(x, z) == want and world._dry_land(x, z, 6.0) and world.settlement_at(x, z, 20.0).is_empty():
+					found = Vector3(x, 0, z)
+					break
+			if found != Vector3.INF:
+				break
+		if found == Vector3.INF:
+			print("bioma no encontrado cerca del inicio: ", args[5])
+		else:
+			world.ensure_area(found)
+			player.global_position = Vector3(found.x, world.surface_height_at(found.x, found.z) + 0.5, found.z)
+			print("bioma %s en %s" % [args[5], found])
+		var bioma_rig := scene.get_node("CameraRig") as CameraRig
+		bioma_rig.snap()
+		var giro_arg := ""
+		for extra in args.slice(6):
+			if extra.begins_with("giro:"):
+				giro_arg = extra
+		bioma_rig.set("_yaw_deg", float(giro_arg.substr(5)) if giro_arg != "" else 0.0)
+		bioma_rig.set("_pitch_deg", 18.0)
+		for i in 150:
+			await get_tree().process_frame
 	# "lugar:tipo": lleva al jugador frente al primer lugar especial de ese tipo.
 	if args.size() > 5 and args[5].begins_with("lugar:"):
 		var world := scene.get_node("World") as WorldBuilder

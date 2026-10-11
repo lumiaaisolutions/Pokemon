@@ -15,6 +15,13 @@ const TITLES := {"camp": "Campamento abandonado", "well": "Pozo de los deseos", 
 		"big_tree": "Árbol grande", "small_cave": "Cueva chica", "lookout": "Mirador"}
 const CHANCE := 0.35
 const CHEST_LOOT := ["potion", "super-potion", "great-ball", "ultra-ball", "repel", "nugget", "star-piece", "rare-candy"]
+## Cofres en 3D (decisión de Fernando, 2026-10-10): común, raro y legendario, con mejor
+## botín según el nivel (Chest3D.tier_for, fijo por el id del campamento).
+const CHEST_LOOT_BY_TIER := {
+	"common": ["potion", "super-potion", "great-ball", "repel", "nugget"],
+	"rare": ["ultra-ball", "full-heal", "hyper-potion", "star-piece", "rare-candy", "big-pearl"],
+	"legendary": ["rare-candy", "fire-stone", "water-stone", "thunderstone", "moon-stone", "leaf-stone", "sun-stone", "nugget"],
+}
 const TREE_BERRIES := ["oran-berry", "sitrus-berry", "pecha-berry", "cheri-berry", "lum-berry"]
 const LORE := [
 	"«Cuando el cielo se partió, un guardián de escamas bajó a calmar los mares.»",
@@ -77,7 +84,7 @@ func _populate(key: Vector2i, _root: Node3D) -> void:
 	var at := Vector3(float(poi["x"]), _world.surface_height_at(float(poi["x"]), float(poi["z"])), float(poi["z"]))
 	node.global_position = at
 	_build(node, poi)
-	var point := _world.structures.add_point(at + Vector3(0, 0.5, 1.6), _prompt(poi), _interact.bind(poi), 2.6)
+	var point := _world.structures.add_point(at + Vector3(0, 0.5, 1.6), _prompt(poi), _interact.bind(poi, node), 2.6)
 	_nodes[key] = {"node": node, "point": point, "poi": poi}
 
 
@@ -166,14 +173,22 @@ func _give(item: String, amount: int) -> void:
 	GameState.notice.emit("Encontraste %s × %d." % [Items.display_name(item), amount])
 
 
-func _interact(poi: Dictionary) -> void:
+func _interact(poi: Dictionary, node: Node3D = null) -> void:
 	var at := Vector3(float(poi["x"]), _world.surface_height_at(float(poi["x"]), float(poi["z"])), float(poi["z"]))
 	match String(poi["kind"]):
 		"camp":
 			if not _daily(poi):
 				GameState.notice.emit("El cofre está vacío. Vuelve mañana.")
 				return
-			_give(CHEST_LOOT[_rng.randi() % CHEST_LOOT.size()], 1 + _rng.randi() % 2)
+			var tier := Chest3D.tier_for(String(poi["id"]))
+			var chest: Dictionary = node.get_meta("chest") if node != null and node.has_meta("chest") else {}
+			if not chest.is_empty():
+				Chest3D.open(chest)
+			var loot: Array = CHEST_LOOT_BY_TIER.get(tier, CHEST_LOOT)
+			var amount := 1 + _rng.randi() % 2
+			if tier == "legendary":
+				amount += 1
+			_give(loot[_rng.randi() % loot.size()], amount)
 		"well":
 			if GameState.money < 100:
 				GameState.notice.emit("No tienes ni una moneda para tirar.")
@@ -243,6 +258,9 @@ func _interact(poi: Dictionary) -> void:
 
 # --- Aspecto -----------------------------------------------------------------------------
 
+## Ícono pequeño sobre un objeto (p. ej. una baya flotando sobre el árbol grande): sigue
+## siendo un sprite (sprite plano que acompaña a un objeto, igual que los objetos en mano o
+## los íconos de la mochila; el objeto en sí ya es 3D, ver _build).
 func _sprite(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: float = 1.0) -> Sprite3D:
 	var sprite := Sprite3D.new()
 	sprite.texture = texture
@@ -255,6 +273,43 @@ func _sprite(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: floa
 	sprite.visibility_range_end = 180.0
 	parent.add_child(sprite)
 	return sprite
+
+
+## Objeto del punto de interés en 3D: cruz de 2 planos con su textura pixel, de pie en at
+## (pie en el suelo). Sigue la luz y, si es follaje (seasonal), el tinte de estación.
+func _prop(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: float = 1.0, seasonal: bool = true) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = PropModels3D.cross_mesh(texture, _world.config.pixel_size * scale_factor)
+	mesh_instance.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, seasonal, false)
+	mesh_instance.position = at
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mesh_instance.visibility_range_end = 180.0
+	parent.add_child(mesh_instance)
+	return mesh_instance
+
+
+## Roca o bulto de piedra del punto de interés: la misma malla de pocas caras que las
+## rocas decorativas del mundo, con color plano.
+func _rock_prop(parent: Node3D, at: Vector3, size: Vector3, color: Color, seed_key: String) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = PropModels3D.rock_mesh(seed_key, size)
+	mesh_instance.material_override = PropModels3D.solid_material(color)
+	mesh_instance.position = at + Vector3(0, size.y * 0.5, 0)
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mesh_instance)
+	return mesh_instance
+
+
+## Tablilla, letrero o boca de cueva: lámina de pie con grosor (PropModels3D.plaque_mesh),
+## no un sprite plano.
+func _plaque(parent: Node3D, texture: Texture2D, at: Vector3, scale_factor: float = 1.0) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = PropModels3D.plaque_mesh(texture, _world.config.pixel_size * scale_factor)
+	mesh_instance.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, false, false)
+	mesh_instance.position = at
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mesh_instance)
+	return mesh_instance
 
 
 func _solid(parent: Node3D, size: Vector3, center: Vector3) -> void:
@@ -295,31 +350,38 @@ func _build(node: Node3D, poi: Dictionary) -> void:
 			for flame in pit.find_children("Flame*", "MeshInstance3D", true, false):
 				(flame as Node3D).visible = false
 			node.add_child(pit)
-			_sprite(node, PoiArt.chest(), Vector3(0, 0, 0.9), 1.2)
-			_sprite(node, PropArt.texture("log"), Vector3(2.6, 0, -1.4))
+			# Cofre 3D propio (decisión de Fernando, 2026-10-10): común, raro o legendario
+			# según el id del campamento; se abre con animación al recogerlo (ver _interact).
+			var tier := Chest3D.tier_for(String(poi["id"]))
+			var chest := Chest3D.build(node, Vector3(0, 0, 0.9), tier)
+			node.set_meta("chest", chest)
+			var log_mesh := MeshInstance3D.new()
+			log_mesh.mesh = PropModels3D.log_mesh(0.7, 0.14, true)
+			log_mesh.material_override = PropModels3D.solid_material(Color(0.5, 0.35, 0.22))
+			log_mesh.position = Vector3(2.6, 0, -1.4)
+			log_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			node.add_child(log_mesh)
 		"well":
-			_sprite(node, PoiArt.well(), Vector3.ZERO, 1.3)
+			_well(node)
 			_solid(node, Vector3(1.8, 1.4, 1.8), Vector3(0, 0.7, 0))
 		"ruins":
 			for i in 4:
 				var angle := TAU * i / 4.0 + 0.4
 				_box(node, Vector3(0.7, 1.2 + (i % 3) * 0.8, 0.7), Vector3(cos(angle) * 2.6, 0.6 + (i % 3) * 0.4, sin(angle) * 2.6), Color(0.62, 0.6, 0.55))
 				_solid(node, Vector3(0.7, 2.0, 0.7), Vector3(cos(angle) * 2.6, 1.0, sin(angle) * 2.6))
-			_sprite(node, PoiArt.tablet(), Vector3(0, 0, 0), 1.2)
-			_sprite(node, PropArt.texture("mossy_rock"), Vector3(1.4, 0, 1.6))
+			_plaque(node, PoiArt.tablet(), Vector3(0, 0, 0), 1.2)
+			_rock_prop(node, Vector3(1.4, 0, 1.6), Vector3(0.45, 0.3, 0.45), Color(0.5, 0.56, 0.46), "poi:" + String(poi["id"]) + ":ruins_rock")
 		"big_tree":
 			var tree := load("res://art/world/b2w2/tree_round.png") as Texture2D
-			_sprite(node, tree, Vector3(0, 0, -0.6), 2.6)
+			_prop(node, tree, Vector3(0, 0, -0.6), 2.6)
 			for i in 6:
 				var berry := _sprite(node, Items.icon(TREE_BERRIES[i % TREE_BERRIES.size()]), Vector3(-1.6 + i * 0.65, 3.2 + (i % 3) * 0.7, -0.2), 0.8)
 				berry.offset = Vector2.ZERO
 				berry.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			_solid(node, Vector3(1.4, 4.0, 1.4), Vector3(0, 2.0, -0.6))
 		"small_cave":
-			var rock := load("res://art/world/b2w2/mountain_rock.png") as Texture2D
-			if rock != null:
-				_sprite(node, rock, Vector3(0, 0, -1.0), 2.4)
-			_sprite(node, PoiArt.cave_mouth(), Vector3(0, 0, -0.2), 1.6)
+			_rock_prop(node, Vector3(0, 0, -1.0), Vector3(2.4, 1.8, 2.4), Color(0.55, 0.52, 0.5), "poi:" + String(poi["id"]) + ":cave_rock")
+			_plaque(node, PoiArt.cave_mouth(), Vector3(0, 0, 0.1), 1.6)
 			_solid(node, Vector3(4.0, 3.0, 2.0), Vector3(0, 1.5, -1.2))
 			# La mitad de las cuevas chicas las tapa una roca grande (fase 5.8).
 			if blocked_by_boulder(poi):
@@ -331,4 +393,52 @@ func _build(node: Node3D, poi: Dictionary) -> void:
 			_box(node, Vector3(2.8, 0.6, 0.12), Vector3(0, 3.6, -1.35), Color(0.55, 0.4, 0.25))
 			_box(node, Vector3(0.6, 0.12, 2.4), Vector3(0, 1.6, 1.6), Color(0.55, 0.4, 0.25))
 			_solid(node, Vector3(2.4, 3.2, 2.4), Vector3(0, 1.6, 0))
-			_sprite(node, PoiArt.signpost(), Vector3(1.8, 0, 1.8))
+			var post := MeshInstance3D.new()
+			var post_mesh := BoxMesh.new()
+			post_mesh.size = Vector3(0.12, 1.0, 0.12)
+			post.mesh = post_mesh
+			post.material_override = PropModels3D.solid_material(Color(0.45, 0.3, 0.18))
+			post.position = Vector3(1.8, 0.5, 1.8)
+			node.add_child(post)
+			_plaque(node, PoiArt.signpost(), Vector3(1.8, 0.75, 1.8))
+
+
+## Brocal de pozo: anillo de piedra (cilindro) con techo de madera a dos aguas (ya era 3D
+## con _box/_solid salvo el brocal, que era un sprite plano).
+func _well(node: Node3D) -> void:
+	var ring := MeshInstance3D.new()
+	var ring_mesh := CylinderMesh.new()
+	ring_mesh.top_radius = 0.9
+	ring_mesh.bottom_radius = 1.0
+	ring_mesh.height = 0.9
+	ring_mesh.radial_segments = 12
+	ring.mesh = ring_mesh
+	ring.material_override = PropModels3D.solid_material(Color(0.56, 0.54, 0.52))
+	ring.position.y = 0.45
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	node.add_child(ring)
+	var water := MeshInstance3D.new()
+	var water_mesh := CylinderMesh.new()
+	water_mesh.top_radius = 0.75
+	water_mesh.bottom_radius = 0.75
+	water_mesh.height = 0.02
+	water.mesh = water_mesh
+	water.material_override = PropModels3D.solid_material(Color(0.2, 0.3, 0.5))
+	water.position.y = 0.82
+	node.add_child(water)
+	for x in [-0.95, 0.95]:
+		var post := MeshInstance3D.new()
+		var post_mesh := BoxMesh.new()
+		post_mesh.size = Vector3(0.1, 1.1, 0.1)
+		post.mesh = post_mesh
+		post.material_override = PropModels3D.solid_material(Color(0.42, 0.3, 0.2))
+		post.position = Vector3(x, 1.0, 0.0)
+		node.add_child(post)
+	var roof := MeshInstance3D.new()
+	var roof_mesh := BoxMesh.new()
+	roof_mesh.size = Vector3(2.2, 0.1, 1.1)
+	roof.mesh = roof_mesh
+	roof.material_override = PropModels3D.solid_material(Color(0.6, 0.22, 0.2))
+	roof.position = Vector3(0, 1.6, 0)
+	roof.rotation.x = deg_to_rad(18.0)
+	node.add_child(roof)

@@ -523,19 +523,20 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 		_box(root, Vector3(0.5, 0.35, 0.35), Vector3(1.8, 1.1, front + 2.2), [Color(0.85, 0.25, 0.25), Color(0.25, 0.45, 0.85)][rng.randi() % 2])
 
 
+## Flor, arbusto, roca, tronco u otra pieza del kit de bioma junto a un edificio o en una
+## plaza, en 3D (PropModels3D.decor_visual: cruz de follaje, roca, tronco... según la
+## textura; regla 1 de docs/reglas_calidad.md, 2026-10-10: nada plano).
 func _decor_sprite(root: Node3D, texture: Texture2D, at: Vector3) -> void:
 	if texture == null:
 		return
-	var sprite := Sprite3D.new()
-	sprite.texture = texture
-	sprite.pixel_size = world.config.pixel_size
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sprite.layers = WorldBuilder.VISUAL_LAYER_SPRITES
-	SpriteMaterials.apply(sprite)
-	sprite.material_override = SpriteMaterials.for_texture(texture)
-	sprite.position = at
-	sprite.visibility_range_end = 160.0
-	root.add_child(sprite)
+	var visual := PropModels3D.decor_visual(texture, Color.WHITE, world.config.pixel_size)
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = visual["mesh"]
+	if visual["material"] != null:
+		mesh_instance.material_override = visual["material"]
+	mesh_instance.position = at
+	mesh_instance.visibility_range_end = 160.0
+	root.add_child(mesh_instance)
 
 
 ## Tipo del gimnasio de una ciudad (fijo por semilla y nombre).
