@@ -75,3 +75,12 @@ Fernando probó las fases 3–5.6 y pidió muchos cambios; desde aquí **todo se
 - **Hallazgo:** cada región solo tenía 3 gimnasios (solo las ciudades); ahora son 8 (ciudades y pueblos).
 - Los retos de gimnasio y Liga dejaron de ser rondas de salvajes y son combates de verdad contra entrenadores.
 - Prueba nueva `test_regions`.
+
+## 2026-10-10 (madrugada) — Campamento, comida y hambre
+Detalles en [jugador](sistemas/jugador.md#campamento-comida-y-hambre-pedido-de-fernando-2026-10-10--hecho).
+- **Hambre:** 10 muslitos junto a los corazones del HUD; se vacía en 2 días de juego (más rápido corriendo, nadando o peleando) y, vacía, quita vida hasta dejar al jugador sin vida en 10 min. Se guarda en la partida.
+- **Comida:** bayas, setas y bonguris crudos llenan muy poco; pan, sándwich, lata de curry y bebida en la Tienda Pokémon llenan algo más; las recetas de la fogata (curry, sándwich, estofado de bayas, pescado asado) llenan mucho y dan un efecto extra, y se comen al instante junto a tu equipo (sube su vínculo). Restaurante (uno por ciudad) y puesto de comida (en toda plaza) llenan distinto, de pie, sin ocupar la mochila.
+- **Tienda de campaña:** objeto reutilizado (antes "Kit Explorador"), se arma desde la Mochila fuera de los asentamientos (reutiliza el campamento de los viajeros); junto a ella, E abre Dormir (solo de noche, hasta las 7:00; cura al jugador y al equipo, no el hambre), Cocinar o Recoger. Si no se recoge, persiste en `GameState.world_flags["tents"]` y se reconstruye al cargar.
+- **Pesca:** Caña Vieja (regalo del pescador del pueblo pesquero) y Caña Buena (se vende en las ciudades); minijuego de lanzar, esperar el "¡!" y jalar a tiempo; da Pescado Crudo (hay que cocinarlo) y a veces un Pokémon de agua.
+- Prueba nueva `test_camping`.
+- **Simplificaciones por confirmar con Fernando:** restaurante y puesto de comida son casetas de piezas simples (no un modelo completo de B2W2) en una posición fija cerca del centro de la plaza; no existe aún una "rueda rápida" de objetos genérica, así que la tienda de campaña solo se usa desde la Mochila por ahora.

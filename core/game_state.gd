@@ -188,6 +188,29 @@ var repel_until: float = 0.0
 var boosts := {}
 
 
+## --- Hambre (campamento, comida y hambre; acordado con Fernando el 2026-10-10) ------
+## 10 muslitos en el HUD, junto a los corazones. Se vacían solos en 2 días de juego;
+## correr, nadar y pelear los vacían un poco más rápido (ver Player._update_hunger).
+## Con la barra vacía, el jugador pierde vida poco a poco hasta quedarse sin vida en
+## STARVE_SECONDS. Comer (crudo, de tienda, cocinado, de restaurante o puesto) la llena.
+## Dormir en la tienda de campaña NO la llena.
+const HUNGER_MAX := 10.0
+const HUNGER_EMPTY_SECONDS := DAY_SECONDS * 2.0
+const STARVE_SECONDS := 600.0
+var hunger: float = HUNGER_MAX
+
+
+## fast: corriendo, nadando moviéndose o peleando (la vacía ~40 % más rápido).
+func drain_hunger(delta: float, fast: bool = false) -> void:
+	var rate := HUNGER_MAX / HUNGER_EMPTY_SECONDS * (1.4 if fast else 1.0)
+	hunger = maxf(hunger - rate * delta, 0.0)
+
+
+## Comer: sube la barra de hambre (sin pasarse del máximo).
+func feed(amount: float) -> void:
+	hunger = minf(hunger + amount, HUNGER_MAX)
+
+
 ## La partida empieza a esta hora del primer día.
 const START_HOUR := 8.0
 

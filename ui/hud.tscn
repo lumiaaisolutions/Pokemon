@@ -50,6 +50,18 @@ offset_right = 160.0
 offset_bottom = -97.0
 theme_override_constants/separation = 3
 
+[node name="Hunger" type="HBoxContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 168.0
+offset_top = -124.0
+offset_right = 488.0
+offset_bottom = -97.0
+theme_override_constants/separation = 3
+
 [node name="Bubbles" type="HBoxContainer" parent="."]
 anchors_preset = 7
 anchor_left = 0.5

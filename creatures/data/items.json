@@ -253,7 +253,8 @@
       "pocket": "bayas",
       "price": 80,
       "heal_hearts": 4,
-      "desc": "Recupera 2 corazones. Crece en arbustos de bayas."
+      "feed": 0.4,
+      "desc": "Recupera 2 corazones. Cruda llena muy poco el hambre. Crece en arbustos de bayas."
     },
     {
       "id": "sitrus-berry",
@@ -261,7 +262,8 @@
       "pocket": "bayas",
       "price": 200,
       "heal_hearts": 10,
-      "desc": "Recupera 5 corazones."
+      "feed": 0.6,
+      "desc": "Recupera 5 corazones. Cruda llena muy poco el hambre."
     },
     {
       "id": "pecha-berry",
@@ -269,7 +271,8 @@
       "pocket": "bayas",
       "price": 80,
       "heal_hearts": 2,
-      "desc": "Dulce; recupera 1 corazón y se usa para cocinar."
+      "feed": 0.3,
+      "desc": "Dulce; recupera 1 corazón, llena muy poco el hambre y se usa para cocinar."
     },
     {
       "id": "cheri-berry",
@@ -277,7 +280,8 @@
       "pocket": "bayas",
       "price": 80,
       "heal_hearts": 2,
-      "desc": "Picante; recupera 1 corazón y se usa para cocinar."
+      "feed": 0.3,
+      "desc": "Picante; recupera 1 corazón, llena muy poco el hambre y se usa para cocinar."
     },
     {
       "id": "old-gateau",
@@ -365,59 +369,149 @@
       "pocket": "exploracion",
       "price": 0,
       "key": true,
-      "desc": "Para pescar Pokémon en el agua (llegará con la pesca)."
+      "rod": {
+        "tier": 1
+      },
+      "desc": "Regalo del pescador del pueblo pesquero. Junto al agua: lanza, espera el \"¡!\" y jala a tiempo. Da pescado crudo y a veces un Pokémon de agua."
     },
     {
       "id": "good-rod",
       "name": "Caña Buena",
       "pocket": "exploracion",
-      "price": 0,
-      "key": true,
-      "desc": "Pesca Pokémon más raros (llegará con la pesca)."
+      "price": 1500,
+      "rod": {
+        "tier": 2
+      },
+      "desc": "Pesca Pokémon de agua más raros. Se vende en las ciudades."
     },
     {
-      "id": "explorer-kit",
-      "name": "Kit Explorador",
+      "id": "tent",
+      "name": "Tienda de Campaña",
       "pocket": "exploracion",
+      "price": 1500,
+      "tent": true,
+      "desc": "Se arma en un lugar plano fuera de los pueblos (desde la Mochila). Junto a ella puedes Dormir (de noche, hasta las 7:00; cura a tu equipo, no el hambre), Cocinar o Recogerla."
+    },
+    {
+      "id": "raw-fish",
+      "name": "Pescado Crudo",
+      "pocket": "recoleccion",
       "price": 0,
-      "key": true,
-      "desc": "Tienda de campaña: duerme hasta la mañana siguiente y recupera tus corazones y a tu equipo.",
-      "sleep": true
+      "desc": "Recién sacado del agua con la caña. No se come crudo: hay que cocinarlo en la fogata de tu tienda de campaña."
+    },
+    {
+      "id": "bread",
+      "name": "Pan",
+      "pocket": "bayas",
+      "price": 150,
+      "feed": 1.5,
+      "desc": "Pan de la Tienda Pokémon. Llena algo de hambre."
+    },
+    {
+      "id": "sandwich-shop",
+      "name": "Sándwich",
+      "pocket": "bayas",
+      "price": 250,
+      "feed": 2.0,
+      "desc": "Sándwich de la Tienda Pokémon. Llena algo de hambre."
+    },
+    {
+      "id": "curry-can",
+      "name": "Lata de Curry",
+      "pocket": "bayas",
+      "price": 300,
+      "feed": 2.5,
+      "desc": "Curry enlatado de la Tienda Pokémon. Llena algo de hambre."
+    },
+    {
+      "id": "soda",
+      "name": "Bebida",
+      "pocket": "bayas",
+      "price": 100,
+      "feed": 1.0,
+      "desc": "Bebida fría de la Tienda Pokémon. Llena un poco de hambre."
+    },
+    {
+      "id": "curry-dish",
+      "name": "Curry de Campamento",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 6.0,
+      "boost": {
+        "kind": "speed",
+        "seconds": 180
+      },
+      "desc": "Cocinado en la fogata: llena mucho el hambre y te hace correr más rápido un rato."
+    },
+    {
+      "id": "sandwich-dish",
+      "name": "Sándwich de Campamento",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 5.0,
+      "boost": {
+        "kind": "stealth",
+        "seconds": 180
+      },
+      "desc": "Cocinado en la fogata: llena mucho el hambre y te vuelve más sigiloso un rato."
+    },
+    {
+      "id": "berry-stew",
+      "name": "Estofado de Bayas",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 5.5,
+      "heal_hearts": 6,
+      "desc": "Cocinado en la fogata: llena mucho el hambre y recupera algunos corazones."
+    },
+    {
+      "id": "grilled-fish",
+      "name": "Pescado Asado",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 5.0,
+      "heal_hearts": 4,
+      "desc": "Cocinado en la fogata con tu pesca: llena mucho el hambre y recupera algunos corazones."
     },
     {
       "id": "red-apricorn",
       "name": "Bonguri Rojo",
       "pocket": "recoleccion",
       "price": 40,
-      "desc": "Bonguri de los árboles. Sirve para fabricar Pokéballs."
+      "feed": 0.3,
+      "desc": "Bonguri de los árboles. Crudo llena muy poco el hambre. Sirve para fabricar Pokéballs."
     },
     {
       "id": "blu-apricorn",
       "name": "Bonguri Azul",
       "pocket": "recoleccion",
       "price": 40,
-      "desc": "Bonguri de los árboles. Sirve para fabricar Super Balls."
+      "feed": 0.3,
+      "desc": "Bonguri de los árboles. Crudo llena muy poco el hambre. Sirve para fabricar Super Balls."
     },
     {
       "id": "ylw-apricorn",
       "name": "Bonguri Amarillo",
       "pocket": "recoleccion",
       "price": 40,
-      "desc": "Bonguri de los árboles. Sirve para fabricar Ultra Balls."
+      "feed": 0.3,
+      "desc": "Bonguri de los árboles. Crudo llena muy poco el hambre. Sirve para fabricar Ultra Balls."
     },
     {
       "id": "tinymushroom",
       "name": "Mini Seta",
       "pocket": "recoleccion",
       "price": 100,
-      "desc": "Seta del bosque. Sirve para fabricar pociones."
+      "feed": 0.3,
+      "desc": "Seta del bosque. Cruda llena muy poco el hambre. Sirve para fabricar pociones."
     },
     {
       "id": "big-mushroom",
       "name": "Seta Grande",
       "pocket": "recoleccion",
       "price": 500,
-      "desc": "Seta grande del bosque. Sirve para fabricar Superpociones."
+      "feed": 0.5,
+      "desc": "Seta grande del bosque. Cruda llena muy poco el hambre. Sirve para fabricar Superpociones."
     },
     {
       "id": "hard-stone",
@@ -1079,6 +1173,40 @@
     "smoke-ball": 2,
     "town-map": 1,
     "escape-rope": 1,
-    "explorer-kit": 1
-  }
+    "tent": 1
+  },
+  "cook_recipes": [
+    {
+      "result": "curry-dish",
+      "amount": 1,
+      "needs": {
+        "cheri-berry": 1,
+        "pecha-berry": 1,
+        "oran-berry": 1
+      }
+    },
+    {
+      "result": "sandwich-dish",
+      "amount": 1,
+      "needs": {
+        "bread": 1,
+        "sitrus-berry": 1
+      }
+    },
+    {
+      "result": "berry-stew",
+      "amount": 1,
+      "needs": {
+        "oran-berry": 2,
+        "sitrus-berry": 1
+      }
+    },
+    {
+      "result": "grilled-fish",
+      "amount": 1,
+      "needs": {
+        "raw-fish": 1
+      }
+    }
+  ]
 }

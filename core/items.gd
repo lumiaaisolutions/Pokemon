@@ -10,6 +10,9 @@ const ICON_DIR := "res://art/items/"
 static var _items := {}
 static var _pockets: Array = []
 static var _recipes: Array = []
+## Recetas de cocina de la fogata (tienda de campaña): se comen al instante, no se
+## guardan en la mochila (ver ItemEffects.cook).
+static var _cook_recipes: Array = []
 static var _start := {}
 static var _icons := {}
 
@@ -20,6 +23,7 @@ static func _ensure() -> void:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CATALOG_PATH))
 	_pockets = data["pockets"]
 	_recipes = data["recipes"]
+	_cook_recipes = data.get("cook_recipes", [])
 	_start = data["start"]
 	for item: Dictionary in data["items"]:
 		_items[item["id"]] = item
@@ -52,6 +56,12 @@ static func pockets() -> Array:
 static func recipes() -> Array:
 	_ensure()
 	return _recipes
+
+
+## Recetas que se cocinan en la fogata de la tienda de campaña (Camping, 2026-10-10).
+static func cook_recipes() -> Array:
+	_ensure()
+	return _cook_recipes
 
 
 ## Objetos con que empieza la partida: id -> cantidad.

@@ -10,7 +10,7 @@ static func action_label(id: String) -> String:
 		return "Elegir para lanzar"
 	if item.has("heal_companion") or item.has("cure_status"):
 		return "Usar en tu compañero"
-	if item.has("heal_hearts"):
+	if item.has("heal_hearts") or item.has("feed"):
 		return "Comer"
 	if item.has("repel") or item.has("smoke") or item.has("lure") or item.has("decoy") or item.has("escape") or item.has("boost"):
 		return "Usar"
@@ -24,8 +24,10 @@ static func action_label(id: String) -> String:
 		return "Montar / bajar"
 	if id == "town-map":
 		return "Ver el mapa"
-	if item.has("sleep"):
-		return "Dormir hasta la mañana"
+	if item.has("tent"):
+		return "Armar aquí (fuera del pueblo)"
+	if item.has("rod"):
+		return "Pescar"
 	return ""
 
 
@@ -63,12 +65,22 @@ static func use(id: String, main: Node) -> String:
 		return "¡Tu compañero recuperó vida!"
 	if item.has("cure_status"):
 		return "Tu compañero no está aturdido."
-	if item.has("heal_hearts"):
-		if player == null or player.health >= player.config.health_max:
-			return "Tienes todos tus corazones."
-		player.heal(float(item["heal_hearts"]))
+	if item.has("heal_hearts") or item.has("feed"):
+		var fed := false
+		if item.has("feed") and GameState.hunger < GameState.HUNGER_MAX - 0.001:
+			GameState.feed(float(item["feed"]))
+			fed = true
+		var healed := false
+		if item.has("heal_hearts") and player != null and player.health < player.config.health_max:
+			player.heal(float(item["heal_hearts"]))
+			healed = true
+		if not fed and not healed:
+			return "No tienes hambre y ya tienes todos tus corazones."
 		GameState.use_item(id)
-		return "¡Ñam! Recuperaste corazones."
+		if item.has("boost"):
+			var boost: Dictionary = item["boost"]
+			GameState.boosts[boost["kind"]] = GameState.play_time + float(boost["seconds"])
+		return "¡Ñam! " + ("Recuperaste corazones y llenaste algo de hambre." if fed and healed else ("Llenaste algo de hambre." if fed else "Recuperaste corazones."))
 	if item.has("repel"):
 		GameState.repel_until = GameState.play_time + float(item["repel"])
 		GameState.use_item(id)
@@ -122,18 +134,59 @@ static func use(id: String, main: Node) -> String:
 		return player.toggle_bicycle()
 	if id == "town-map":
 		return "map"
-	if item.has("sleep"):
-		if not GameState.is_night() and GameState.clock_hour() < 17.0:
-			return "Todavía es de día. Puedes dormir desde las 17:00."
-		GameState.sleep_until_morning()
-		for member: Dictionary in GameState.party:
-			member["hp_ratio"] = 1.0
-		if companion != null:
-			companion.recover(1.0)
-		if player != null:
-			player.heal(player.config.health_max)
-		return "Dormiste en tu tienda. ¡Buenos días! Tú y tu equipo están descansados."
+	if item.has("tent"):
+		if player == null or main == null:
+			return ""
+		# Sin tipo estático a propósito: CampManager usa CookingUI, que a su vez llama a
+		# ItemEffects (este archivo); tipar aquí crearía una dependencia circular entre
+		# clases globales que Godot no puede resolver al compilar.
+		var camp: Node = main.get_node_or_null("CampManager")
+		if camp == null:
+			return ""
+		var result: Dictionary = camp.call("pitch_tent", _forward_spot(main, player, 3.0))
+		if bool(result["ok"]):
+			GameState.use_item(id)
+		return String(result["message"])
+	if item.has("rod"):
+		if player == null or main == null:
+			return ""
+		if main.get_node_or_null("Fishing") != null:
+			return "Ya tienes el anzuelo en el agua."
+		if _nearby_water_depth(player) < 0.15:
+			return "Necesitas estar junto al agua para pescar."
+		var fishing := FishingMinigame.new()
+		fishing.name = "Fishing"
+		fishing.main = main
+		fishing.player = player
+		fishing.rod_tier = int((item["rod"] as Dictionary).get("tier", 1))
+		main.add_child(fishing)
+		return "¡Lanzas el anzuelo al agua!"
 	return ""
+
+
+## Punto frente al jugador (según la cámara) para armar la tienda de campaña.
+static func _forward_spot(main: Node, player: Player, distance: float) -> Vector3:
+	var camera := main.get_viewport().get_camera_3d() if main != null else null
+	var forward := -camera.global_basis.z if camera != null else Vector3.FORWARD
+	forward.y = 0.0
+	forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
+	return player.global_position + forward * distance
+
+
+## Profundidad de agua más cercana frente al jugador (o en sus pies si ya está adentro).
+static func _nearby_water_depth(player: Player) -> float:
+	var world := player.get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
+	if world == null:
+		return -1.0
+	var best := world.water_depth_at(player.global_position.x, player.global_position.z)
+	var camera := player.get_viewport().get_camera_3d()
+	var forward := -camera.global_basis.z if camera != null else Vector3.FORWARD
+	forward.y = 0.0
+	forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
+	for distance: float in [1.5, 3.0, 4.5]:
+		var spot := player.global_position + forward * distance
+		best = maxf(best, world.water_depth_at(spot.x, spot.z))
+	return best
 
 
 ## ¿Hay materiales para la receta?
@@ -151,3 +204,28 @@ static func craft(recipe: Dictionary) -> String:
 		GameState.use_item(id, int(recipe["needs"][id]))
 	GameState.add_item(recipe["result"], int(recipe["amount"]))
 	return "¡Fabricaste %d %s!" % [int(recipe["amount"]), Items.display_name(recipe["result"])]
+
+
+## Cocina en la fogata de la tienda de campaña (acordado con Fernando el 2026-10-10):
+## consume los ingredientes y se come al instante (llena mucho el hambre y da un efecto
+## extra simple); tu equipo sale a comer contigo y sube su vínculo.
+static func cook(recipe: Dictionary, main: Node) -> String:
+	if not can_craft(recipe):
+		return "Te faltan ingredientes."
+	for id: String in recipe["needs"]:
+		GameState.use_item(id, int(recipe["needs"][id]))
+	var dish := Items.get_item(String(recipe["result"]))
+	GameState.feed(float(dish.get("feed", 0.0)) * float(recipe.get("amount", 1)))
+	var player := main.get_node_or_null("Player") as Player if main != null else null
+	if dish.has("heal_hearts") and player != null:
+		player.heal(float(dish["heal_hearts"]))
+	if dish.has("boost"):
+		var boost: Dictionary = dish["boost"]
+		GameState.boosts[boost["kind"]] = GameState.play_time + float(boost["seconds"])
+	for member: Dictionary in GameState.party:
+		member["bond_xp"] = float(member.get("bond_xp", 0.0)) + 2.0
+	if main != null:
+		var companion := main.get("companion") as PokemonActor
+		if companion != null:
+			PixelBurst.spawn(main, companion.global_position + Vector3.UP, PixelBurst.Kind.HEAL, 1.0)
+	return "¡Cocinaste %s! Tu equipo salió a comer contigo y subió su vínculo." % Items.display_name(String(recipe["result"]))

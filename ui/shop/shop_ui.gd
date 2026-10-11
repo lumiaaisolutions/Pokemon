@@ -4,7 +4,8 @@ extends Control
 ## El surtido crece con las medallas y cada día ofrece 4 MT distintas.
 
 const STOCK := ["poke-ball", "great-ball", "potion", "super-potion", "full-heal", "repel", "super-repel", "escape-rope", "honey",
-		"lava-cookie", "poke-doll", "quick-ball", "dusk-ball", "net-ball", "dive-ball", "nest-ball", "heal-ball"]
+		"lava-cookie", "poke-doll", "quick-ball", "dusk-ball", "net-ball", "dive-ball", "nest-ball", "heal-ball",
+		"bread", "sandwich-shop", "curry-can", "soda", "tent", "good-rod"]
 ## Objetos que se desbloquean con medallas: [medallas, id].
 const BADGE_STOCK := [[2, "ultra-ball"], [2, "hyper-potion"], [3, "max-repel"], [4, "repeat-ball"], [5, "luxury-ball"], [6, "heavy-ball"]]
 const TM_PER_DAY := 4
