@@ -119,3 +119,21 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 ### Noche (reportado 2026-10-10)
 - Los faroles alumbran poco y muchas zonas se ven muy oscuras de noche: más luz de faroles (alcance y fuerza) y un mínimo de luz ambiente para que nunca se vea negro.
 - El molino (y cualquier modelo que no se oscurece) se ve de otro color de noche: debe seguir la luz del día y la noche como lo demás.
+
+### Casas y otros interiores (reportado 2026-10-10 noche)
+- Por dentro: sin iluminación, paredes oscuras, cosas desfasadas o incompletas (se ve como agua en el piso de una casa). Revisar que no pase en ningún interior ni estructura (misma decisión de luz propia cálida).
+- Por fuera: la puerta de la casa no se ve (caja oscura en la fachada) y la cámara hace mucho zoom al estar cerca (choca con cercas y arbustos). Asignado al arreglo de edificios (rama fisica-edificios).
+- Casa por dentro: objetos fuera del cuarto flotando en el vacío (ventana, cubeta) y zonas negras por donde se puede caminar (piso fuera de las paredes). Va con el arreglo de interiores.
+- Por fuera se atraviesa la puerta/fachada; el laboratorio por fuera es una caja azul con techo (no parece laboratorio). Asignado a la rama fisica-edificios.
+- Al hablar con un líder solo sale un aviso ("El líder del gimnasio de … usa Pokémon de un solo tipo") en vez de una conversación con él.
+
+### Centro Pokémon (pedido y decisiones de Fernando, 2026-10-10 noche)
+**Problemas (bugs):** por fuera sin puerta y con caja oscura (como la tienda); por dentro un Chansey en el mostrador en vez de la enfermera, zonas negras y poca luz.
+**Decisiones:**
+- **Mostrador:** la enfermera (sprite de mundo de BW2) atiende; un Chansey o Blissey con su hoja de caminar de mundo la ayuda llevando las Poké Balls a la máquina (mascota, no atiende).
+- **Curación clásica animada:** entregas tu equipo, las Balls se colocan en la máquina y se encienden una a una con el jingle de BW2 (~3 s), te las devuelve ("¡Tus Pokémon están en plena forma!"). Abierto 24 h; también cura al jugador y llena un poco el hambre con un té.
+- **Servicios:** PC de las Cajas; recordador de movimientos (Escama Corazón o dinero); café y zona de descanso (bebidas que llenan hambre y suben un poco el vínculo; entrenadores descansando para platicar o pelear amistosamente); mostrador de intercambios del día (Pokémon de otra región por uno tuyo de cierta especie); revisión de vínculo y salud con la enfermera (ánimo, cansancio, hambre, consejos); guardería y huevos (tus Pokémon de la Caja ganan experiencia y a veces aparece un huevo); sala de entrenamiento con muñecos de práctica (sube el dominio de movimientos); taquilla de excursiones (tours guiados: ver una bandada, visitar una cueva tapada); fotógrafo y álbum en el Rotom.
+- **Ambiente:** gente con rutina (entran a curar, esperan sentados, se van, con burbujas); segundo piso con club de combate (retos amistosos y tabla de récords de racha); tablón de la región (brotes, bandadas, dónde anda cada líder hoy, peticiones); música del Centro de BW2, luz cálida propia y sonido de puerta automática; visitas de líderes, héroes o tu rival curando a su equipo (platicar o retarlos amistosamente).
+
+### Gimnasios (reportado 2026-10-10 noche)
+- Mismo problema que la tienda y el centro: cosas incompletas, zonas negras y poca luz. Entra en el arreglo general de interiores (luz propia cálida, paredes y piso completos, nada flotando, nada fuera del cuarto).

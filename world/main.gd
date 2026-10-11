@@ -35,6 +35,11 @@ func _ready() -> void:
 	events.player_path = NodePath("../Player")
 	events.spawner_path = NodePath("../Spawner")
 	add_child(events)
+	# Rocas pequeñas agrietadas que el compañero rompe (fase 5.8).
+	var rocks := BreakableRocks.new()
+	rocks.name = "BreakableRocks"
+	rocks.world_path = NodePath("../World")
+	add_child(rocks)
 	# Migraciones: bandadas que cruzan el cielo y aterrizan un día (fase 5.8).
 	var migrations := Migrations.new()
 	migrations.name = "Migrations"

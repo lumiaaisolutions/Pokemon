@@ -585,7 +585,20 @@ func _place(place: Dictionary) -> Node3D:
 			_box(root, Vector3(9, 6, 4), Vector3(0, 3, 0), Color(0.42, 0.38, 0.34))
 			_box(root, Vector3(3.4, 3.4, 0.4), Vector3(0, 1.7, 2.05), Color(0.05, 0.04, 0.04))
 			_collider(root, Vector3(9, 6, 4), Vector3(0, 3, 0))
-			add_point(root.position + Vector3(0, 0.5, 3.4), "Entrar: %s" % title, services.enter_interior.bind(kind, {}, place))
+			var enter_at := root.position + Vector3(0, 0.5, 3.4)
+			var enter := services.enter_interior.bind(kind, {}, place)
+			# Boca tapada por una roca grande (fase 5.8): se abre al romperla con un compañero fuerte.
+			var boulder_id := "cave:%s" % place.get("id", "")
+			if bool(place.get("blocked", false)) and not BreakableRock.boulder_broken(boulder_id):
+				var rock := BreakableRock.create(root, Vector3(0, 0, 3.2), boulder_id, true)
+				var blocked_point := add_point(enter_at, "Una roca enorme tapa la entrada", func() -> void:
+					GameState.notice.emit("Una roca enorme tapa la entrada. Atácala con un compañero de tipo Lucha, Roca, Tierra o Acero, o que sepa Golpe Roca."))
+				rock.broken.connect(func(_r: BreakableRock) -> void:
+					remove_point(blocked_point)
+					add_point(enter_at, "Entrar: %s" % title, enter)
+					GameState.notice.emit("¡La entrada de %s quedó libre! Es un atajo a otra cueva lejana." % title))
+			else:
+				add_point(enter_at, "Entrar: %s" % title, enter)
 		"sanctuary":
 			_cylinder(root, 6.0, 0.5, Vector3(0, 0.1, 0), stone, -1.0, 20)
 			for i in 6:

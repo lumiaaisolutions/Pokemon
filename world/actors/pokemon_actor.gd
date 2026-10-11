@@ -1388,6 +1388,9 @@ func _size_of(node: Node3D) -> float:
 ## Golpe de un movimiento: daño con estadísticas equilibradas, dominio, estilo,
 ## potenciador y vínculo (críticos con vínculo 8 o más).
 func _apply_move_hit(node: Node3D, id: String, style: int) -> bool:
+	if node is BreakableRock:
+		(node as BreakableRock).take_move_hit(self, id)
+		return true
 	if node is PokemonActor:
 		var target := node as PokemonActor
 		var move_rank := Moves.rank(party_entry, id) if not party_entry.is_empty() else 1
@@ -1453,6 +1456,13 @@ func command_move(slot: int, style: int) -> String:
 		use_move(id, null, style)
 		return ""
 	var target := _nearest_wild(14.0)
+	# Rocas rompibles (fase 5.8): si hay una más cerca que cualquier salvaje, la ataca.
+	var rock := _nearest_rock(ROCK_TARGET_RADIUS)
+	if rock != null and (target == null or global_position.distance_to(rock.global_position) < global_position.distance_to(target.global_position)):
+		if effect != "damage":
+			return "Para romper la roca usa un ataque que golpee."
+		_attack_rock(rock, id, style)
+		return ""
 	if target == null:
 		return "No hay ningún Pokémon salvaje cerca."
 	_forced_move = id
@@ -1616,6 +1626,41 @@ func attackers_count() -> int:
 		if (node as PokemonActor).fight_target == self:
 			count += 1
 	return count
+
+
+## Rocas rompibles a las que apunta con sus ataques fuera de combate.
+const ROCK_TARGET_RADIUS := 9.0
+
+
+func _nearest_rock(radius: float) -> BreakableRock:
+	var best: BreakableRock
+	var best_d := radius
+	for node in get_tree().get_nodes_in_group(BreakableRock.GROUP):
+		var rock := node as BreakableRock
+		if rock.is_broken() or not rock.is_visible_in_tree():
+			continue
+		var d := global_position.distance_to(rock.global_position)
+		if d < best_d:
+			best_d = d
+			best = rock
+	return best
+
+
+## Ataca una roca: se acerca de un salto si está lejos y usa el movimiento contra ella.
+func _attack_rock(rock: BreakableRock, id: String, style: int) -> void:
+	var to_rock := rock.global_position - global_position
+	to_rock.y = 0.0
+	var reach := (BreakableRock.BIG_SIZE.x if rock.big else BreakableRock.SMALL_SIZE.x) * 0.5 + 1.2
+	if to_rock.length() > reach:
+		var spot := rock.global_position - to_rock.normalized() * reach
+		spot.y = world.surface_height_at(spot.x, spot.z) if world != null else global_position.y
+		PixelBurst.spawn(get_parent(), global_position + Vector3.UP * 0.2, PixelBurst.Kind.DUST, 0.5)
+		global_position = spot
+	_sprite.look_at_point(rock.global_position)
+	use_move(id, rock, style)
+	# Por si la animación del movimiento no golpea (p. ej. sin familia): el golpe llega igual.
+	if not rock.is_broken() and Moves.get_move(id)["class"] == "physical" and MoveFamilies.family(id) == "":
+		rock.take_move_hit(self, id)
 
 
 func _nearest_wild(radius: float) -> PokemonActor:

@@ -631,6 +631,8 @@ func _place_places(rng: RandomNumberGenerator) -> void:
 	for i in range(0, caves.size() - 1, 2):
 		caves[i]["exit"] = caves[i + 1]["id"]
 		caves[i + 1]["exit"] = caves[i]["id"]
+		# Una boca de cada par la tapa una roca grande (fase 5.8): al romperla, atajo.
+		caves[i]["blocked"] = true
 
 
 func _place_ok(kind: String, x: float, z: float) -> bool:

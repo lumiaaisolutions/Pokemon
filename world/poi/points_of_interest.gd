@@ -134,6 +134,22 @@ func _prompt(poi: Dictionary) -> String:
 	return "Mirar el paisaje"
 
 
+# --- Rocas grandes en cuevas chicas (fase 5.8) ------------------------------------------
+
+## La mitad de las cuevas chicas (fija por su id) tiene una roca grande en la entrada.
+static func is_blocking_cave(poi: Dictionary) -> bool:
+	return poi.get("kind", "") == "small_cave" and hash(String(poi["id"])) % 2 == 0
+
+
+static func boulder_id(poi: Dictionary) -> String:
+	return "poi:%s" % poi["id"]
+
+
+## ¿Sigue tapada? (la roca no se ha roto)
+static func blocked_by_boulder(poi: Dictionary) -> bool:
+	return is_blocking_cave(poi) and not BreakableRock.boulder_broken(boulder_id(poi))
+
+
 # --- Interacción ------------------------------------------------------------------------
 
 func _daily(poi: Dictionary) -> bool:
@@ -195,6 +211,15 @@ func _interact(poi: Dictionary) -> void:
 				spawner.spawn_species(bird, at + Vector3(1.5, 0, 1.5), false, false)
 				GameState.notice.emit("¡Un %s cayó del árbol!" % bird.display_name)
 		"small_cave":
+			if blocked_by_boulder(poi):
+				GameState.notice.emit("Una roca enorme tapa la cueva. Atácala con un compañero de tipo Lucha, Roca, Tierra o Acero, o que sepa Golpe Roca.")
+				return
+			# La primera vez tras abrirla: mejor premio (un fósil o una piedra evolutiva).
+			var first_key := "poi_first:%s" % poi["id"]
+			if is_blocking_cave(poi) and not GameState.world_flags.has(first_key):
+				GameState.world_flags[first_key] = true
+				var prizes: Array = TownServices.FOSSILS.keys() + BreakableRocks.STONES
+				_give(String(prizes[_rng.randi() % prizes.size()]), 1)
 			if not _daily(poi):
 				GameState.notice.emit("La cueva está vacía. Quizá vuelva otro día.")
 				return
@@ -296,6 +321,9 @@ func _build(node: Node3D, poi: Dictionary) -> void:
 				_sprite(node, rock, Vector3(0, 0, -1.0), 2.4)
 			_sprite(node, PoiArt.cave_mouth(), Vector3(0, 0, -0.2), 1.6)
 			_solid(node, Vector3(4.0, 3.0, 2.0), Vector3(0, 1.5, -1.2))
+			# La mitad de las cuevas chicas las tapa una roca grande (fase 5.8).
+			if blocked_by_boulder(poi):
+				BreakableRock.create(node, node.global_position + Vector3(0, 0, 1.4), boulder_id(poi), true)
 		"lookout":
 			for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
 				_box(node, Vector3(0.25, 3.2, 0.25), Vector3(corner.x * 1.1, 1.6, corner.y * 1.1), Color(0.5, 0.36, 0.22))

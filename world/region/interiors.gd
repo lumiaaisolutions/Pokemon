@@ -464,7 +464,7 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_block(root, Vector3(2.0, 0.9, 1.4), Vector3(-1.5, 0.45, 0), Color(0.55, 0.38, 0.25))
 			var resident := NpcLooks.for_role("vecino", rng)
 			_npc(root, Vector3(-3.4, 0, -0.5), resident)
-			_point(Vector3(-3.4, 0.5, 0.8), "Hablar", services.talk_resident.bind(settlement, building))
+			_point(Vector3(-3.4, 0.5, 0.8), "Hablar", services.talk_resident.bind(settlement, building, resident))
 			# En las ciudades, algunas casas son de tutores de movimientos.
 			if settlement.get("kind", "") == "city" and int(building.get("color", 0)) % 2 == 0:
 				_npc(root, Vector3(2.6, 0, -1.5), "abuelo_a")

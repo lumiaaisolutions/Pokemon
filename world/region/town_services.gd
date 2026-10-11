@@ -166,8 +166,9 @@ func open_shop() -> void:
 	shop.open()
 
 
-## Vecinos: un consejo y, una vez por día, un regalo.
-func talk_resident(settlement: Dictionary, building: Dictionary) -> void:
+## Vecinos: un consejo y, una vez por día, un regalo. Hablan en la caja de diálogo con su
+## retrato (antes salía como aviso y parecía que no decían nada).
+func talk_resident(settlement: Dictionary, building: Dictionary, look: String = "") -> void:
 	var tips := [
 		"Dicen que en las cuevas hay salidas que te llevan muy lejos.",
 		"Por las noches salen Pokémon distintos. ¡Revisa tu Pokédex!",
@@ -187,7 +188,12 @@ func talk_resident(settlement: Dictionary, building: Dictionary) -> void:
 		GameState.add_item(gift, 1 + _rng.randi() % 2)
 		AudioBus.play_jingle("me_item")
 		text += " Toma, llévate esto: %s." % Items.display_name(gift)
-	GameState.notice.emit(text)
+	var dialog := _dialog()
+	if dialog == null:
+		GameState.notice.emit(text)
+		return
+	var greeting := "¡Hola! Bienvenido a mi casa en %s." % settlement.get("name", "el pueblo")
+	dialog.open("Vecino" if look == "" or NpcLooks.GENDER.get(look, "male") == "male" else "Vecina", [greeting, text], TownNPCs.portrait(look if look != "" else "joven_a"))
 
 
 ## Profesor: entrega premios de investigación y comenta tu avance.
