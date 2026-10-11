@@ -236,9 +236,12 @@ func _run() -> void:
 	_check(migrations.species_at(land_point + Vector3(20, 0, 0)) != null and migrations.species_at(land_point + Vector3(20, 0, 0)).identifier == migrant_species.identifier, "donde aterrizó sale esa especie%s" % (" (de fuera de la región)" if outsider != null else ""))
 	_check(migrations.species_at(land_point + Vector3(400, 0, 0)) == null, "lejos del aterrizaje no aplica")
 	_player.global_position = Vector3(land_point.x, _world.surface_height_at(land_point.x, land_point.z) + 0.5, land_point.z)
+	# Apariciones cerca del aterrizaje (dentro del radio de la bandada).
+	var max_spawn := spawner.max_spawn_distance
+	spawner.max_spawn_distance = Migrations.LAND_RADIUS * 0.6
 	var migrant_hits := 0
 	var spawn_total := 0
-	for i in 30:
+	for i in 40:
 		var spawned := spawner.spawn_one()
 		if spawned != null:
 			spawn_total += 1
@@ -247,6 +250,7 @@ func _run() -> void:
 		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
 			node.queue_free()
 		await _frames(1)
+	spawner.max_spawn_distance = max_spawn
 	_check(spawn_total > 0 and migrant_hits >= spawn_total * 0.5, "donde aterrizó la bandada salen sobre todo de esa especie (%d/%d)" % [migrant_hits, spawn_total])
 	GameState.play_time += GameState.DAY_SECONDS
 	_check(migrations.current().is_empty() and migrations.species_at(land_point) == null, "al día siguiente la bandada ya se fue")
