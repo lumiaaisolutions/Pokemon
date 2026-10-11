@@ -49,6 +49,9 @@ var rivers: Array[Dictionary] = []
 var lakes: Array[Vector4] = []
 ## Asentamientos: {"name", "kind" (city/town/village/cabins), "x", "z", "radius", "buildings": [...]}.
 var settlements: Array[Dictionary] = []
+## Puentes (mundo más lleno, 2026-10-11): puntos donde un camino cruza un río, con la
+## dirección del camino ahí (para orientar las barandillas). Vector3(x, z, ángulo).
+var bridges: Array[Vector3] = []
 ## Caminos entre asentamientos: Array de PackedVector2Array (y su tipo de pavimento).
 var roads: Array[PackedVector2Array] = []
 var road_kinds: PackedInt32Array = PackedInt32Array()
@@ -101,6 +104,7 @@ func _init(world_seed: int, world_size: float = 4096.0) -> void:
 	_place_settlements(rng)
 	_connect_roads(rng)
 	_place_places(rng)
+	_place_bridges()
 	# Lagos congelados en la tundra (hielo que se puede pisar).
 	for lake in lakes:
 		_frozen[lake] = biome_at(lake.x, lake.y) == Biome.TUNDRA
@@ -409,12 +413,20 @@ func _trace_rivers(rng: RandomNumberGenerator) -> void:
 
 # --- Asentamientos, caminos y lugares --------------------------------------------------
 
+## Radio de cada tipo de asentamiento (pueblos ×2, decisión de Fernando 2026-10-10: antes
+## 90/60/40/28; con barrios, varias plazas y calles hace falta el doble de terreno).
+const SETTLEMENT_RADIUS := {"city": 180.0, "town": 120.0, "village": 80.0, "cabins": 56.0}
+## Separación mínima entre asentamientos (antes 520 m); con el doble de radio hace falta
+## más espacio para que no se encimen sus plazas y caminos.
+const SETTLEMENT_GAP := 680.0
+
+
 func _place_settlements(rng: RandomNumberGenerator) -> void:
 	var half := size * 0.5 - EDGE_MOUNTAIN - 150.0
 	# Pueblo inicial cerca del centro.
 	var kinds := ["town", "city", "city", "town", "town", "village", "village", "town", "city", "village", "cabins", "cabins", "town"]
 	var attempts := 0
-	while settlements.size() < kinds.size() and attempts < 3000:
+	while settlements.size() < kinds.size() and attempts < 6000:
 		attempts += 1
 		var x := rng.randf_range(-half, half) if not settlements.is_empty() else rng.randf_range(-200.0, 200.0)
 		var z := rng.randf_range(-half, half - SEA_BAND * 0.6) if not settlements.is_empty() else rng.randf_range(-200.0, 200.0)
@@ -426,14 +438,14 @@ func _place_settlements(rng: RandomNumberGenerator) -> void:
 			continue
 		if _slope(x, z, 40.0) > 14.0:
 			continue
-		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(Vector2(x, z)) < 520.0):
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(Vector2(x, z)) < SETTLEMENT_GAP):
 			continue
 		if lakes.any(func(l: Vector4) -> bool: return Vector2(l.x, l.y).distance_to(Vector2(x, z)) < l.z + 80.0):
 			continue
 		var kind: String = kinds[settlements.size()]
-		var radius: float = {"city": 90.0, "town": 60.0, "village": 40.0, "cabins": 28.0}[kind]
+		var radius: float = SETTLEMENT_RADIUS[kind]
 		var settlement := {"name": TOWN_NAMES[settlements.size() % TOWN_NAMES.size()], "kind": kind, "x": x, "z": z,
-				"radius": radius, "height": maxf(h, sea_level + 1.5), "biome": biome}
+				"radius": radius, "height": maxf(h, sea_level + 1.5), "biome": biome, "is_start": settlements.is_empty()}
 		settlement["buildings"] = _plan_buildings(settlement, rng)
 		settlements.append(settlement)
 	# 8 gimnasios por región (ver Regions): ciudades y pueblos; si faltan, en aldeas.
@@ -463,36 +475,68 @@ func _slope(x: float, z: float, d: float) -> float:
 
 ## Edificios de un asentamiento: Centro Pokémon y tienda en pueblos y ciudades,
 ## gimnasio en ciudades, laboratorio en el pueblo inicial, casas, cabañas o carpas.
+## Edificios de un asentamiento (pueblos ×2 con identidad, 2026-10-11): más casas y un
+## segundo "barrio" por el doble de radio; no todos los pueblos tienen todo (tienda,
+## Sala de Concursos, restaurante y el edificio único varían según el pueblo, salvo en
+## el pueblo inicial, que siempre tiene el set completo); 1 edificio único por tema
+## (museo, casino, biblioteca, fábrica, acuario, mercado o torre, ver TownIdentity) y un
+## tablón de encargos. El gimnasio nunca es opcional: hacen falta exactamente 8 en la
+## región (ver _place_settlements) y los test lo exigen.
 func _plan_buildings(settlement: Dictionary, rng: RandomNumberGenerator) -> Array:
 	var list: Array = []
 	var kind: String = settlement["kind"]
 	var cx := float(settlement["x"])
 	var cz := float(settlement["z"])
 	var radius := float(settlement["radius"])
+	var is_start: bool = settlement.get("is_start", false)
+	var theme := TownIdentity.theme_of(settlement)
 	var wanted: Array = []
 	match kind:
 		"city":
-			wanted = ["center", "mart", "gym", "contest", "restaurant", "food_stall", "house", "house", "house", "house", "house", "house", "tower_small", "manhole"]
+			wanted = ["center", "mart", "gym", "food_stall", "house", "house", "house", "house", "house", "house", "house", "house", "tower_small", "manhole", "job_board", "festival_booth"]
+			if is_start or rng.randf() < 0.75:
+				wanted.append("contest")
+			if is_start or rng.randf() < 0.8:
+				wanted.append("restaurant")
+			if is_start or rng.randf() < 0.65:
+				wanted.append("landmark")
 		"town":
-			wanted = ["center", "mart", "gym", "food_stall", "house", "house", "house", "house"]
-			if settlements.is_empty():
+			wanted = ["center", "gym", "food_stall", "house", "house", "house", "house", "house", "house", "job_board", "festival_booth"]
+			if is_start or rng.randf() < 0.8:
+				wanted.append("mart")
+			if is_start or rng.randf() < 0.4:
+				wanted.append("landmark")
+			if is_start:
 				wanted.append("lab")
 		"village":
-			wanted = ["center", "house", "house", "cabin"]
+			wanted = ["center", "house", "house", "cabin", "house", "cabin"]
 			if settlement.get("gym", false):
 				wanted.append("gym")
+			if rng.randf() < 0.3:
+				wanted.append("mart")
 		"cabins":
-			wanted = ["cabin", "cabin", "tent", "tent"]
+			wanted = ["cabin", "cabin", "tent", "tent", "cabin", "tent"]
 	for i in wanted.size():
 		var angle := TAU * i / wanted.size() + rng.randf_range(-0.2, 0.2)
-		var distance := radius * rng.randf_range(0.45, 0.8)
+		var distance := radius * rng.randf_range(0.42, 0.85)
 		if wanted[i] in ["center", "mart"]:
-			distance = radius * 0.32
+			distance = radius * 0.3
+		elif wanted[i] in ["job_board", "festival_booth"]:
+			distance = radius * 0.22
 		var footprint: Vector2 = {"center": Vector2(14, 11), "mart": Vector2(11, 9), "gym": Vector2(20, 18), "contest": Vector2(18, 14),
-				"restaurant": Vector2(15, 9), "food_stall": Vector2(15, 8),
-				"lab": Vector2(16, 11), "house": Vector2(9, 8), "cabin": Vector2(7, 6), "tent": Vector2(5, 5), "tower_small": Vector2(8, 8), "manhole": Vector2(2, 2)}[wanted[i]]
-		list.append({"kind": wanted[i], "x": cx + cos(angle) * distance, "z": cz + sin(angle) * distance,
-				"w": footprint.x, "d": footprint.y, "facing": angle + PI, "color": rng.randi() % 6})
+				"restaurant": Vector2(15, 9), "food_stall": Vector2(15, 8), "landmark": Vector2(16, 13),
+				"lab": Vector2(16, 11), "house": Vector2(9, 8), "cabin": Vector2(7, 6), "tent": Vector2(5, 5),
+				"tower_small": Vector2(8, 8), "manhole": Vector2(2, 2), "job_board": Vector2(2.4, 1.6),
+				"festival_booth": Vector2(3.0, 2.2)}[wanted[i]]
+		var building := {"kind": wanted[i], "x": cx + cos(angle) * distance, "z": cz + sin(angle) * distance,
+				"w": footprint.x, "d": footprint.y, "facing": angle + PI, "color": rng.randi() % 6}
+		if wanted[i] == "landmark":
+			building["sub_kind"] = TownIdentity.LANDMARK_OF.get(theme, "library")
+		list.append(building)
+	# Una casa por asentamiento (si tiene) se puede comprar y decorar (mundo más lleno).
+	var houses := list.filter(func(b: Dictionary) -> bool: return b["kind"] == "house")
+	if not houses.is_empty():
+		houses[rng.randi() % houses.size()]["for_sale"] = true
 	return list
 
 
@@ -626,6 +670,78 @@ func _place_places(rng: RandomNumberGenerator) -> void:
 			continue
 		places.append({"kind": "merchant", "x": p.x + 5.0, "z": p.y + 5.0, "radius": 6.0, "id": places.size()})
 		merchants += 1
+	# Eventos del campo (mundo más lleno, acordado con Fernando el 2026-10-10): árbol
+	# caído que bloquea, Pokémon gigante dormido, patrulla del equipo villano, viajeros
+	# con un problema y pistas de carreras; en los caminos o cerca, lejos de los pueblos.
+	var fallen_trees := 0
+	for attempt in 300:
+		if fallen_trees >= 2 or roads.is_empty():
+			break
+		var road: PackedVector2Array = roads[rng.randi() % roads.size()]
+		var p := road[rng.randi() % road.size()]
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(p) < float(s["radius"]) + 60.0):
+			continue
+		if places.any(func(q: Dictionary) -> bool: return Vector2(float(q["x"]), float(q["z"])).distance_to(p) < 80.0):
+			continue
+		places.append({"kind": "fallen_tree", "x": p.x, "z": p.y, "radius": 6.0, "id": places.size()})
+		fallen_trees += 1
+	var checkpoints := 0
+	for attempt in 300:
+		if checkpoints >= 2 or roads.is_empty():
+			break
+		var road: PackedVector2Array = roads[rng.randi() % roads.size()]
+		var p := road[rng.randi() % road.size()]
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(p) < float(s["radius"]) + 140.0):
+			continue
+		if places.any(func(q: Dictionary) -> bool: return Vector2(float(q["x"]), float(q["z"])).distance_to(p) < 100.0):
+			continue
+		places.append({"kind": "villain_checkpoint", "x": p.x - 4.0, "z": p.y - 4.0, "radius": 6.0, "id": places.size()})
+		checkpoints += 1
+	var wanderers := 0
+	for attempt in 400:
+		if wanderers >= 4 or roads.is_empty():
+			break
+		var road: PackedVector2Array = roads[rng.randi() % roads.size()]
+		var p := road[rng.randi() % road.size()]
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(p) < float(s["radius"]) + 80.0):
+			continue
+		if places.any(func(q: Dictionary) -> bool: return Vector2(float(q["x"]), float(q["z"])).distance_to(p) < 90.0):
+			continue
+		places.append({"kind": "wanderer", "x": p.x + 4.0, "z": p.y + 4.0, "radius": 6.0, "id": places.size()})
+		wanderers += 1
+	var giants := 0
+	for attempt in 300:
+		if giants >= 3:
+			break
+		var x := rng.randf_range(-half, half)
+		var z := rng.randf_range(-half, half)
+		if biome_at(x, z) == Biome.SEA or base_height(x, z) < sea_level + 1.0:
+			continue
+		if road_info(x, z).x > 40.0:
+			continue
+		if settlements.any(func(s: Dictionary) -> bool: return Vector2(float(s["x"]), float(s["z"])).distance_to(Vector2(x, z)) < float(s["radius"]) + 100.0):
+			continue
+		if places.any(func(q: Dictionary) -> bool: return Vector2(float(q["x"]), float(q["z"])).distance_to(Vector2(x, z)) < 100.0):
+			continue
+		places.append({"kind": "sleeping_giant", "x": x, "z": z, "radius": 10.0, "id": places.size()})
+		giants += 1
+	var races := 0
+	for attempt in 300:
+		if races >= 2 or roads.is_empty():
+			break
+		var road: PackedVector2Array = roads[rng.randi() % roads.size()]
+		if road.size() < 10:
+			continue
+		var start_i := rng.randi_range(0, road.size() - 8)
+		var finish_i: int = mini(start_i + rng.randi_range(6, road.size() - 1 - start_i), road.size() - 1)
+		var p0 := road[start_i]
+		var p1 := road[finish_i]
+		if p0.distance_to(p1) < 80.0:
+			continue
+		if places.any(func(q: Dictionary) -> bool: return Vector2(float(q["x"]), float(q["z"])).distance_to(p0) < 100.0):
+			continue
+		places.append({"kind": "race_track", "x": p0.x, "z": p0.y, "finish_x": p1.x, "finish_z": p1.y, "radius": 8.0, "id": places.size()})
+		races += 1
 	# Las cuevas van por pares: cada entrada lleva a otra lejana.
 	var caves := places.filter(func(p: Dictionary) -> bool: return p["kind"] == "cave")
 	for i in range(0, caves.size() - 1, 2):
@@ -633,6 +749,27 @@ func _place_places(rng: RandomNumberGenerator) -> void:
 		caves[i + 1]["exit"] = caves[i]["id"]
 		# Una boca de cada par la tapa una roca grande (fase 5.8): al romperla, atajo.
 		caves[i]["blocked"] = true
+
+
+## Puentes (mundo más lleno, 2026-10-11): un camino sobre un río necesita un puente
+## visible, no solo el allanado del terreno. Un punto cada ~40 m de cada camino donde
+## cruza un río (ancho del río, para no poner uno por cada paso dentro del agua).
+func _place_bridges() -> void:
+	for points: PackedVector2Array in roads:
+		var last_bridge := Vector2(-INF, -INF)
+		for i in points.size() - 1:
+			var a := points[i]
+			var b := points[i + 1]
+			var steps := maxi(int(a.distance_to(b) / 6.0), 1)
+			for s in steps:
+				var p := a.lerp(b, float(s) / steps)
+				var river := river_info(p.x, p.y)
+				if river.x < river.z * 0.5 + 1.5 and p.distance_to(last_bridge) > 40.0:
+					var dir := (b - a).normalized()
+					# Mismo convenio que los edificios (atan2(x, z)) para que rotation.y quede
+					# alineado con el camino sin tener que convertir el ángulo al dibujarlo.
+					bridges.append(Vector3(p.x, p.y, atan2(dir.x, dir.y)))
+					last_bridge = p
 
 
 func _place_ok(kind: String, x: float, z: float) -> bool:

@@ -14,7 +14,7 @@ static func action_label(id: String) -> String:
 		return "Usar en tu compañero"
 	if item.has("heal_hearts") or item.has("feed"):
 		return "Comer"
-	if item.has("repel") or item.has("smoke") or item.has("lure") or item.has("decoy") or item.has("escape") or item.has("boost"):
+	if item.has("repel") or item.has("smoke") or item.has("lure") or item.has("decoy") or item.has("escape") or item.has("boost") or item.has("treasure_map"):
 		return "Usar"
 	if item.has("training"):
 		return "Dar a tu compañero"
@@ -124,6 +124,33 @@ static func use(id: String, main: Node) -> String:
 			player.respawn_at(GameState.respawn_point)
 		GameState.use_item(id)
 		return "Regresaste al punto seguro."
+	if item.has("treasure_map"):
+		# Tesoros y secretos (mundo más lleno, acordado con Fernando el 2026-10-10):
+		# marca en el mapa el campamento con cofre más cercano que no hayas descubierto
+		# (PointsOfInterest.plan() es puro: no hace falta que la zona esté cargada).
+		var poi := main.get_node_or_null("PointsOfInterest") as PointsOfInterest if main != null else null
+		if poi == null or player == null:
+			return "No se pudo leer el mapa aquí."
+		var base := Vector2i(floori(player.global_position.x / WorldBuilder.CHUNK), floori(player.global_position.z / WorldBuilder.CHUNK))
+		var best: Dictionary = {}
+		var best_d := INF
+		var search := 20
+		for cx in range(-search, search + 1):
+			for cz in range(-search, search + 1):
+				var candidate := poi.plan(base + Vector2i(cx, cz))
+				if candidate.is_empty() or candidate.get("kind", "") != "camp" or PointsOfInterest.discovered(candidate):
+					continue
+				var d := Vector2(float(candidate["x"]), float(candidate["z"])).distance_to(Vector2(player.global_position.x, player.global_position.z))
+				if d < best_d:
+					best_d = d
+					best = candidate
+		if best.is_empty():
+			return "El mapa no muestra ningún cofre nuevo cerca. Quizá ya los encontraste todos."
+		GameState.use_item(id)
+		var map_ui := main.get_node_or_null("MapUi") as MapUi
+		if map_ui != null:
+			map_ui.data.reveal(Vector3(float(best["x"]), 0, float(best["z"])), 40.0)
+		return "¡El mapa señala un campamento con cofre a %d m de aquí! Se marcó en el mapa." % int(best_d)
 	if item.has("boost"):
 		var boost: Dictionary = item["boost"]
 		GameState.boosts[boost["kind"]] = GameState.play_time + float(boost["seconds"])

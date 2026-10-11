@@ -883,6 +883,11 @@ func daycare(_place: Dictionary) -> void:
 
 
 func add_healing_spot(pos: Vector3, radius: float, title: String) -> void:
+	# Evita duplicados (las casetas de descanso son puntos de interés que se vuelven a
+	# construir cada vez que su zona se carga, 2026-10-11).
+	for spot: Dictionary in _healing_spots:
+		if (spot["pos"] as Vector3).distance_to(pos) < 1.0:
+			return
 	_healing_spots.append({"pos": pos, "radius": radius, "title": title})
 
 
@@ -959,3 +964,323 @@ func _process(delta: float) -> void:
 			GameState.cycle_ball(1)
 		GameState.notice.emit("Saliste de la Zona Safari: devolviste las Safari Balls.")
 	_in_safari = inside
+
+
+## Comprar una casa en venta (mundo más lleno, 2026-10-11): cambia el punto de "Comprar"
+## por uno de "Entrar" al instante (reglas_calidad #18: la interfaz siempre refleja el
+## estado actual). La bandera de decorar aparece la siguiente vez que se construya el
+## pueblo (al cargar la partida), ver docs/decisiones_sin_preguntar.md.
+func buy_house(settlement: Dictionary, building: Dictionary, id: String, price: int, struct: Structures, holder: Array) -> void:
+	var bought: Dictionary = GameState.world_flags.get("houses_bought", {})
+	if bought.has(id):
+		return
+	if GameState.money < price:
+		GameState.notice.emit("Esta casa cuesta $%d y no tienes suficiente dinero." % price)
+		return
+	GameState.add_money(-price, "Casa en %s" % String(settlement.get("name", "")))
+	bought[id] = true
+	GameState.world_flags["houses_bought"] = bought
+	AudioBus.play_jingle("me_item")
+	GameState.notice.emit("¡Es tuya! Compraste esta casa en %s. La próxima vez que vuelvas a la región podrás decorarla." % String(settlement.get("name", "")))
+	var point: Dictionary = holder[0] if not holder.is_empty() and holder[0] != null else {}
+	if point.is_empty():
+		return
+	struct.remove_point(point)
+	var title: String = Structures.BUILDING_NAMES.get(String(building["kind"]), "Casa")
+	struct.add_point(point["pos"], "Entrar: %s (es tuya)" % title, enter_interior.bind(building["kind"], settlement, building), float(point["radius"]), point["inward"])
+
+
+## Edificio único por tema (pueblos ×2 con identidad, 2026-10-11): exhibidores sencillos
+## con una descripción corta y un objeto de regalo la primera vez (ver _discovery, que
+## además suma a la misión de investigación del Rotom); el casino es un minijuego
+## simple de monedas en vez de exhibidores.
+const LANDMARK_LORE := {
+	"aquarium": "En las peceras nadan Pokémon de agua de toda la región; una placa explica sus migraciones.",
+	"factory": "La fábrica convierte los minerales de la mina en herramientas para todo el pueblo.",
+	"market_hall": "El mercado reúne lo que cosechan los huertos y ranchos cercanos.",
+	"library": "La biblioteca guarda relatos antiguos del bosque, copiados a mano hace generaciones.",
+	"museum": "El museo exhibe fósiles y reliquias encontradas bajo las dunas.",
+	"observatory": "Desde el observatorio se ven las estrellas con una claridad que no hay en ningún otro lado.",
+	"casino": "Luces de colores y el sonido de las máquinas llenan el casino.",
+}
+const LANDMARK_REWARD := {"aquarium": "pearl", "factory": "hard-stone", "market_hall": "oran-berry", "library": "rare-candy",
+		"museum": "moon-stone", "observatory": "star-piece"}
+const CASINO_PRICE := 100
+
+
+func landmark_visit(settlement: Dictionary, building: Dictionary) -> void:
+	var sub: String = building.get("sub_kind", "library")
+	if sub == "casino":
+		_casino_spin()
+		return
+	var lines: Array = [LANDMARK_LORE.get(sub, "Un edificio interesante del pueblo.")]
+	var title: String = TownIdentity.LANDMARK_NAMES.get(sub, "Edificio")
+	if _discovery("landmark:%s:%s" % [String(settlement.get("name", "")), sub], title):
+		var item: String = LANDMARK_REWARD.get(sub, "nugget")
+		GameState.add_item(item, 1)
+		lines.append("Entre los exhibidores encuentras algo interesante: %s." % Items.display_name(item))
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open(title, lines)
+	else:
+		GameState.notice.emit(String(lines[-1]))
+
+
+## Minijuego sencillo del casino (edificio único del tema comercial, 2026-10-11): pagas
+## una ficha y la máquina tira; 8 % premio grande, 27 % premio chico, el resto nada.
+func _casino_spin() -> void:
+	if GameState.money < CASINO_PRICE:
+		GameState.notice.emit("La máquina pide $%d por tirada." % CASINO_PRICE)
+		return
+	GameState.add_money(-CASINO_PRICE, "Casino")
+	var roll := _rng.randf()
+	var prize := 0
+	if roll < 0.08:
+		prize = 1000
+	elif roll < 0.35:
+		prize = 150
+	if prize > 0:
+		GameState.add_money(prize, "Premio del casino")
+		AudioBus.play_jingle("me_item")
+		GameState.notice.emit("¡Las luces se encienden! Ganaste $%d en la máquina." % prize)
+	else:
+		GameState.notice.emit("La máquina no te dio nada esta vez. ¡Suerte la próxima tirada!")
+
+
+## Lugar de entrenamiento (dojo/cascada, mundo más lleno, acordado con Fernando el
+## 2026-10-10: "lugares de entrenamiento... con retos"). Un combate amistoso de un solo
+## Pokémon, una vez por día; no se puede capturar (igual que los retos de gimnasio).
+const TRAINING_POOL := ["machop", "makuhita", "timburr", "scraggy", "riolu", "meditite"]
+
+
+func training_spot_challenge(poi: Dictionary, arena: Vector3) -> void:
+	var key := "training_spot:%s" % String(poi["id"])
+	if int(_flags().get(key, -1)) == GameState.game_day():
+		GameState.notice.emit("Ya entrenaste aquí hoy. Vuelve mañana.")
+		return
+	var options: Array[SpeciesData] = []
+	for id: String in TRAINING_POOL:
+		var species := MenuStyle.species(id)
+		if species != null:
+			options.append(species)
+	if options.is_empty():
+		return
+	var team: Array[SpeciesData] = [options[_rng.randi() % options.size()]]
+	_start_trial("Entrenamiento", team, arena, func() -> void:
+		_flags()[key] = GameState.game_day()
+		GameState.add_money(300, "Lugar de entrenamiento")
+		GameState.notice.emit("¡Buen entrenamiento! Ganaste $300."))
+
+
+## Guardián al fondo de la mina (mazmorra de varios pisos, acordado con Fernando el
+## 2026-10-10: "mazmorras y cuevas reales de varios pisos con tesoros y jefe al final").
+## Un solo Pokémon de Roca o Tierra fuerte; al vencerlo da un tesoro garantizado y no
+## vuelve a retar (pero los tesoros normales de la mina siguen apareciendo cada día).
+const MINE_BOSS_POOL := ["onix", "steelix", "rhyperior", "gigalith", "tyranitar", "golem"]
+
+
+func mine_boss_done(place: Dictionary) -> bool:
+	return bool(_flags().get("mine_boss:%d" % int(place.get("id", 0)), false))
+
+
+func mine_boss_challenge(place: Dictionary, arena: Vector3) -> void:
+	if mine_boss_done(place):
+		return
+	var options: Array[SpeciesData] = []
+	for id: String in MINE_BOSS_POOL:
+		var species := MenuStyle.species(id)
+		if species != null:
+			options.append(species)
+	if options.is_empty():
+		return
+	var team: Array[SpeciesData] = [options[_rng.randi() % options.size()]]
+	_start_trial("Guardián de la mina", team, arena, func() -> void:
+		_flags()["mine_boss:%d" % int(place.get("id", 0))] = true
+		GameState.add_money(2500, "Guardián de la mina")
+		GameState.add_item(["moon-stone", "hard-stone", "rare-candy"][_rng.randi() % 3], 1)
+		GameState.notice.emit("¡Venciste al guardián de la mina! Encuentras un tesoro al fondo del pozo."))
+
+
+# --- Eventos del campo (mundo más lleno, acordado con Fernando el 2026-10-10) -----------
+
+## Árbol caído que bloquea el camino: se aparta al interactuar, una sola vez por partida
+## (persiste en world_flags, así no vuelve a bloquear si recargas la región).
+func clear_fallen_tree(place: Dictionary, struct: Structures, root: Node3D, holder: Array) -> void:
+	var key := "fallen_tree_cleared:%d" % int(place["id"])
+	if GameState.world_flags.get(key, false):
+		return
+	GameState.world_flags[key] = true
+	var point: Dictionary = holder[0] if not holder.is_empty() and holder[0] != null else {}
+	if not point.is_empty():
+		struct.remove_point(point)
+	if is_instance_valid(root):
+		root.queue_free()
+	GameState.add_money(150, "Camino despejado")
+	AudioBus.play_sfx("ui_decide")
+	GameState.notice.emit("Apartaste el tronco caído. El camino vuelve a estar libre.")
+
+
+## Puesto de control del equipo villano (equipo activo, mundo más lleno): bloquea el
+## paso narrativamente hasta vencerlo; vuelve a aparecer unos días después (como la
+## base secreta, pero mucho más ligero: un solo Pokémon).
+const CHECKPOINT_COOLDOWN_DAYS := 5
+
+
+func villain_checkpoint_challenge(place: Dictionary, arena: Vector3) -> void:
+	var key := "checkpoint:%d" % int(place["id"])
+	var cleared_day := int(_flags().get(key, -999))
+	if GameState.game_day() - cleared_day < CHECKPOINT_COOLDOWN_DAYS:
+		GameState.notice.emit("El puesto de control está vacío por ahora. Volverán en unos días.")
+		return
+	var team: Array[SpeciesData] = []
+	team.append_array(_team_of_type(PokemonTypes.Type.DARK, 1, 0.45))
+	team.append_array(_team_of_type(PokemonTypes.Type.POISON, 1, 0.45))
+	_start_trial("Puesto de control del %s" % GameState.villain_team, team, arena, func() -> void:
+		_flags()[key] = GameState.game_day()
+		GameState.add_money(600, "Puesto de control")
+		for group: String in GameState.reputation:
+			GameState.reputation[group] = mini(int(GameState.reputation[group]) + 2, 100)
+		GameState.notice.emit("¡Despejaste el puesto de control! El camino queda libre por unos días."))
+
+
+## Viajero con un problema (misiones de NPC en el campo, acordado con Fernando el
+## 2026-10-10: "niño perdido, Pokémon herido, mercader asaltado, alguien que busca un
+## objeto"). El tipo de problema es fijo por el id del viajero.
+const WANDERER_ITEM_WANTED := ["pearl", "nugget", "star-piece", "great-ball"]
+
+
+func wanderer_talk(place: Dictionary, look: String) -> void:
+	var dialog := _dialog()
+	var index := absi(hash(place["id"])) % 4
+	var key := "wanderer:%d" % int(place["id"])
+	if bool(_flags().get(key, false)):
+		var lines := ["Gracias de nuevo por tu ayuda. Ya sigo mi camino tranquilo."]
+		if dialog != null:
+			dialog.open("Viajero", lines, NpcLooks.portrait(look))
+		else:
+			GameState.notice.emit(lines[0])
+		return
+	match index:
+		0:
+			# Niño perdido: ya está a salvo con solo hablarle (sin IA de escolta todavía,
+			# ver docs/decisiones_sin_preguntar.md).
+			_finish_wanderer(key, dialog, look, "¡Me perdí buscando a mi Pokémon! ¿Me acompañas al pueblo? ... ¡Ya veo el camino, gracias! Toma, esto es para ti.", 300)
+		1:
+			# Pokémon herido: pide una Poción.
+			if GameState.item_count("potion") <= 0:
+				var lines := ["Mi Pokémon está herido... ¿tienes una Poción? No tengo ninguna a la mano."]
+				if dialog != null:
+					dialog.open("Viajero", lines, NpcLooks.portrait(look))
+				else:
+					GameState.notice.emit(lines[0])
+				return
+			GameState.use_item("potion", 1)
+			_finish_wanderer(key, dialog, look, "¡Una Poción! Justo lo que necesitaba mi Pokémon. Muchas gracias, toma esto.", 250)
+		2:
+			# Mercader asaltado: hay que vencer al ladrón (un solo Pokémon Siniestro).
+			var team: Array[SpeciesData] = _team_of_type(PokemonTypes.Type.DARK, 1, 0.4)
+			if team.is_empty():
+				return
+			var p := player()
+			_start_trial("Ladrón del mercader", team, (p.global_position + Vector3(0, 0, 2.5)) if p != null else Vector3.ZERO, func() -> void:
+				_flags()[key] = true
+				GameState.add_money(500, "Mercader asaltado")
+				GameState.add_item("nugget", 1)
+				GameState.notice.emit("¡Recuperaste la mercancía del mercader! Te da las gracias con una Pepita."))
+		_:
+			# Busca un objeto: pide uno fijo por el id del viajero.
+			var wanted: String = WANDERER_ITEM_WANTED[index % WANDERER_ITEM_WANTED.size()]
+			if GameState.item_count(wanted) <= 0:
+				var lines := ["Perdí algo muy valioso: %s. Si encuentras uno, tráemelo." % Items.display_name(wanted)]
+				if dialog != null:
+					dialog.open("Viajero", lines, NpcLooks.portrait(look))
+				else:
+					GameState.notice.emit(lines[0])
+				return
+			GameState.use_item(wanted, 1)
+			_finish_wanderer(key, dialog, look, "¡Es justo lo que perdí! No sabes cuánto te lo agradezco.", 400)
+
+
+func _finish_wanderer(key: String, dialog: DialogBox, look: String, text: String, reward: int) -> void:
+	_flags()[key] = true
+	GameState.add_money(reward, "Viajero agradecido")
+	AudioBus.play_jingle("me_item")
+	if dialog != null:
+		dialog.open("Viajero", [text], NpcLooks.portrait(look))
+	else:
+		GameState.notice.emit(text)
+
+
+## Pokémon gigante dormido en el camino: despierta al acercarte y reta en un combate
+## fuerte (como un Territorio Alfa), una vez por día.
+func wake_sleeping_giant(place: Dictionary, arena: Vector3) -> void:
+	var key := "giant:%d" % int(place["id"])
+	if int(_flags().get(key, -1)) == GameState.game_day():
+		GameState.notice.emit("El gigante sigue dormido. Ya lo despertaste hoy.")
+		return
+	var species_id: String = PointsOfInterest.NEST_POOL[int(place["id"]) % PointsOfInterest.NEST_POOL.size()]
+	var species := MenuStyle.species(species_id)
+	if species == null:
+		return
+	var team: Array[SpeciesData] = [species]
+	_start_trial("%s gigante" % species.display_name, team, arena, func() -> void:
+		_flags()[key] = GameState.game_day()
+		GameState.add_money(800, "Gigante dormido")
+		GameState.add_item("rare-candy", 1)
+		GameState.notice.emit("¡El gigante se fue dando pisotones! Encuentras un Caramelo Raro en el suelo."))
+
+
+## Carreras y retos de tiempo en bici o montura (acordado con Fernando el 2026-10-10),
+## con récord guardado por pista.
+var _race: Dictionary = {}
+
+
+func race_start(place: Dictionary) -> void:
+	var p := player()
+	if p == null:
+		return
+	if p.ride != Player.Ride.BIKE and p.ride != Player.Ride.MOUNT:
+		GameState.notice.emit("Esta carrera es en bici o montura. ¡Súbete primero!")
+		return
+	_race = {"id": int(place["id"]), "start": GameState.play_time}
+	GameState.notice.emit("¡Carrera en marcha! Llega a la meta lo más rápido que puedas.")
+
+
+func race_finish(place: Dictionary) -> void:
+	if _race.is_empty() or int(_race.get("id", -1)) != int(place["id"]):
+		GameState.notice.emit("Primero pasa por la salida de esta pista.")
+		return
+	var seconds := (GameState.play_time - float(_race["start"])) * 60.0
+	_race = {}
+	var records: Dictionary = GameState.world_flags.get("race_records", {})
+	var key := "track:%d" % int(place["id"])
+	var best: float = float(records.get(key, INF))
+	var improved := seconds < best
+	if improved:
+		records[key] = seconds
+		GameState.world_flags["race_records"] = records
+	var reward := clampi(int(300.0 - seconds), 50, 300)
+	GameState.add_money(reward, "Carrera")
+	if improved:
+		GameState.notice.emit("¡Nuevo récord! %.1f s (+$%d)." % [seconds, reward])
+	else:
+		GameState.notice.emit("Llegaste en %.1f s (mejor marca: %.1f s). +$%d." % [seconds, best, reward])
+
+
+## Torneo improvisado de la feria (ver TownFestival): un combate amistoso más fuerte que
+## el del Centro, una vez por día de feria.
+func festival_tournament(settlement: Dictionary) -> void:
+	var key := "festival_tournament:%s:%d" % [String(settlement.get("name", "")), GameState.game_day()]
+	if bool(_flags().get(key, false)):
+		GameState.notice.emit("Ya ganaste el torneo de hoy. ¡Vuelve a la próxima feria!")
+		return
+	var team: Array[SpeciesData] = []
+	team.append_array(_team_of_type(PokemonTypes.Type.NORMAL, 1, 0.5))
+	team.append_array(_team_of_type(PokemonTypes.Type.FIGHTING, 1, 0.5))
+	var p := player()
+	if p == null or team.is_empty():
+		return
+	_start_trial("Torneo improvisado de %s" % String(settlement.get("name", "")), team, p.global_position + Vector3(0, 0, 3.0), func() -> void:
+		_flags()[key] = true
+		GameState.add_money(1000, "Torneo de %s" % String(settlement.get("name", "")))
+		GameState.notice.emit("¡Ganaste el torneo improvisado! +$1000."))

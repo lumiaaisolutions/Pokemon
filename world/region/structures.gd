@@ -20,11 +20,14 @@ const PLACE_NAMES := {
 	"fountain": "Fuente Sanadora", "volcano": "Volcán", "victory_road": "Calle Victoria",
 	"ranch": "Rancho", "berry_farm": "Huerto de Bayas", "mine": "Mina Abandonada", "grotto": "Gruta de Cristal",
 	"villain_base": "Base Secreta", "merchant": "Comerciante Viajero", "oasis": "Oasis",
+	"fallen_tree": "Árbol Caído", "villain_checkpoint": "Puesto de Control", "wanderer": "Viajero con un Problema",
+	"sleeping_giant": "Pokémon Dormido", "race_track": "Pista de Carreras",
 }
 const BUILDING_NAMES := {
 	"center": "Centro Pokémon", "mart": "Tienda Pokémon", "gym": "Gimnasio", "contest": "Sala de Concursos", "lab": "Laboratorio",
 	"restaurant": "Restaurante", "food_stall": "Puesto de comida",
 	"house": "Casa", "cabin": "Cabaña", "tent": "Carpa", "tower_small": "Torre del Reloj", "manhole": "Alcantarilla",
+	"landmark": "Edificio", "job_board": "Tablón de Encargos", "festival_booth": "Puesto de la Feria",
 }
 const HOUSE_WALLS := [Color(0.93, 0.88, 0.78), Color(0.85, 0.9, 0.95), Color(0.95, 0.85, 0.8), Color(0.88, 0.93, 0.82), Color(0.96, 0.93, 0.85), Color(0.86, 0.8, 0.72)]
 const HOUSE_ROOFS := [Color(0.75, 0.3, 0.25), Color(0.3, 0.45, 0.7), Color(0.35, 0.55, 0.35), Color(0.55, 0.4, 0.3), Color(0.6, 0.35, 0.55), Color(0.4, 0.4, 0.45)]
@@ -59,6 +62,10 @@ func build(builder: WorldBuilder) -> void:
 			buildings.add_child(_building(settlement, building))
 		# Identidad del pueblo: monumento, plaza y objetos de su tema.
 		TownIdentity.decorate(self, buildings, settlement)
+		# Pueblo que crece (mundo más lleno, 2026-10-11): si ya ayudaste bastante con sus
+		# encargos, un puesto nuevo agradecido en la plaza (ver TownJobs.grown()).
+		if TownJobs.grown(settlement):
+			_growth_kiosk(settlement, buildings)
 		# Restaurante (uno por ciudad) y puesto de comida (en todo pueblo y ciudad).
 		settlement["furniture"] = _furniture_buffer
 	var landmarks := Node3D.new()
@@ -68,6 +75,14 @@ func build(builder: WorldBuilder) -> void:
 		var node := _place(place)
 		if node != null:
 			landmarks.add_child(node)
+	# Puentes donde un camino cruza un río (mundo más lleno, 2026-10-11: "rutas con
+	# vida... puentes"); antes el camino solo allanaba el terreno y el agua no tenía
+	# nada encima.
+	var bridges := Node3D.new()
+	bridges.name = "Bridges"
+	add_child(bridges)
+	for point: Vector3 in world.layout.bridges:
+		bridges.add_child(_bridge(point))
 
 
 # --- Interacción --------------------------------------------------------------------
@@ -96,6 +111,9 @@ func _process(_delta: float) -> void:
 			_player = world.get_node_or_null("../Player") as Node3D
 		if _player == null:
 			return
+	# Transporte entre pueblos (mundo más lleno, 2026-10-11): marca como visitado el
+	# asentamiento donde esté el jugador ahora mismo.
+	TownTransport.update_visited(world, _player)
 	var best: Dictionary = {}
 	var best_distance := INF
 	var walking := not (_player is Player) or (_player as Player).mode == Player.Mode.WALK
@@ -348,11 +366,46 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 			walls = Color(0.82, 0.78, 0.7)
 			roof = Color(0.45, 0.3, 0.25)
 			wall_h = 14.0
+		"landmark":
+			# Edificio único por tema (pueblos ×2 con identidad, 2026-10-11).
+			var colors: Dictionary = {"aquarium": [Color(0.55, 0.75, 0.88), Color(0.22, 0.42, 0.68)],
+					"factory": [Color(0.58, 0.56, 0.52), Color(0.35, 0.3, 0.26)],
+					"market_hall": [Color(0.92, 0.82, 0.55), Color(0.75, 0.35, 0.3)],
+					"library": [Color(0.72, 0.58, 0.4), Color(0.4, 0.28, 0.2)],
+					"museum": [Color(0.9, 0.86, 0.78), Color(0.55, 0.45, 0.3)],
+					"observatory": [Color(0.75, 0.78, 0.85), Color(0.2, 0.22, 0.35)],
+					"casino": [Color(0.3, 0.18, 0.32), Color(0.85, 0.7, 0.2)]}
+			var pair: Array = colors.get(String(building.get("sub_kind", "library")), [walls, roof])
+			walls = pair[0]
+			roof = pair[1]
+			wall_h = 5.5
 	var door_world := root.position + Vector3(to_center.x, 0, to_center.y) * (d * 0.5 + 1.2)
 	if kind == "manhole":
 		_cylinder(root, 0.9, 0.08, Vector3(0, 0.05, 0), Color(0.25, 0.25, 0.28), -1.0, 16)
 		_cylinder(root, 0.7, 0.1, Vector3(0, 0.07, 0), Color(0.35, 0.35, 0.38), -1.0, 16)
 		add_point(root.position + Vector3.UP * 0.5, "Bajar a la alcantarilla", services.enter_interior.bind("sewer", settlement, building), 2.0)
+		return root
+	if kind == "job_board":
+		# Tablón de encargos (mundo más lleno, 2026-10-11): pide 2–3 objetos a cambio de
+		# dinero y ayuda a que el pueblo crezca (ver TownJobs).
+		_box(root, Vector3(1.6, 1.4, 0.12), Vector3(0, 0.95, 0), Color(0.58, 0.42, 0.28))
+		_box(root, Vector3(1.3, 1.1, 0.03), Vector3(0, 0.95, 0.08), Color(0.92, 0.88, 0.78))
+		for side: float in [-0.75, 0.75]:
+			_box(root, Vector3(0.08, 1.9, 0.08), Vector3(side, 0.95, 0), Color(0.35, 0.25, 0.18))
+		_collider(root, Vector3(1.8, 1.9, 0.5), Vector3(0, 0.95, 0), false)
+		_furniture(Vector2(x, z), 1.1)
+		add_point(root.position + Vector3(0, 1.0, 0.6), "Tablón de encargos", TownJobs.open_board.bind(self, settlement), 2.4)
+		return root
+	if kind == "festival_booth":
+		# Puesto de feria (mundo más lleno, 2026-10-11): toldo de colores, solo funciona
+		# el día de feria del pueblo (ver TownFestival).
+		_box(root, Vector3(2.2, 1.4, 1.6), Vector3(0, 0.7, 0), Color(0.75, 0.3, 0.3))
+		_box(root, Vector3(2.6, 0.12, 1.9), Vector3(0, 1.55, 0), [Color(0.9, 0.75, 0.2), Color(0.3, 0.6, 0.85), Color(0.35, 0.75, 0.4)][int(building["color"]) % 3])
+		for side: float in [-1.0, 1.0]:
+			_box(root, Vector3(0.1, 1.5, 0.1), Vector3(side * 1.1, 0.75, 0.7), Color(0.4, 0.3, 0.2))
+		_collider(root, Vector3(2.2, 1.4, 1.6), Vector3(0, 0.7, 0), false)
+		_furniture(Vector2(x, z), 1.3)
+		add_point(root.position + Vector3(0, 0.8, 1.2), "Puesto de la feria", TownFestival.open_booth.bind(self, settlement), 2.4)
 		return root
 	if kind == "tent":
 		var tent := PrismMesh.new()
@@ -388,7 +441,9 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		elif kind == "food_stall":
 			add_point(door_world + Vector3.UP * 0.5, "Comprar en el puesto de comida", _open_food_stall, INTERACT_RADIUS)
 		_decorate(root, kind, size, settlement, building, to_center)
-		if kind in ["center", "mart", "lab", "house", "cabin", "contest", "gym"]:
+		if kind == "house":
+			_setup_house(root, settlement, building, door_world, inward, model_title)
+		elif kind in ["center", "mart", "lab", "cabin", "contest", "gym"]:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		return root
 	# Cimiento (cubre desniveles) y cuerpo.
@@ -417,15 +472,82 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 	var title: String = BUILDING_NAMES[kind]
 	if kind == "gym":
 		title = gym_title(settlement)
-	if kind in ["center", "mart", "gym", "contest", "lab"]:
+	elif kind == "landmark":
+		title = TownIdentity.LANDMARK_NAMES.get(String(building.get("sub_kind", "")), "Edificio")
+	if kind in ["center", "mart", "gym", "contest", "lab", "landmark"]:
 		_sign(root, title, Vector3(0, wall_h + 1.0 if kind != "center" else wall_h + 3.0, d * 0.5 + 0.4))
 	var prompt := "Entrar: %s" % title
 	match kind:
-		"center", "mart", "lab", "house", "cabin", "contest", "gym":
+		"house":
+			_setup_house(root, settlement, building, door_world, inward, title)
+		"center", "mart", "lab", "cabin", "contest", "gym", "landmark":
 			add_point(door_world + Vector3.UP * 0.5, prompt, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		"tower_small":
 			add_point(door_world + Vector3.UP * 0.5, "Subir a la torre (vista del mapa)", services.reveal_area.bind(root.position, 600.0))
 	return root
+
+
+## Casas que puedes comprar y decorar (mundo más lleno, acordado con Fernando el
+## 2026-10-10). Una casa por asentamiento queda marcada "for_sale" (ver RegionLayout);
+## antes de comprarla el punto de interacción ofrece el precio; comprada, entra como
+## cualquier casa y además se puede poner un asta con bandera de color junto a la
+## puerta (decisión de Fernando: solo decoración exterior simple, ver
+## docs/decisiones_sin_preguntar.md).
+func _setup_house(root: Node3D, settlement: Dictionary, building: Dictionary, door_world: Vector3, inward: Vector3, title: String) -> void:
+	if not building.get("for_sale", false):
+		add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % title, services.enter_interior.bind(building["kind"], settlement, building), INTERACT_RADIUS, inward)
+		return
+	var id := "%s:%d" % [String(settlement["name"]), (settlement["buildings"] as Array).find(building)]
+	var bought: Dictionary = GameState.world_flags.get("houses_bought", {})
+	var price := 2500 + int(float(building["w"]) * float(building["d"])) * 35
+	if not bought.has(id):
+		var holder: Array = [null]
+		var action := func() -> void: services.buy_house(settlement, building, id, price, self, holder)
+		holder[0] = add_point(door_world + Vector3.UP * 0.5, "Comprar esta casa ($%d)" % price, action, INTERACT_RADIUS, inward)
+		return
+	add_point(door_world + Vector3.UP * 0.5, "Entrar: %s (es tuya)" % title, services.enter_interior.bind(building["kind"], settlement, building), INTERACT_RADIUS, inward)
+	var side := Vector3(inward.z, 0, -inward.x).normalized()
+	var banner_world := door_world + side * 1.8
+	var decor: Dictionary = GameState.world_flags.get("house_decor", {})
+	var color_index := int(decor.get(id, -1))
+	_house_banner(root, banner_world, color_index)
+	add_point(banner_world + Vector3.UP * 1.0, "Decorar esta casa", _open_decorate.bind(root, banner_world, id), 2.2)
+
+
+## Asta con bandera de color y una maceta de flores junto a la puerta (se reconstruye
+## al elegir color; sin color elegido todavía, no se dibuja nada).
+func _house_banner(root: Node3D, world_pos: Vector3, color_index: int) -> void:
+	var old := root.get_node_or_null("Banner")
+	if old != null:
+		old.queue_free()
+	if color_index < 0:
+		return
+	var local := root.to_local(world_pos)
+	var banner := Node3D.new()
+	banner.name = "Banner"
+	banner.position = local
+	root.add_child(banner)
+	_box(banner, Vector3(0.08, 1.6, 0.08), Vector3(0, 0.8, 0), Color(0.4, 0.3, 0.2))
+	var colors := [Color(0.85, 0.25, 0.25), Color(0.25, 0.45, 0.85), Color(0.3, 0.75, 0.35), Color(0.9, 0.75, 0.2)]
+	_box(banner, Vector3(0.5, 0.35, 0.03), Vector3(0.28, 1.35, 0), colors[color_index % colors.size()])
+	_cylinder(banner, 0.28, 0.3, Vector3(-0.5, 0.15, 0), Color(0.7, 0.45, 0.3))
+	_decor_sprite(banner, load("res://art/world/b2w2/flower_bush_pink.png"), Vector3(-0.5, 0.3, 0))
+
+
+func _open_decorate(root: Node3D, world_pos: Vector3, id: String) -> void:
+	var dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	if dialog == null:
+		return
+	dialog.open("Decorar la casa", ["Elige el color de la bandera de tu casa:"], null,
+			["Roja", "Azul", "Verde", "Amarilla"], func(choice: int) -> void:
+				if choice < 0:
+					return
+				var decor: Dictionary = GameState.world_flags.get("house_decor", {})
+				decor[id] = choice
+				GameState.world_flags["house_decor"] = decor
+				_house_banner(root, world_pos, choice)
+				AudioBus.play_sfx("ui_decide")
+				GameState.notice.emit("¡Decoraste tu casa!"))
 
 
 ## Restaurante (uno por ciudad) y puesto de comida (en pueblos y ciudades): venden
@@ -835,6 +957,75 @@ func _place(place: Dictionary) -> Node3D:
 			smoke.position = top
 			smoke.scale = Vector3.ONE * 6.0
 			root.add_child(smoke)
+		"fallen_tree":
+			# Árbol caído que bloquea el camino (mundo más lleno, 2026-10-11): se aparta
+			# interactuando y da un poco de madera; se recuerda, no vuelve a bloquear.
+			if GameState.world_flags.get("fallen_tree_cleared:%d" % int(place["id"]), false):
+				return null
+			var trunk := MeshInstance3D.new()
+			trunk.mesh = PropModels3D.log_mesh(3.4, 0.65, true)
+			trunk.material_override = PropModels3D.solid_material(Color(0.42, 0.3, 0.2))
+			trunk.position = Vector3(0, 0.6, 0)
+			trunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			root.add_child(trunk)
+			for i in 4:
+				_decor_sprite(root, load("res://art/world/b2w2/bush.png"), Vector3(-1.5 + i, 0.0, rng.randf_range(-0.6, 0.6)))
+			_collider(root, Vector3(3.6, 1.2, 1.4), Vector3(0, 0.6, 0), false)
+			var holder: Array = [null]
+			var action := func() -> void: services.clear_fallen_tree(place, self, root, holder)
+			holder[0] = add_point(root.position + Vector3(0, 0.6, 1.2), "Apartar el tronco caído", action, 2.6)
+		"villain_checkpoint":
+			# Puesto de control del equipo villano (equipo activo, mundo más lleno,
+			# 2026-10-11): bloquea el camino hasta que le ganas; vuelve tras varios días.
+			_box(root, Vector3(2.4, 1.6, 1.6), Vector3(0, 0.8, 0), Color(0.2, 0.2, 0.24))
+			_box(root, Vector3(2.8, 0.1, 0.1), Vector3(0, 1.0, 1.0), Color(0.85, 0.2, 0.2))
+			_box(root, Vector3(0.1, 1.2, 0.1), Vector3(-1.4, 0.6, 1.0), Color(0.3, 0.3, 0.32))
+			_box(root, Vector3(0.1, 1.2, 0.1), Vector3(1.4, 0.6, 1.0), Color(0.3, 0.3, 0.32))
+			_collider(root, Vector3(2.8, 1.6, 0.3), Vector3(0, 0.8, 1.0), false)
+			add_point(root.position + Vector3(0, 0.6, 1.8), "Puesto de control del %s" % GameState.villain_team, services.villain_checkpoint_challenge.bind(place, root.position + Vector3(0, 0.3, 3.0)), 2.6)
+		"wanderer":
+			# Viajero con un problema (misión de NPC en el campo): mismo sprite de mundo
+			# que los habitantes del pueblo, nunca de frente (reglas_calidad #8).
+			var look := NpcLooks.pick(["joven_d", "chica_b", "dama_a", "mochilero"], rng)
+			var sprite := DirectionalSprite.new()
+			sprite.name = "Sprite"
+			root.add_child(sprite)
+			sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+			add_point(root.position + Vector3(0, 0.5, 1.4), "Hablar con el viajero", services.wanderer_talk.bind(place, look), 2.6)
+		"sleeping_giant":
+			# Pokémon gigante dormido en el camino (mundo más lleno, 2026-10-11): despierta
+			# si te acercas y reta en combate; una vez por día.
+			var species_id: String = PointsOfInterest.NEST_POOL[int(place["id"]) % PointsOfInterest.NEST_POOL.size()]
+			var species := MenuStyle.species(species_id)
+			if species != null and species.overworld_sheet != null:
+				# Gigante dormido: la misma hoja de caminar de mundo (nunca de frente), pero
+				# ×3 de tamaño y tumbado de lado (reglas_calidad: solo sprites de mundo).
+				var sprite := DirectionalSprite.new()
+				sprite.position = Vector3(0, 0.3, 0)
+				sprite.rotation.z = PI * 0.5
+				root.add_child(sprite)
+				sprite.setup(species.overworld_sheet, 2, 4, PokemonActor.PIXEL_SIZE * species.size_scale * 3.0 * 32.0 / species.overworld_cell, species.foot_offset_px)
+			_collider(root, Vector3(3.0, 1.0, 3.0), Vector3(0, 0.5, 0), false)
+			add_point(root.position + Vector3(0, 0.5, 2.2), "Acercarse (¡está dormido!)", services.wake_sleeping_giant.bind(place, root.position + Vector3(0, 0.3, 2.5)), 3.4)
+		"race_track":
+			# Carrera de tiempo en bici o montura (mundo más lleno, 2026-10-11): la salida
+			# marca el inicio; la meta está en finish_x/finish_z (ver _place_bridges-style
+			# selección en RegionLayout).
+			_box(root, Vector3(0.15, 2.2, 0.15), Vector3(-1.0, 1.1, 0), Color(0.85, 0.75, 0.2))
+			_box(root, Vector3(0.15, 2.2, 0.15), Vector3(1.0, 1.1, 0), Color(0.85, 0.75, 0.2))
+			_box(root, Vector3(2.4, 0.12, 0.6), Vector3(0, 2.1, 0), Color(0.85, 0.2, 0.2))
+			add_point(root.position + Vector3(0, 0.6, 1.2), "Empezar la carrera (bici o montura)", services.race_start.bind(place), 2.6)
+			var finish_x := float(place.get("finish_x", place["x"]))
+			var finish_z := float(place.get("finish_z", place["z"]))
+			var finish_world := Vector3(finish_x, world.height_at(finish_x, finish_z), finish_z)
+			var finish := Node3D.new()
+			finish.name = "Finish_%d" % int(place["id"])
+			finish.position = finish_world - root.position
+			root.add_child(finish)
+			_box(finish, Vector3(0.15, 2.2, 0.15), Vector3(-1.0, 1.1, 0), Color(0.2, 0.3, 0.85))
+			_box(finish, Vector3(0.15, 2.2, 0.15), Vector3(1.0, 1.1, 0), Color(0.2, 0.3, 0.85))
+			_box(finish, Vector3(2.4, 0.12, 0.6), Vector3(0, 2.1, 0), Color(0.2, 0.3, 0.85))
+			add_point(finish_world + Vector3(0, 0.6, 0), "Meta de la carrera", services.race_finish.bind(place), 2.6)
 	return root
 
 
@@ -866,3 +1057,63 @@ func _steam(color: Color) -> CPUParticles3D:
 	particles.color_ramp = fade
 	particles.visibility_range_end = VIEW_DISTANCE
 	return particles
+
+
+## Puesto agradecido del pueblo (mundo más lleno, 2026-10-11): aparece cuando ya se
+## cumplieron suficientes encargos del tablón (ver TownJobs.grown()); da un regalo del
+## tema del pueblo una vez al día, como agradecimiento.
+const GROWTH_GIFTS := {"fishing": "pearl", "mining": "hard-stone", "farm": "oran-berry", "lumber": "rare-candy",
+		"oasis": "water-stone", "alpine": "full-heal", "commercial": "premier-ball"}
+
+
+func _growth_kiosk(settlement: Dictionary, parent: Node3D) -> void:
+	var cx := float(settlement["x"])
+	var cz := float(settlement["z"])
+	var radius := float(settlement["radius"])
+	var root := Node3D.new()
+	root.name = "Growth_" + String(settlement["name"]).replace(" ", "")
+	var angle := float(hash(settlement["name"]) % 360) * 0.01745
+	var at := Vector3(cos(angle), 0, sin(angle)) * radius * 0.5
+	root.position = Vector3(cx, float(settlement["height"]) - 0.05, cz) + at
+	if world.layout.road_info(root.position.x, root.position.z).x < RegionLayout.ROAD_WIDTH + 1.5:
+		at = Vector3(cos(angle + 0.6), 0, sin(angle + 0.6)) * radius * 0.5
+		root.position = Vector3(cx, float(settlement["height"]) - 0.05, cz) + at
+	parent.add_child(root)
+	_box(root, Vector3(1.8, 1.0, 1.2), Vector3(0, 0.5, 0), Color(0.6, 0.42, 0.25))
+	_box(root, Vector3(2.0, 0.1, 1.4), Vector3(0, 1.1, 0), Color(0.3, 0.6, 0.45))
+	for side: float in [-0.85, 0.85]:
+		_box(root, Vector3(0.1, 1.1, 0.1), Vector3(side, 0.55, 0.5), Color(0.4, 0.3, 0.2))
+	_collider(root, Vector3(1.8, 1.0, 1.2), Vector3(0, 0.5, 0), false)
+	_furniture(Vector2(root.position.x, root.position.z), 1.2)
+	add_point(root.position + Vector3(0, 0.8, 0.9), "Puesto nuevo del pueblo (gracias a tu ayuda)", _growth_gift.bind(settlement), 2.2)
+
+
+func _growth_gift(settlement: Dictionary) -> void:
+	var key := "growth_gift:%s" % String(settlement["name"])
+	if int(GameState.world_flags.get(key, -1)) == GameState.game_day():
+		GameState.notice.emit("La gente de %s ya te lo agradeció hoy. Vuelve mañana." % String(settlement["name"]))
+		return
+	GameState.world_flags[key] = GameState.game_day()
+	var item: String = GROWTH_GIFTS.get(TownIdentity.theme_of(settlement), "nugget")
+	GameState.add_item(item, 1)
+	AudioBus.play_jingle("me_item")
+	GameState.notice.emit("Gracias a tu ayuda, %s abrió este puesto nuevo. Te regalan %s." % [String(settlement["name"]), Items.display_name(item)])
+
+
+## Puente de madera sencillo con barandales, alineado con el camino (mundo más lleno,
+## 2026-10-11). point: Vector3(x, z, ángulo del camino ahí, convenio atan2(x, z)).
+func _bridge(point: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Bridge_%d_%d" % [int(point.x), int(point.y)]
+	var y := world.layout.water_level_at(point.x, point.y) + 0.3
+	root.position = Vector3(point.x, y, point.y)
+	root.rotation.y = point.z
+	var length := 10.0
+	var width := RegionLayout.ROAD_WIDTH + 2.4
+	_box(root, Vector3(width, 0.3, length), Vector3(0, 0, 0), Color(0.5, 0.36, 0.22))
+	for side: float in [-1.0, 1.0]:
+		for i in 5:
+			_box(root, Vector3(0.14, 0.7, 0.14), Vector3(side * width * 0.5, 0.5, -length * 0.5 + i * (length / 4.0)), Color(0.4, 0.28, 0.16))
+		_box(root, Vector3(0.1, 0.1, length), Vector3(side * width * 0.5, 0.82, 0), Color(0.4, 0.28, 0.16))
+	_collider(root, Vector3(width, 0.35, length), Vector3(0, 0, 0))
+	return root

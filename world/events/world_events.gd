@@ -13,6 +13,7 @@ const OUTBREAK_RADIUS := 90.0
 const OUTBREAK_CHANCE := 0.55
 const METEOR_CHANCE := 0.3
 const DOMINANT_CHANCE := 0.35
+const EXTREME_WEATHER_CHANCE := 0.15
 const ALPHA_RADIUS := 70.0
 const SPACE_POOL := ["clefairy", "cleffa", "minior", "lunatone", "solrock", "staryu", "beldum", "elgyem", "chimecho", "bronzor"]
 
@@ -76,6 +77,14 @@ func _new_day(day: int) -> void:
 	_flags()["meteor_night"] = day if _rng.randf() < METEOR_CHANCE else -1
 	if int(_flags()["meteor_night"]) == day:
 		GameState.add_news("Rotom: ¡esta noche habrá lluvia de estrellas! Mira el cielo después de las 20:00.")
+	# Clima extremo (mundo más lleno, acordado con Fernando el 2026-10-10: "tormentas
+	# eléctricas, ventiscas, sequías"). Aviso del día; el clima normal por bioma
+	# (Weather.weather_for) ya incluye tormenta, ventisca y arena, así que esto solo
+	# anuncia cuándo pegan más fuerte, sin tocar su generación determinista (la usan
+	# las pruebas de clima de test_town).
+	_flags()["extreme_weather_day"] = day if _rng.randf() < EXTREME_WEATHER_CHANCE else -1
+	if int(_flags()["extreme_weather_day"]) == day:
+		GameState.add_news("Rotom: hoy el clima puede volverse extremo (tormentas eléctricas, ventiscas o una sequía fuerte) en algunas zonas. Ten cuidado.")
 
 
 ## Empieza un brote masivo cerca de un pueblo al azar (o de species en point, pruebas).
@@ -135,6 +144,12 @@ func meteor_tonight() -> bool:
 ## mañana en el Rotom: "Clima y calendario").
 func meteor_scheduled_today() -> bool:
 	return int(_flags().get("meteor_night", -1)) == GameState.game_day()
+
+
+## Clima extremo de hoy (mundo más lleno, 2026-10-11): por ahora es el aviso del Rotom
+## en _new_day(); queda disponible para que otro sistema lo consulte más adelante.
+func extreme_weather_today() -> bool:
+	return int(_flags().get("extreme_weather_day", -1)) == GameState.game_day()
 
 
 func _update_meteors(day: int, _hour: float) -> void:

@@ -10,19 +10,37 @@ extends Node3D
 ## - Cueva chica: un Pokémon raro dormido adentro (1 vez por día).
 ## - Mirador: revela el mapa en 300 m y da un bonus de foto.
 
-const KINDS := ["camp", "well", "ruins", "big_tree", "small_cave", "lookout"]
+## Mundo más lleno (acordado con Fernando el 2026-10-10): "casetas de descanso" (rest_stop),
+## "nidos y guaridas... a veces líder" (nest) y "lugares de entrenamiento" (training_spot).
+const KINDS := ["camp", "well", "ruins", "big_tree", "small_cave", "lookout", "rest_stop", "nest", "training_spot"]
 const TITLES := {"camp": "Campamento abandonado", "well": "Pozo de los deseos", "ruins": "Ruinas pequeñas",
-		"big_tree": "Árbol grande", "small_cave": "Cueva chica", "lookout": "Mirador"}
-const CHANCE := 0.35
+		"big_tree": "Árbol grande", "small_cave": "Cueva chica", "lookout": "Mirador",
+		"rest_stop": "Caseta de descanso", "nest": "Guarida", "training_spot": "Lugar de entrenamiento"}
+## Densidad moderada (mundo más lleno, 2026-10-11): antes 0.35; con 3 tipos nuevos de
+## lugar suben un poco las probabilidades para que algo nuevo salga cada ~300 m (ver
+## tests/test_town.gd::_check_poi_density).
+const CHANCE := 0.42
 const CHEST_LOOT := ["potion", "super-potion", "great-ball", "ultra-ball", "repel", "nugget", "star-piece", "rare-candy"]
 ## Cofres en 3D (decisión de Fernando, 2026-10-10): común, raro y legendario, con mejor
 ## botín según el nivel (Chest3D.tier_for, fijo por el id del campamento).
 const CHEST_LOOT_BY_TIER := {
 	"common": ["potion", "super-potion", "great-ball", "repel", "nugget"],
-	"rare": ["ultra-ball", "full-heal", "hyper-potion", "star-piece", "rare-candy", "big-pearl"],
+	"rare": ["ultra-ball", "full-heal", "hyper-potion", "star-piece", "rare-candy", "big-pearl", "treasure-map"],
 	"legendary": ["rare-candy", "fire-stone", "water-stone", "thunderstone", "moon-stone", "leaf-stone", "sun-stone", "nugget"],
 }
 const TREE_BERRIES := ["oran-berry", "sitrus-berry", "pecha-berry", "cheri-berry", "lum-berry"]
+## Guarida (mundo más lleno, 2026-10-11): una especie fija por guarida (varios de la
+## misma especie, a veces con un líder más fuerte, como pidió Fernando).
+const NEST_POOL := ["combee", "wurmple", "zubat", "spearow", "rattata", "bidoof", "drowzee", "numel", "whismur", "ledyba"]
+## Lugar de entrenamiento: contrincantes de nivel inicial para un combate amistoso.
+const TRAINING_POOL := ["machop", "makuhita", "timburr", "scraggy", "riolu", "meditite"]
+const REST_TIPS := [
+	"Un viajero dejó un letrero: \"El agua tóxica se cura con Antídoto o durmiendo en el Centro.\"",
+	"\"Si un entrenador te ve, no podrás huir: prepárate antes de acercarte.\"",
+	"\"Las guaridas tienen varios Pokémon de la misma especie; a veces uno es más fuerte que el resto.\"",
+	"\"El tablón de encargos del pueblo paga bien por objetos que sobran en la mochila.\"",
+	"\"De noche conviene acampar: la fogata aleja a los salvajes curiosos... o los invita a acercarse.\"",
+]
 const LORE := [
 	"«Cuando el cielo se partió, un guardián de escamas bajó a calmar los mares.»",
 	"«Tres hermanos de piedra, hielo y acero duermen esperando al que los despierte.»",
@@ -84,6 +102,10 @@ func _populate(key: Vector2i, _root: Node3D) -> void:
 	var at := Vector3(float(poi["x"]), _world.surface_height_at(float(poi["x"]), float(poi["z"])), float(poi["z"]))
 	node.global_position = at
 	_build(node, poi)
+	if poi["kind"] == "rest_stop":
+		# Caseta de descanso (mundo más lleno, 2026-10-11): recupera vida poco a poco
+		# mientras estés cerca, igual que las aguas termales (TownServices.add_healing_spot).
+		_world.structures.services.add_healing_spot(at + Vector3(0, 0.5, 0), 5.0, "Caseta de descanso")
 	var point := _world.structures.add_point(at + Vector3(0, 0.5, 1.6), _prompt(poi), _interact.bind(poi, node), 2.6)
 	_nodes[key] = {"node": node, "point": point, "poi": poi}
 
@@ -138,6 +160,12 @@ func _prompt(poi: Dictionary) -> String:
 			return "Sacudir el árbol"
 		"small_cave":
 			return "Asomarse a la cueva"
+		"rest_stop":
+			return "Leer el letrero de la caseta"
+		"nest":
+			return "Acercarse a la guarida"
+		"training_spot":
+			return "Entrenar aquí"
 	return "Mirar el paisaje"
 
 
@@ -254,6 +282,28 @@ func _interact(poi: Dictionary, node: Node3D = null) -> void:
 				GameState.notice.emit("¡Qué vista! Se reveló el mapa alrededor. Una buena foto aquí vale $300 para el profesor.")
 			else:
 				GameState.notice.emit("Se ve toda la zona desde aquí.")
+		"rest_stop":
+			var index := absi(hash(poi["id"]))
+			GameState.notice.emit(REST_TIPS[index % REST_TIPS.size()])
+		"nest":
+			if not _daily(poi):
+				GameState.notice.emit("La guarida está tranquila. Vuelve otro día.")
+				return
+			var index := absi(hash(poi["id"]))
+			var species := MenuStyle.species(NEST_POOL[index % NEST_POOL.size()])
+			var spawner := get_parent().get_node_or_null("Spawner") as WildSpawner
+			if spawner == null or species == null:
+				return
+			var count := 2 + _rng.randi() % 3
+			var leader := _rng.randf() < 0.15
+			for i in count:
+				var offset := Vector3(cos(TAU * i / count) * 2.5, 0, sin(TAU * i / count) * 2.5)
+				var actor := spawner.spawn_species(species, at + offset, _rng.randf() < spawner.shiny_chance(), false)
+				if actor != null and leader and i == 0:
+					actor.set_meta("Alfa", true)
+			GameState.notice.emit("¡Despertaste la guarida de %s! Salieron %d%s." % [species.display_name, count, " (uno más fuerte)" if leader else ""])
+		"training_spot":
+			_world.structures.services.training_spot_challenge(poi, at + Vector3(0, 0.3, 2.5))
 
 
 # --- Aspecto -----------------------------------------------------------------------------
@@ -401,6 +451,27 @@ func _build(node: Node3D, poi: Dictionary) -> void:
 			post.position = Vector3(1.8, 0.5, 1.8)
 			node.add_child(post)
 			_plaque(node, PoiArt.signpost(), Vector3(1.8, 0.75, 1.8))
+		"rest_stop":
+			# Caseta de madera con techo, banca y letrero (mundo más lleno, 2026-10-11).
+			_box(node, Vector3(0.12, 2.0, 0.12), Vector3(-1.1, 1.0, -1.0), Color(0.45, 0.3, 0.18))
+			_box(node, Vector3(0.12, 2.0, 0.12), Vector3(1.1, 1.0, -1.0), Color(0.45, 0.3, 0.18))
+			_box(node, Vector3(2.6, 0.15, 2.0), Vector3(0, 2.1, -1.0), Color(0.55, 0.22, 0.2))
+			_box(node, Vector3(1.6, 0.5, 0.6), Vector3(0, 0.28, 0.4), Color(0.5, 0.35, 0.22))
+			_box(node, Vector3(1.6, 0.5, 0.1), Vector3(0, 0.55, 0.65), Color(0.5, 0.35, 0.22))
+			_solid(node, Vector3(1.6, 0.5, 0.6), Vector3(0, 0.28, 0.4))
+			_plaque(node, PoiArt.signpost(), Vector3(1.4, 0.75, -0.6))
+		"nest":
+			# Guarida: montículo de tierra con un hueco oscuro y un rastro de huellas.
+			_rock_prop(node, Vector3(0, 0, 0), Vector3(2.2, 1.1, 2.0), Color(0.5, 0.38, 0.26), "poi:" + String(poi["id"]) + ":nest_mound")
+			_box(node, Vector3(0.9, 0.5, 0.7), Vector3(0, 0.1, 1.0), Color(0.1, 0.08, 0.08))
+			for i in 3:
+				_box(node, Vector3(0.3, 0.05, 0.3), Vector3(-0.6 + i * 0.6, 0.02, 1.8 + i * 0.5), Color(0.35, 0.25, 0.18))
+		"training_spot":
+			# Muñeco de práctica de madera, como en la sala de entrenamiento del Centro.
+			_box(node, Vector3(0.6, 1.4, 0.4), Vector3(0, 0.7, 0), Color(0.6, 0.42, 0.25))
+			_box(node, Vector3(0.5, 0.5, 0.35), Vector3(0, 1.6, 0), Color(0.75, 0.6, 0.45))
+			_solid(node, Vector3(0.7, 2.0, 0.5), Vector3(0, 1.0, 0))
+			_plaque(node, PoiArt.signpost(), Vector3(1.4, 0.75, 0))
 
 
 ## Brocal de pozo: anillo de piedra (cilindro) con techo de madera a dos aguas (ya era 3D

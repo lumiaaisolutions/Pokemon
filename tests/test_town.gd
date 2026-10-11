@@ -59,6 +59,8 @@ func _run() -> void:
 	# contra cada lado que no es la puerta.
 	await _check_building_walls()
 	await _check_furniture_physics()
+	_check_towns_x2_and_distinct()
+	_check_poi_density()
 	_player.respawn_at(start + Vector3.UP * 0.5)
 	await _frames(5)
 
@@ -154,7 +156,11 @@ func _run() -> void:
 	_check(GameState.party.size() == size_before - 1 and GameState.world_flags.has("daycare"), "la guardería se queda con un Pokémon")
 	GameState.play_time += 1440.0 * 2.0
 	_services.daycare(daycare)
-	var back: Dictionary = GameState.party[-1]
+	# El Rattata no siempre queda al final: si además apareció un huevo (15 % de
+	# probabilidad, ya existía antes de este encargo), el huevo se agrega después y lo
+	# desplaza; se busca por especie en vez de asumir la última posición.
+	var back_matches := (GameState.party as Array).filter(func(e: Dictionary) -> bool: return e["species"] == "rattata")
+	var back: Dictionary = back_matches[0] if not back_matches.is_empty() else {}
 	_check(int(back.get("training_free", 0)) >= 4, "tras 2 días gana Puntos de Entrenamiento (%d)" % int(back.get("training_free", 0)))
 
 	# Lugar que cura (aguas termales o fuente).
@@ -285,7 +291,9 @@ func _run() -> void:
 		await _frames(180)
 
 	GameState.play_time = float(GameState.game_day()) * 1440.0 + (23.5 - GameState.START_HOUR) * 60.0
-	for i in 3600:
+	# Pueblos ×2 (2026-10-11): el pueblo inicial dobló su radio, así que algunos vecinos
+	# caminan más lejos a casa; más margen de cuadros para que les dé tiempo a llegar.
+	for i in 9000:
 		await get_tree().physics_frame
 		if npcs.visible_npcs().is_empty():
 			break
@@ -527,6 +535,62 @@ func _check_furniture_physics() -> void:
 		await get_tree().physics_frame
 	_check(_player.is_on_floor() and _player.global_position.y > ground_y + 0.8, "al saltar sobre el macetón debe quedar encima (y=%.2f, suelo=%.2f)" % [_player.global_position.y, ground_y])
 	_player.set_physics_process(true)
+
+
+## Pueblos ×2 con identidad (acordado con Fernando el 2026-10-10: "todos el doble de
+## grandes"; "no todos tienen todo"; identidad por tema). El pueblo inicial sí tiene el
+## set completo (Centro, Tienda, Gimnasio, Laboratorio).
+func _check_towns_x2_and_distinct() -> void:
+	var layout := _world.layout
+	for settlement: Dictionary in layout.settlements:
+		var expected: float = RegionLayout.SETTLEMENT_RADIUS[String(settlement["kind"])]
+		_check(is_equal_approx(float(settlement["radius"]), expected), "%s (%s) tiene el radio ×2 (%.0f de %.0f)" % [settlement["name"], settlement["kind"], float(settlement["radius"]), expected])
+	var signatures := {}
+	for settlement: Dictionary in layout.settlements:
+		if not (String(settlement["kind"]) in ["city", "town"]):
+			continue
+		var kinds: Array = (settlement["buildings"] as Array).map(func(b: Dictionary) -> String: return String(b["kind"]))
+		kinds.sort()
+		signatures[", ".join(kinds)] = true
+	_check(signatures.size() > 1, "los pueblos y ciudades no son todos iguales (%d firmas distintas de %d)" % [signatures.size(), layout.settlements.filter(func(s: Dictionary) -> bool: return String(s["kind"]) in ["city", "town"]).size()])
+	var start_buildings: Array = (layout.settlements[0]["buildings"] as Array).map(func(b: Dictionary) -> String: return String(b["kind"]))
+	for required in ["center", "mart", "gym", "lab"]:
+		_check(start_buildings.has(required), "el pueblo inicial tiene %s" % required)
+	var themes := {}
+	for settlement: Dictionary in layout.settlements:
+		themes[TownIdentity.theme_of(settlement)] = true
+	_check(themes.size() >= 2, "hay más de un tema de pueblo en la región (%d)" % themes.size())
+
+
+## Mundo más lleno (acordado con Fernando el 2026-10-10: "densidad moderada, algo cada
+## ~300 m"). PointsOfInterest.plan() es una función pura (no hace falta cargar la zona),
+## así que se puede medir en una cuadrícula alrededor del inicio; se cuenta solo tierra
+## (el mar nunca tiene puntos de interés, no es "campo vacío") y dentro del medio del
+## mapa (lejos de la cordillera del borde, para no medir zonas que no son jugables).
+func _check_poi_density() -> void:
+	var poi := _main.get_node_or_null("PointsOfInterest") as PointsOfInterest
+	if poi == null:
+		_check(false, "no se encontró PointsOfInterest para medir la densidad")
+		return
+	var start := _world.start_position()
+	var base := Vector2i(floori(start.x / WorldBuilder.CHUNK), floori(start.z / WorldBuilder.CHUNK))
+	var span := 12
+	var hits := 0
+	var total := 0
+	for cx in range(-span, span + 1):
+		for cz in range(-span, span + 1):
+			var key := base + Vector2i(cx, cz)
+			var wx := (key.x + 0.5) * WorldBuilder.CHUNK
+			var wz := (key.y + 0.5) * WorldBuilder.CHUNK
+			if _world.layout.biome_at(wx, wz) == RegionLayout.Biome.SEA:
+				continue
+			total += 1
+			if not poi.plan(key).is_empty():
+				hits += 1
+	var fraction := float(hits) / float(maxi(total, 1))
+	var spacing := sqrt((WorldBuilder.CHUNK * WorldBuilder.CHUNK) / maxf(fraction, 0.001))
+	_check(fraction > 0.15, "hay puntos de interés en zonas suficientes (%.0f%% de las zonas de tierra, %d de %d)" % [fraction * 100.0, hits, total])
+	_check(spacing < 380.0, "algo nuevo cada ~300 m (espacio estimado %.0f m)" % spacing)
 
 
 func _door_point(prompt: String) -> Vector3:
