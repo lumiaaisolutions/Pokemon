@@ -125,3 +125,6 @@ Fernando probó el juego, reportó con capturas y fijó [reglas de calidad perma
 - Campamento animado, botones de acción, Rotom Teléfono en pixel con apps, menú en tarjetas.
 - Pueblos ×2 con identidad, contenido en el campo cada ~300 m, eventos, desfiladeros con rocas grandes; fase 6 (guardianes, villano con epílogo, dificultad adaptable).
 - Las pruebas se cambiaron a esperar tiempo real (bajo carga los cuadros de física se adelantan).
+
+## 2026-10-11 (mañana) — Prueba de Fernando y correcciones
+Fernando probó el juego y reportó con capturas: caía bajo el suelo tras la cinemática, el profesor se hundía al despedirse, ayuda del HUD desfasada, paredes invisibles y franja blanca en el Centro, NPC tapados por mostradores, laboratorio con sombras negras y piezas que parpadean, mercado y edificios únicos de cajas lisas, pueblos con zonas vacías, árboles sin estilo BW2. Se corrigió la mayor parte (ver [plan](plan_pulido_mundo.md), secciones del 2026-10-11) y se agregaron reglas de calidad (nada parpadea ni desaparece, sin sombras negras sólidas, objetos bien por todos lados). Quedan pendientes los interiores 360°, los caminos de piedra y la auditoría general (ver el cierre en el plan).

@@ -23,7 +23,7 @@
 | 5.8 | Hecha | 2026-10-11 | Pesca, hordas, especies de temporada, migraciones, rocas rompibles y desfiladeros ([catálogo](catalogo_mundo.md)) |
 | Pulido tras la prueba (noche 10–11) | Hecho | 2026-10-11 | Mundo en 3D, física de edificios y mobiliario, interiores, Tienda y Centro completos, cinemática e inicio, campamento animado, Rotom y menú, pueblos ×2 y mundo lleno, pantano tóxico, pantalla de carga, reglas de calidad ([plan](plan_pulido_mundo.md), [reglas](reglas_calidad.md)) |
 | 6 | Hecho | 2026-10-11 | Guardianes por bioma, líder del equipo villano al final (con epílogo) y dificultad adaptable ([jefes](sistemas/jefes.md)); nueva prueba `test_bosses` |
-| 7 | Pendiente | — | Pulido y entrega |
+| 7 | Pendiente | — | Pulido y entrega: ver pendientes del cierre en [plan](plan_pulido_mundo.md#cierre-de-sesión-2026-10-11-mediodía--pendientes-para-la-próxima) |
 
 ## Pendientes técnicos
 - Aviso de Godot "edge error" de navegación en las esquinas donde se juntan 4 zonas: inofensivo (las regiones sí se conectan).
