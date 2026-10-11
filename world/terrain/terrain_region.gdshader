@@ -55,6 +55,16 @@ vec3 tiled(sampler2D tex, vec2 meters) {
 	return texture(tex, meters * px_per_meter / size).rgb;
 }
 
+// En una ladera casi vertical, world_pos.xz apenas cambia al subir (la cara mira al
+// horizonte, no al cielo): con la UV del suelo (world_pos.xz) la textura se estiraba a
+// un puñado de texeles gigantes y se veía como un muro de color plano sin detalle
+// (reportado en la auditoría 2026-10-11, bioma_pradera_*). Para una pendiente se usa la
+// altura real (world_pos.y) junto con el eje horizontal al que mira la cara, como un
+// mapeado triplanar simple (sin mezcla, para no perder el borde duro del pixel art).
+vec2 slope_uv(vec3 pos, vec3 normal) {
+	return abs(normal.x) > abs(normal.z) ? pos.zy : pos.xy;
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -80,15 +90,16 @@ void fragment() {
 	if (f.b > best) { best = f.b; family = 2; }
 	if (f.a > best) { best = f.a; family = 3; }
 
+	vec2 slope_meters = slope_uv(world_pos, world_normal);
 	vec3 color;
 	if (family == 0) {
-		color = steep ? tiled(meadow_slope, meters) : light ? tiled(meadow_grass_light, meters) : tiled(meadow_grass, meters);
+		color = steep ? tiled(meadow_slope, slope_meters) : light ? tiled(meadow_grass_light, meters) : tiled(meadow_grass, meters);
 	} else if (family == 1) {
-		color = steep ? tiled(forest_slope, meters) : light ? tiled(forest_grass_light, meters) : tiled(forest_grass, meters);
+		color = steep ? tiled(forest_slope, slope_meters) : light ? tiled(forest_grass_light, meters) : tiled(forest_grass, meters);
 	} else if (family == 2) {
-		color = steep ? tiled(mountain_slope, meters) : light ? tiled(mountain_grass_light, meters) : tiled(mountain_grass, meters);
+		color = steep ? tiled(mountain_slope, slope_meters) : light ? tiled(mountain_grass_light, meters) : tiled(mountain_grass, meters);
 		if (world_pos.y + dither * 2.5 > rock_height) {
-			color = tiled(mountain_slope, meters);
+			color = tiled(mountain_slope, slope_meters);
 		}
 	} else {
 		color = tiled(beach_sand, meters);

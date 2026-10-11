@@ -10,6 +10,9 @@ uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform float px_per_meter = 17.5;
 uniform vec2 flow = vec2(0.6, 0.25);
 uniform float alpha = 0.88;
+// Visto desde abajo (buceando bajo esta misma superficie) baja de intensidad: a 0.88
+// tapaba casi toda la pantalla como una niebla sólida (auditoría 2026-10-11).
+uniform float alpha_underwater = 0.4;
 // Tinte del agua (blanco = sin cambio; morado para el pantano tóxico).
 uniform vec3 tint : source_color = vec3(1.0);
 uniform vec3 foam_color : source_color = vec3(0.92, 0.97, 1.0);
@@ -27,7 +30,9 @@ void fragment() {
 	vec2 offset = floor(TIME * flow * px_per_meter) / px_per_meter;
 	vec2 pixel = floor((world_pos.xz + offset) * px_per_meter);
 	ALBEDO = texture(water_tex, (pixel + 0.5) / size).rgb;
-	ALPHA = alpha;
+	// Bajo el agua (buceando) esta cara se ve desde abajo: menos opaca para que se
+	// siga viendo al jugador, su compañero y el fondo en vez de una pantalla tapada.
+	ALPHA = CAMERA_POSITION_WORLD.y < world_pos.y ? alpha_underwater : alpha;
 
 	// Profundidad del agua en este punto: distancia entre la superficie y el fondo.
 	float depth = textureLod(depth_texture, SCREEN_UV, 0.0).r;

@@ -419,12 +419,12 @@ func kid_corner(settlement: Dictionary) -> void:
 			_flags()[key] = true
 			var gift: String = KID_GIFTS[_rng.randi() % KID_GIFTS.size()]
 			GameState.add_item(gift, 1)
-			GameState.notice.emit("Niño: ¡toma, es un regalo! (%s)" % Items.display_name(gift))
+			dialog.open("Niño", ["¡Toma, es un regalo! (%s)" % Items.display_name(gift)], NpcLooks.portrait("nino"))
 		elif choice == 1 and can_trade:
 			_flags()[key] = true
 			GameState.use_item(trade[0], 1)
 			GameState.add_item(trade[1], 1)
-			GameState.notice.emit("Niño: ¡trato hecho! Te doy %s." % Items.display_name(trade[1])))
+			dialog.open("Niño", ["¡Trato hecho! Te doy %s." % Items.display_name(trade[1])], NpcLooks.portrait("nino")))
 
 
 # --- Pedidos por encargo (1-2 días, aviso del Rotom) ------------------------------------

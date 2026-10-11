@@ -91,8 +91,16 @@ func _set_indoor_look(inside: bool, dungeon: bool) -> void:
 		return
 	var environment := environment_node.environment
 	environment.background_mode = Environment.BG_COLOR if inside else Environment.BG_SKY
-	environment.background_color = Color(0.03, 0.03, 0.05)
+	# Tono cálido tenue, nunca casi negro (auditoría 2026-10-11): aunque los muros ya
+	# tapan el hueco de la entrada, cualquier rendija residual debe verse como penumbra
+	# de interior, no como vacío.
+	environment.background_color = Color(0.16, 0.13, 0.11)
 	environment.fog_enabled = not inside
+	# La ambiental del mundo toma el cielo (afuera se ve bien); adentro eso teñía de azul
+	# hasta las superficies cerca del fondo (auditoría 2026-10-11): con el jugador dentro,
+	# la ambiental usa un tono cálido fijo, acorde a la luz propia del interior.
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR if inside else Environment.AMBIENT_SOURCE_SKY
+	environment.ambient_light_color = Color(0.5, 0.44, 0.36)
 	DayNight.interior_light = (0.35 if dungeon else 0.6) if inside else 1.0
 	# Cámara: en salas con modelo real (techo de verdad, a veces de dos pisos como la
 	# tienda y el Centro) se ajusta a la altura real del techo para no atravesarlo ni
@@ -324,8 +332,10 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	# Muros en todo el contorno: los modelos de la DS dejan abierto el lado de la entrada
 	# y zonas negras (se ve el vacío de fuera). Antes eran solo colisión; ahora también
 	# tapan la vista con un color parecido al de sus paredes (no hay textura real a mano).
-	# El de la entrada (hacia la cámara) es bajo, igual que en las salas de piezas, para
-	# no taparle la vista a la cámara ni esconder la puerta.
+	# El de la entrada va a la misma altura que los otros tres (si se dejaba bajo, con
+	# pitch normal se veía un hueco negro grande arriba, reportado en la auditoría del
+	# 2026-10-11): se tapa completo y se le pinta encima el hueco de la puerta para que
+	# siga leyéndose como entrada, no como muro ciego.
 	var half := size * 0.5
 	var wall_height := maxf(ceiling + 1.5, 4.0)
 	var wall_material := _material(wall_color)
@@ -346,18 +356,24 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 		var wall_mesh := MeshInstance3D.new()
 		var wall_box := BoxMesh.new()
 		var is_entrance: bool = wall[2]
-		var visible_size: Vector3 = wall[0]
-		var visible_position: Vector3 = wall[1]
-		if is_entrance:
-			# Bajo (como el muro de entrada de las salas de piezas): no bloquea la cámara
-			# ni la puerta, solo tapa el vacío justo detrás del borde del piso.
-			visible_size.y = 1.0
-			visible_position.y = 0.2
-		wall_box.size = visible_size
+		wall_box.size = wall[0]
 		wall_mesh.mesh = wall_box
 		wall_mesh.material_override = wall_material
-		wall_mesh.position = visible_position
+		wall_mesh.position = wall[1]
 		root.add_child(wall_mesh)
+		if is_entrance:
+			# Hueco de puerta pintado: rectángulo oscuro centrado en el muro de entrada,
+			# del piso hasta la altura de una puerta, para que se note dónde se entra/sale
+			# (el tapete rojo de _exit_mark marca lo mismo a nivel de piso).
+			var door_mesh := MeshInstance3D.new()
+			var door_plane := BoxMesh.new()
+			var door_height := minf(wall_height * 0.75, 2.4)
+			door_plane.size = Vector3(2.4, door_height, 0.1)
+			door_mesh.mesh = door_plane
+			door_mesh.material_override = _material(wall_color.darkened(0.6))
+			var inward := 1.0 if (wall[1] as Vector3).z > 0.0 else -1.0
+			door_mesh.position = Vector3(0, door_height * 0.5 - 0.3, (wall[1] as Vector3).z - inward * 0.46)
+			root.add_child(door_mesh)
 	var ground := StaticBody3D.new()
 	ground.collision_layer = WorldBuilder.LAYER_TERRAIN
 	var floor_shape := BoxShape3D.new()
