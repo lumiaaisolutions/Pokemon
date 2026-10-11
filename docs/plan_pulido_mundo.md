@@ -198,6 +198,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 - **Trabajo de noche:** si surge una duda de diseño nueva, elijo la opción recomendada y la anoto en [decisiones_sin_preguntar.md](decisiones_sin_preguntar.md) con sus alternativas para que Fernando la revise. Máximo 3 agentes a la vez (en cuanto uno termina, entra el siguiente).
 
 ## Plan de la noche (orden de trabajo)
+**Meta (Fernando):** el loop sigue hasta terminar el juego completo (fases 6 y 7 incluidas) y sin detalles como los reportados (ver [reglas_calidad.md](reglas_calidad.md)); al final, una revisión general con capturas de todo el juego buscando esos defectos.
 1. Integrar lo de los agentes en curso (IA salvaje y Poké Ball en mano; interiores base) con la batería completa.
 2. Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios.
 3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso).
