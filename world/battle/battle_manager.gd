@@ -174,7 +174,8 @@ func _smart_opponent(delta: float) -> void:
 		_trainer_says("¡Aguanta!")
 	var c := companion()
 	if c != null and _dodge_cooldown <= 0.0 and c.winding_up() and c.global_position.distance_to(opponent.global_position) < 9.0:
-		_dodge_cooldown = 2.5
+		# Dificultad adaptable (Fase 6): si vas arrollando, el rival listo esquiva más seguido.
+		_dodge_cooldown = clampf(2.5 - AdaptiveDifficulty.dodge_bonus() * 4.0, 1.3, 3.2)
 		var away := opponent.global_position - c.global_position
 		opponent.ai_dodge(Vector3(-away.z, 0, away.x) * (1.0 if _rng.randf() < 0.5 else -1.0))
 		_trainer_says("¡Esquiva!")
@@ -579,8 +580,8 @@ func _win() -> void:
 			lines.append("Te dio %s." % Items.display_name(prize))
 		GameState.world_flags["trainer_beaten:" + String(trainer["id"])] = GameState.game_day()
 		Achievements.add("trainers")
-	# Objetos que suelta.
-	var drop_chance := 0.0 if not trainer.is_empty() else 0.45 + minf(streak, 10) * 0.03
+	# Objetos que suelta (dificultad adaptable, Fase 6: más si vas flojo, algo menos si arrollas).
+	var drop_chance := 0.0 if not trainer.is_empty() else (0.45 + minf(streak, 10) * 0.03) * AdaptiveDifficulty.reward_multiplier()
 	if _rng.randf() < drop_chance:
 		var pool: Array = DROPS.get(species.types[0], ["oran-berry"])
 		var item: String = pool[_rng.randi() % pool.size()]
@@ -600,6 +601,8 @@ func _win() -> void:
 	GameState.notice.emit(" ".join(lines))
 	for message in MegaMissions.update():
 		GameState.notice.emit(message)
+	# Dificultad adaptable (Fase 6): una victoria con vida alta y racha sube el nivel.
+	AdaptiveDifficulty.record_battle(true, c.hp / c.hp_max if c != null else 1.0, streak)
 	_end("win" if trainer.is_empty() else "trainer_win")
 
 

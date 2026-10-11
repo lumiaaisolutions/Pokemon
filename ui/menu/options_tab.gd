@@ -45,6 +45,7 @@ static func build() -> Control:
 	]))
 	columns.add_child(_section(SECTIONS[3], [
 		_choice("Dificultad (de esta partida)", "Qué tan fuertes son los rivales. Se puede subir o bajar cuando quieras.", GameState.DIFFICULTIES.map(func(d: Dictionary) -> String: return d["name"]), GameState.difficulty, func(v: int) -> void: GameState.difficulty = v),
+		_info("Se adapta a tu nivel", AdaptiveDifficulty.label(), "Sube o baja sola con tus rachas de victorias, desmayos y capturas (Fase 6)."),
 		_choice("Pokémon en el mundo", "Cuántos salvajes aparecen a tu alrededor.", GameOptions.DENSITY_NAMES, GameOptions.density, func(v: int) -> void: GameOptions.density = v),
 		_toggle("Mostrar la leyenda de botones", "La tira de controles abajo en pantalla (también se abre o cierra con H).", GameOptions.show_hints, func(v: bool) -> void: GameOptions.show_hints = v),
 		_choice("Velocidad del texto y avisos", "Qué tan rápido aparece el texto en la caja de diálogo y los avisos.", GameOptions.TEXT_SPEED_NAMES, GameOptions.text_speed, func(v: int) -> void: GameOptions.text_speed = v),
@@ -155,6 +156,18 @@ static func _row(text: String, tip: String) -> HBoxContainer:
 	row.add_child(label)
 	if tip != "":
 		row.tooltip_text = tip
+	return row
+
+
+## Fila de solo lectura: etiqueta + valor corto, con el detalle en el tooltip (p. ej.
+## la dificultad adaptable, que no se cambia a mano).
+static func _info(text: String, value: String, tip: String) -> Control:
+	var row := _row(text, tip)
+	var label := UiKit.label(value, 15, UiKit.TEXT_SOFT)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.tooltip_text = tip
+	row.add_child(label)
 	return row
 
 

@@ -57,7 +57,7 @@ func save_slot(slot: int, main: Node) -> bool:
 		"version": VERSION,
 		"saved_at": Time.get_datetime_string_from_system(false, true),
 		"character_id": GameState.character_id, "player_name": GameState.player_name,
-		"gender": GameState.gender, "difficulty": GameState.difficulty,
+		"gender": GameState.gender, "difficulty": GameState.difficulty, "performance": GameState.performance,
 		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "regions": GameState.regions, "region_index": GameState.region_index, "money": GameState.money,
 		"party": GameState.party, "box": GameState.box, "companion_index": GameState.companion_index,
 		"bag": GameState.bag, "selected_ball": GameState.selected_ball, "quick_items": GameState.quick_items, "food_expiry": GameState.food_expiry, "hunger": GameState.hunger,
@@ -89,6 +89,7 @@ func load_slot(slot: int) -> bool:
 	GameState.player_name = data.get("player_name", "Nate")
 	GameState.gender = data.get("gender", "male")
 	GameState.difficulty = int(data.get("difficulty", 1))
+	GameState.performance = float(data.get("performance", 0.0))
 	GameState.play_time = float(data.get("play_time", 0.0))
 	GameState.world_seed = int(data.get("world_seed", 0))
 	GameState.world_flags = data.get("world_flags", {})

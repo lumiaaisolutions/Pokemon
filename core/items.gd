@@ -36,6 +36,11 @@ static func _ensure() -> void:
 			var id := "stone-" + mega.identifier
 			_items[id] = {"id": id, "name": mega.stone, "pocket": "megapiedras", "price": 0, "key": true,
 					"mega": mega.identifier, "desc": "Permite que %s megaevolucione a %s (con la Piedra Llave)." % [mega.base_species.capitalize(), mega.display_name]}
+	# Insignias de los guardianes de bioma (Fase 6): una por bioma, recuerdo de haberlo vencido.
+	for biome in RegionLayout.BIOME_NAMES.size():
+		var crest_id := Bosses.crest_item_id(biome)
+		_items[crest_id] = {"id": crest_id, "name": Bosses.crest_item_name(biome), "pocket": "clave", "price": 0, "key": true,
+				"desc": "Recuerdo de haber vencido al guardián de %s. El Rotom lo registra." % RegionLayout.BIOME_NAMES[biome]}
 
 
 static func get_item(id: String) -> Dictionary:

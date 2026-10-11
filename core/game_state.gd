@@ -7,6 +7,9 @@ var player_name: String = "Nate"
 var gender: String = "male"
 ## 0 Fácil, 1 Normal, 2 Difícil (ver DIFFICULTIES).
 var difficulty: int = 1
+## Rendimiento de juego de la partida (-1 floja a +1 arrolladora), ver AdaptiveDifficulty
+## (Fase 6): ajusta un poco la dificultad elegida según cómo te está yendo de verdad.
+var performance: float = 0.0
 ## Por dificultad: daño de los salvajes al jugador, dinero perdido al desmayarse y
 ## tiempo de recuperación del desmayo (multiplicador).
 const DIFFICULTIES: Array[Dictionary] = [
@@ -192,9 +195,18 @@ func apply_blackout_penalty() -> int:
 	return lost
 
 
-## Valor de la dificultad actual ("damage", "money_loss" o "recovery").
+## Valor de la dificultad actual ("damage", "money_loss" o "recovery"), afinado por el
+## nivel de juego de la partida (ver AdaptiveDifficulty; a rendimiento 0 no cambia nada).
 func difficulty_value(key: String) -> float:
-	return float(DIFFICULTIES[clampi(difficulty, 0, DIFFICULTIES.size() - 1)][key])
+	var base := float(DIFFICULTIES[clampi(difficulty, 0, DIFFICULTIES.size() - 1)][key])
+	match key:
+		"damage":
+			return base * AdaptiveDifficulty.damage_multiplier()
+		"money_loss":
+			return base * AdaptiveDifficulty.money_loss_multiplier()
+		"recovery":
+			return base * AdaptiveDifficulty.recovery_multiplier()
+	return base
 
 
 ## Segundos jugados (sin contar pausas); lo suma la escena principal.

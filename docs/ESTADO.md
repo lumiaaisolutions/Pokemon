@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-[← Índice](README.md) · Motor: Godot 4.7.2 estable (GDScript), macOS M1. Actualizado: 2026-10-10.
+[← Índice](README.md) · Motor: Godot 4.7.2 estable (GDScript), macOS M1. Actualizado: 2026-10-11.
 
 ## Fases
 | Fase | Estado | Commit | Notas |
@@ -21,11 +21,8 @@
 | Pulido del mundo | Hecho | `c13a1a9` → `e3858d9` | Plan acordado tras la prueba de Fernando ([plan](plan_pulido_mundo.md)): bugs, interfaz Pokopia, mapa con zoom, tablero de misiones, NPC de BW2 con oficio y diálogo, héroes, profesor, rival, interiores B2W2, biomas, puntos de interés, pueblos con identidad |
 | Regiones | Hecho (Cilan y Volkner con sprite provisional) | 2026-10-10 | 6 regiones, 48 líderes con vida propia, Liga con Alto Mando y héroe Campeón, Pokédex regional, Boleto y viaje en barco o avión ([regiones](sistemas/regiones.md)) |
 | 5.8 | En curso | 2026-10-10 | Pesca, hordas, especies de temporada y migraciones (hechas); rocas rompibles ([catálogo](catalogo_mundo.md)) |
-| 6 | Pendiente | — | Jefe y balance |
+| 6 | Hecho | 2026-10-11 | Guardianes por bioma, líder del equipo villano al final (con epílogo) y dificultad adaptable ([jefes](sistemas/jefes.md)); nueva prueba `test_bosses` |
 | 7 | Pendiente | — | Pulido y entrega |
-
-## Por confirmar con Fernando
-- Fase 6: quién es el jefe del bioma y cómo se balancea la dificultad.
 
 ## Pendientes técnicos
 - El mundo tarda ~2.7 s en construirse (antes 5–6.5 s): se puede agregar una pantalla de carga.

@@ -890,7 +890,7 @@ func _build_dungeon(root: Node3D, kind: String, place: Dictionary, rng: RandomNu
 	var exit_local: Vector3 = to_local.call(exit_cell)
 	_block(root, Vector3(2.4, 0.05, 1.4), exit_local + Vector3(0, 0.02, -CELL * 0.35), Color(0.4, 0.75, 0.9), false, 0.5)
 	if kind == "villain_base":
-		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35 + 1.5), "Enfrentar al jefe del %s" % GameState.villain_team, services.villain_challenge.bind(ORIGIN + exit_local + Vector3(0, 0.3, 2.5)), 2.0)
+		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35 + 1.5), "Enfrentar al líder del %s" % GameState.villain_team, services.villain_confront.bind(ORIGIN + exit_local + Vector3(0, 0.3, 2.5)), 2.0)
 	if far_exit != Vector3.INF:
 		var label: String = {"victory_road": "Salir frente a la Liga Pokémon", "distortion": "Salir por el otro portal"}.get(kind, "Salida al otro lado")
 		_point(exit_local + Vector3(0, 0.5, -CELL * 0.35), label, func() -> void: exit_to(far_exit), 1.8)

@@ -800,6 +800,50 @@ func _telegraph(at: Vector3) -> void:
 	tween.tween_callback(ring.queue_free)
 
 
+## Aviso de área grande (jefes, Fase 6): círculo rojo que se encoge durante duration
+## segundos; quien llama a esto resuelve el golpe al terminar (ver BossManager).
+func telegraph_zone(at: Vector3, radius: float, duration: float) -> void:
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = radius * 0.8
+	torus.outer_radius = radius
+	torus.rings = 32
+	ring.mesh = torus
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.2, 0.15, 0.85)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = material
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	get_parent().add_child(ring)
+	ring.global_position = at + Vector3.UP * 0.15
+	var tween := ring.create_tween()
+	tween.tween_property(ring, "scale", Vector3(0.3, 1, 0.3), duration).from(Vector3.ONE)
+	tween.tween_callback(ring.queue_free)
+
+
+## Aviso de línea (jefes, Fase 6): franja roja entre from y to, igual de telegrafiada.
+func telegraph_line(from: Vector3, to: Vector3, width: float, duration: float) -> void:
+	var box := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(width, 0.08, maxf(from.distance_to(to), 0.5))
+	box.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.2, 0.15, 0.85)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	box.material_override = material
+	box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	get_parent().add_child(box)
+	box.global_position = (from + to) * 0.5 + Vector3.UP * 0.15
+	var dir := to - from
+	if dir.length() > 0.01:
+		box.rotation.y = atan2(dir.x, dir.z)
+	var tween := box.create_tween()
+	tween.tween_property(box, "scale", Vector3(0.3, 1, 1.0), duration).from(Vector3.ONE)
+	tween.tween_callback(box.queue_free)
+
+
 ## En combate, el salvaje no sale de la arena.
 func _clamp_to_arena() -> void:
 	if battle_center == Vector3.INF or role != Role.WILD:

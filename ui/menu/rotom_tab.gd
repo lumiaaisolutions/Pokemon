@@ -535,7 +535,7 @@ static func _app_compass(menu: GameMenu) -> Control:
 		{"title": "Líder de gimnasio", "targets": _compass_leaders(menu)},
 		{"title": "Brote masivo", "targets": _compass_outbreak(menu)},
 		{"title": "Cueva descubierta", "targets": _compass_caves(menu)},
-		{"title": "Guardián (Territorio Alfa)", "targets": _compass_alpha(menu)},
+		{"title": "Guardián de bioma", "targets": _compass_guardians(menu)},
 	]
 	for category: Dictionary in categories:
 		box.add_child(MenuStyle.label(category["title"], 19, MenuStyle.ACCENT))
@@ -615,16 +615,17 @@ static func _compass_caves(menu: GameMenu) -> Array:
 	return result
 
 
-static func _compass_alpha(menu: GameMenu) -> Array:
+## Guardianes de bioma reales (Fase 6): uno por bioma de la región, con su estado.
+static func _compass_guardians(menu: GameMenu) -> Array:
 	var result: Array = []
-	var world := menu.main.get_node_or_null("World") as WorldBuilder if menu.main != null else null
-	if world == null:
+	var bosses := _group(menu, &"bosses") as BossManager
+	if bosses == null:
 		return result
-	var i := 0
-	for place: Dictionary in world.layout.places_of("alpha"):
-		i += 1
-		result.append({"text": "Territorio Alfa #%d: vive ahí un Pokémon grande y fuerte." % i, "x": float(place["x"]), "z": float(place["z"]), "label": "Territorio Alfa #%d" % i})
-		if result.size() >= 6:
+	for target: Dictionary in bosses.guardian_targets():
+		var defeated: bool = target["defeated"]
+		result.append({"text": "%s%s: %s." % ["✓ " if defeated else "", target["label"], "ya lo venciste" if defeated else "un Pokémon enorme y fuerte vigila la zona"],
+				"x": float(target["x"]), "z": float(target["z"]), "label": String(target["label"])})
+		if result.size() >= 8:
 			break
 	return result
 
