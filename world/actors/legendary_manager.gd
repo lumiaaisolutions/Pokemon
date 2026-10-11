@@ -99,10 +99,12 @@ func _process(_delta: float) -> void:
 	for i in sanctuaries.size():
 		var position: Vector3 = sanctuaries[i].position
 		var distance := position.distance_to(_player.global_position)
-		var actor: PokemonActor = _active.get(i)
-		if actor != null and not is_instance_valid(actor):
+		# Revisar antes de tiparlo: asignar un nodo ya liberado a PokemonActor truena.
+		var maybe: Variant = _active.get(i)
+		if maybe != null and not is_instance_valid(maybe):
 			_active.erase(i)
-			actor = null
+			maybe = null
+		var actor: PokemonActor = maybe as PokemonActor
 		if distance < visit_radius and not _visiting.get(i, false):
 			_visiting[i] = true
 			if actor == null and _rng.randf() < SUMMON_CHANCE:

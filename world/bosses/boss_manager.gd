@@ -100,11 +100,12 @@ func _update_lair_spawns() -> void:
 	for biome: int in _lairs.keys():
 		if Bosses.is_defeated(biome):
 			continue
-		var actor: PokemonActor = _guardians.get(biome)
-		if actor != null and not is_instance_valid(actor):
+		# Revisar antes de tiparlo: si el guardián se liberó (zona descargada), no se asigna.
+		var maybe: Variant = _guardians.get(biome)
+		if maybe != null and not is_instance_valid(maybe):
 			_guardians.erase(biome)
-			actor = null
-		if actor != null:
+			maybe = null
+		if maybe != null:
 			continue
 		var center: Vector3 = _lairs[biome]
 		if _player.global_position.distance_to(center) > DISCOVER_RADIUS:
@@ -172,11 +173,12 @@ func _on_battle_started(opponent: PokemonActor) -> void:
 
 
 func _update_fight(delta: float) -> void:
-	var actor: PokemonActor = _fight.get("actor")
+	var maybe: Variant = _fight.get("actor")
 	var battle := _battle()
-	if actor == null or not is_instance_valid(actor) or battle == null or not battle.active or battle.opponent != actor:
+	if maybe == null or not is_instance_valid(maybe) or battle == null or not battle.active or battle.opponent != maybe:
 		_fight = {}
 		return
+	var actor := maybe as PokemonActor
 	var ratio := actor.hp / actor.hp_max
 	var phase: int = _fight["phase"]
 	if phase < 2 and ratio <= Bosses.PHASE_THRESHOLDS[0]:

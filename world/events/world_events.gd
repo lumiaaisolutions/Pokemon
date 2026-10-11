@@ -239,10 +239,12 @@ func _update_alphas() -> void:
 		var id := int(place["id"])
 		var center := Vector3(float(place["x"]), 0, float(place["z"]))
 		var near := Vector2(center.x - _player.global_position.x, center.z - _player.global_position.z).length() < ALPHA_RADIUS
-		var actor: PokemonActor = _alphas.get(id)
-		if actor != null and not is_instance_valid(actor):
+		# Revisar antes de tiparlo: asignar un nodo ya liberado a PokemonActor truena.
+		var maybe: Variant = _alphas.get(id)
+		if maybe != null and not is_instance_valid(maybe):
 			_alphas.erase(id)
-			actor = null
+			maybe = null
+		var actor: PokemonActor = maybe as PokemonActor
 		if near and actor == null and int(_flags().get("alpha:%d" % id, -1)) != day and _world.is_near_loaded(center):
 			_flags()["alpha:%d" % id] = day
 			var habitat := _world.habitat_at(center.x, center.z)
