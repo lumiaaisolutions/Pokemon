@@ -170,6 +170,11 @@ func _run() -> void:
 	await _frames(3)
 	_check(late.get("failed", false) and int(GameState.reputation.get("Concursos", 50)) < rep_before, "si vence el plazo falla y baja la reputación")
 	_check(not GameState.news.is_empty(), "las consecuencias salen en las noticias")
+	# La hora se guarda desde la revisión de Fernando (2026-10-11 mañana): "guardar la
+	# hora al agregar cada noticia y mostrarla en la app de Noticias" (no se compara con
+	# la hora actual: el reloj ya siguió avanzando en los cuadros de espera de arriba).
+	var news_hour: float = float(GameState.news[0].get("hour", -1.0))
+	_check(news_hour >= 0.0 and news_hour < 24.0, "cada noticia guarda la hora en que pasó (%.2f)" % news_hour)
 
 	# Recolección: recoger un punto da objetos y lo oculta hasta el día siguiente.
 	var gathering := _main.get_node("Gathering") as GatherManager

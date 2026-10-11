@@ -13,6 +13,7 @@ Decidido por Fernando: **banda sonora original de BW/BW2** y efectos de BW2. Los
 1. **Combate:** salvaje (`bw2_battle_wild2` o `bw1_battle_wild`), fuerte (Alfa o dominante), legendario, entrenador de camino, y en retos el gimnasio, la Liga o la base criminal.
 2. **Interiores:** Centro y tienda, laboratorio, gimnasio, Liga, alcantarillas, cuevas, minas, torre, mansión, central, base criminal, distorsión, barco hundido, Calle Victoria. Las casas usan el tema del pueblo.
 3. **Surf, bicicleta o vuelo.**
+3.5. **Campamento de noche** (revisión de Fernando, 2026-10-11 mañana): `bw2_camp_night` si estás a menos de `CAMP_MUSIC_RADIUS` (14 m) de alguna de tus tiendas de campaña (`CampManager.tents()`) y es de noche (`GameState.is_night()`); antes no tenía música propia.
 4. **Pueblos:** el inicial tiene `bw1_town_start`; los demás un tema fijo por tipo (ciudad, pueblo, aldea, cabañas) y bioma (tundra, playa, desierto).
 5. **Lugares especiales** cercanos (ruinas, gruta, rancho, volcán, árbol gigante, santuario, safari, oasis, termas).
 6. **Rutas por bioma y estación** (Ruta 19, 2, 6, 4, 22, 12, 23, Bosque Perdido…).

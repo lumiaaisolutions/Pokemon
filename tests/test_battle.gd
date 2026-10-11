@@ -417,6 +417,36 @@ func _run() -> void:
 	BattleManager.reset_streak()
 	_check(BattleManager.streak() == 0, "la racha se reinicia")
 
+	# 15. Combate amistoso real del Centro (café, club y visitas: revisión de Fernando,
+	# 2026-10-11 mañana, "combate de entrenador real en arena (equipo, IA, curas)… sin
+	# perder dinero al perder"; antes era un solo Pokémon salvaje sin derrota real, ver
+	# docs/decisiones_sin_preguntar.md).
+	var center := _world.structures.services.center_services
+	_player.global_position = arena + Vector3(0, 0.5, 6)
+	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
+	await _frames(10)
+	var friendly_money := GameState.money
+	_check(center._start_friendly("Prueba amistosa", null, [_species("lillipup")], 150, "", 1), "el combate amistoso del Centro debe poder empezar con un entrenador real")
+	await _frames(4)
+	_check(_battle.active and bool(_battle.trainer.get("smart", false)) and bool(_battle.trainer.get("no_penalty", false)), "el combate amistoso usa IA lista y está marcado sin penalización de dinero")
+	if _battle.active:
+		var foe := _battle.opponent
+		foe.receive_hit(foe.hp + 100.0, _main.companion)
+		await _frames(12)
+		_check(_results.has("trainer_win") and GameState.money > friendly_money, "ganar el combate amistoso da la recompensa normal")
+	await _frames(5)
+	# Perder un combate amistoso no debe cobrar el desmayo (sí cura y regresa al Centro).
+	_player.global_position = arena + Vector3(0, 0.5, 6)
+	_main.companion.global_position = arena + Vector3(1.5, 0.5, 4)
+	await _frames(10)
+	_check(center._start_friendly("Prueba amistosa 2", null, [_species("lillipup")], 150, "", 1), "debe poder empezar un segundo combate amistoso")
+	await _frames(4)
+	if _battle.active:
+		var before_lose_money := GameState.money
+		_player.black_out()
+		await _frames(5)
+		_check(GameState.money == before_lose_money, "perder un combate amistoso no cobra el desmayo")
+
 
 func _species(identifier: String) -> SpeciesData:
 	return load("res://creatures/data/species/%s.tres" % identifier) as SpeciesData

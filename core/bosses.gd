@@ -5,9 +5,13 @@ extends RefCounted
 ## tipo del bioma, elegido al azar por la semilla de la región; puede ser de fuera de
 ## la Pokédex regional si no hay uno fuerte de esa región) en el punto del bioma más
 ## alejado de los pueblos. Vive ahí (world/bosses/boss_manager.gd lo crea y lo vigila)
-## hasta que lo vencen; reaparece más fuerte en cada región siguiente. El mar (bioma
-## SEA) no tiene guardián (decisión: un combate de superficie en pleno mar complica la
-## arena y la navegación sin aportar mucho; ver decisiones_sin_preguntar.md).
+## hasta que lo vencen; reaparece más fuerte en cada región siguiente.
+## El mar (bioma SEA, revisión de Fernando 2026-10-11 mañana) sí tiene guardián de tipo
+## Agua fuerte (Gyarados, Kingdra, Milotic…): vive junto a una isla del archipiélago del
+## sur (o en un islote forzado si ahí no cayó ninguna isla natural, ver
+## RegionLayout.ensure_islet) con su arena de combate en tierra; solo se llega
+## surfeando, porque BossManager elige a propósito el punto de mar más alejado de los
+## pueblos.
 
 const T := PokemonTypes.Type
 
@@ -30,10 +34,11 @@ const GUARDIAN_TYPE := {
 	RegionLayout.Biome.SWAMP: T.DARK,
 	RegionLayout.Biome.TOXIC_SWAMP: T.POISON,
 	RegionLayout.Biome.MESA: T.FLYING,
-	RegionLayout.Biome.SEA: T.DRAGON,
+	RegionLayout.Biome.SEA: T.WATER,
 }
-## Biomas sin guardián (ver nota de arriba).
-const NO_GUARDIAN := [RegionLayout.Biome.SEA]
+## Biomas sin guardián: ninguno (el mar ya tiene el suyo desde la revisión de Fernando
+## del 2026-10-11 mañana); se deja la lista para futuros biomas que no deban tener uno.
+const NO_GUARDIAN: Array[RegionLayout.Biome] = []
 
 ## Piedra evolutiva que entrega el guardián si su tipo tiene una (si no, Caramelo Raro).
 const STONE_FOR_TYPE := {

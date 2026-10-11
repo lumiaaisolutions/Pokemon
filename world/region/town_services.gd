@@ -780,16 +780,29 @@ func open_merchant(place: Dictionary) -> void:
 	shop.open()
 
 
-## Base secreta: el equipo del líder, de tipo Siniestro y Veneno (fuertes, con mega
-## desde la 3.ª región, igual que los líderes de gimnasio).
+## Base secreta: el equipo del líder, de tipo Siniestro y Veneno. Más fuerte mientras
+## más medallas tengas al retarlo (revisión de Fernando, 2026-10-11 mañana: "tamaño,
+## etapa, mega desde 7"): tamaño hasta 8, etapa evolutiva como Heroes.team_for y mega
+## desde la medalla 7 (antes solo dependía de la región, no de cuánto hubieras avanzado
+## en ella).
 func _villain_team(region: int, badge_count: int) -> Array[SpeciesData]:
-	var size := clampi(4 + region + badge_count / 4, 4, 6)
+	var size := clampi(4 + region + badge_count / 2, 4, 8)
 	var dark := _team_of_type(PokemonTypes.Type.DARK, ceili(size / 2.0), 0.95)
 	var poison := _team_of_type(PokemonTypes.Type.POISON, size - dark.size(), 0.95)
 	var team: Array[SpeciesData] = []
 	team.append_array(dark)
 	team.append_array(poison)
+	var stage := 2 if badge_count < 6 else 3
+	for i in team.size():
+		team[i] = MenuStyle.species(Heroes._stage_form(team[i].identifier, stage))
 	return team
+
+
+## Mega del equipo del líder villano: solo desde 7 medallas, sin importar la región.
+func _villain_mega(team: Array[SpeciesData], badge_count: int) -> String:
+	if badge_count < 7:
+		return ""
+	return Leaders.mega_for(team, Leaders.MEGA_FROM_REGION)
 
 
 ## Base secreta, jefe final de la región (Fase 6): solo se puede retar "al final", tras
@@ -819,39 +832,46 @@ func villain_confront(arena: Vector3) -> void:
 
 func _villain_battle(arena: Vector3) -> void:
 	var region := Regions.index()
-	var team := _villain_team(region, badges().size())
+	var badge_count := badges().size()
+	var team := _villain_team(region, badge_count)
 	if team.is_empty():
 		return
 	var info := {"id": "villain_leader", "name": "Líder del %s" % GameState.villain_team, "team": team,
 			"money": 8000 + region * 2000, "item": "villain-emblem", "smart": true,
-			"heals": 2 + region / 2 + AdaptiveDifficulty.extra_heals(), "mega": Leaders.mega_for(team, region), "at": arena}
-	_challenge(info, _win_villain)
+			"heals": 2 + region / 2 + AdaptiveDifficulty.extra_heals(), "mega": _villain_mega(team, badge_count), "at": arena}
+	_challenge(info, _win_villain.bind(arena))
 
 
-func _win_villain() -> void:
+func _win_villain(arena: Vector3) -> void:
 	_flags()["villain_defeated"] = true
 	for group: String in GameState.reputation:
 		GameState.reputation[group] = mini(int(GameState.reputation[group]) + 15, 100)
 	GameState.occupied_zones.clear()
 	Achievements.add("villain_leaders")
 	GameState.add_news("¡%s desmanteló la base secreta del %s y venció a su líder! Las zonas tomadas quedan libres." % [GameState.player_name, GameState.villain_team])
-	_region_epilogue()
+	_region_epilogue(arena)
 
 
-## Epílogo corto de la región (créditos ligeros, ver docs/sistemas/jefes.md): no hay
-## cinemática nueva, solo una caja de diálogo con el cierre de la amenaza y un resumen.
-func _region_epilogue() -> void:
-	AudioBus.play_jingle("me_badge")
+## Epílogo al vencer al líder del equipo villano (revisión de Fernando, 2026-10-11
+## mañana: "cinemática corta ~20 s: la base se desmorona, corte al pueblo inicial con
+## el profesor y la gente celebrando, resumen del viaje"; ver
+## world/region/region_epilogue_cinematic.gd. Antes era solo una caja de diálogo sin
+## cinemática, ver docs/decisiones_sin_preguntar.md).
+func _region_epilogue(arena: Vector3) -> void:
 	var champion := bool(GameState.world_flags.get("champion", false))
-	var lines := ["El %s se retira de %s. Las rutas vuelven a la normalidad." % [GameState.villain_team, Regions.region_name()],
-			"%s · %d/%d medallas · Campeón: %s" % [Regions.region_name(), badges().size(), Regions.GYMS, "sí" if champion else "todavía no"],
+	var lines: Array[String] = ["El %s se retira de %s. Las rutas vuelven a la normalidad." % [GameState.villain_team, Regions.region_name()],
+			"Medallas: %d en %s (%d en total) · Capturas: %d · Guardianes vencidos: %d." %
+					[badges().size(), Regions.region_name(), Regions.total_badges(), int(GameState.stats.get("captures", 0)), int(GameState.stats.get("guardians", 0))],
+			"Campeón: %s." % ("sí" if champion else "todavía no"),
 			"¡Gracias por jugar esta región, %s!" % GameState.player_name]
-	var dialog := _dialog()
-	if dialog != null:
-		dialog.open("Narrador", lines, null)
-	else:
-		for line: String in lines:
-			GameState.notice.emit(line)
+	var cinematic := RegionEpilogueCinematic.new()
+	cinematic.name = "RegionEpilogue"
+	cinematic.player = player()
+	cinematic.world = structures.world
+	cinematic.camera_rig = main().get_node_or_null("CameraRig") as CameraRig
+	cinematic.music = main().get_node_or_null("Music")
+	main().add_child(cinematic)
+	await cinematic.play(arena, lines)
 
 
 func giant_tree(place: Dictionary) -> void:
@@ -927,12 +947,16 @@ func safari_species() -> Array[SpeciesData]:
 ## Pokémon "bebé" que puede aparecer en un huevo de la guardería (si existen en el juego).
 const DAYCARE_EGG_SPECIES := ["pichu", "cleffa", "igglybuff", "azurill", "budew", "happiny", "munchlax", "riolu", "mantyke", "togepi"]
 const DAYCARE_EGG_CHANCE := 0.15
+## Cuánto hay que caminar (de verdad, GameState.stats["distance"], el mismo marcador de
+## los logros de distancia) para que el huevo nazca: revisión de Fernando, 2026-10-11
+## mañana, "nace tras caminar un rato (pasos/distancia, ~1-2 km)". Antes (2026-10-10) no
+## había incubadora: el huevo llegaba ya nacido directo a la Caja, como un fósil revivido.
+const DAYCARE_EGG_HATCH_DISTANCE := 1600.0
 
 
 ## Guardería: deja un Pokémon del equipo (que no sea tu compañero) y gana Puntos de
 ## Entrenamiento por cada día del juego; al volver te lo devuelven. A veces, mientras lo
-## cuidan, aparece un huevo que ya nació (decisión de Fernando, 2026-10-10: el juego no
-## tiene incubadora todavía, así que llega directo a la Caja, como un fósil revivido).
+## cuidan, aparece un huevo (ver _update_daycare_egg: nace solo tras caminar un rato).
 func daycare(_place: Dictionary) -> void:
 	var stay: Dictionary = _flags().get("daycare", {})
 	if not stay.is_empty():
@@ -944,7 +968,7 @@ func daycare(_place: Dictionary) -> void:
 		(GameState.party if GameState.party.size() < 6 else GameState.box).append(entry)
 		_flags().erase("daycare")
 		var text := "Guardería: ¡aquí está %s! Ganó %d Puntos de Entrenamiento en %d días." % [MenuStyle.species(entry["species"]).display_name, gained, days]
-		if days > 0 and _rng.randf() < DAYCARE_EGG_CHANCE:
+		if days > 0 and not GameState.world_flags.has("daycare_egg") and _rng.randf() < DAYCARE_EGG_CHANCE:
 			var egg_options: Array[SpeciesData] = []
 			for id: String in DAYCARE_EGG_SPECIES:
 				var species := MenuStyle.species(id)
@@ -952,8 +976,8 @@ func daycare(_place: Dictionary) -> void:
 					egg_options.append(species)
 			if not egg_options.is_empty():
 				var baby: SpeciesData = egg_options[_rng.randi() % egg_options.size()]
-				var where := GameState.add_caught(baby, false, 1.0)
-				text += " ¡Y de paso encontraron un huevo! Ya nació: %s (va a tu %s)." % [baby.display_name, where]
+				GameState.world_flags["daycare_egg"] = {"species": baby.identifier, "start_distance": float(GameState.stats.get("distance", 0.0))}
+				text += " ¡Y de paso encontraron un huevo! Guárdalo caminando contigo: nacerá tras recorrer un buen tramo."
 		GameState.notice.emit(text)
 		return
 	if GameState.party.size() < 2:
@@ -968,6 +992,25 @@ func daycare(_place: Dictionary) -> void:
 			_flags()["daycare"] = {"entry": entry, "day": GameState.game_day()}
 			GameState.notice.emit("Guardería: cuidaremos a %s. Ganará %d Puntos de Entrenamiento por día." % [MenuStyle.species(entry["species"]).display_name, DAYCARE_POINTS_PER_DAY])
 			return
+
+
+## Huevo de la guardería incubándose (GameState.world_flags["daycare_egg"]): nace solo
+## en cuanto caminas DAYCARE_EGG_HATCH_DISTANCE desde que lo recibiste, estés donde
+## estés (no hace falta volver a la guardería), con la animación de EggHatchScene.
+func _update_daycare_egg() -> void:
+	var egg: Dictionary = GameState.world_flags.get("daycare_egg", {})
+	if egg.is_empty():
+		return
+	var walked := float(GameState.stats.get("distance", 0.0)) - float(egg.get("start_distance", 0.0))
+	if walked < DAYCARE_EGG_HATCH_DISTANCE:
+		return
+	var species := MenuStyle.species(String(egg["species"]))
+	GameState.world_flags.erase("daycare_egg")
+	if species == null:
+		return
+	var where := GameState.add_caught(species, false, 1.0)
+	EggHatchScene.play(main(), species)
+	GameState.notice.emit("¡Tu huevo nació! Es %s (va a tu %s)." % [species.display_name, where])
 
 
 func add_healing_spot(pos: Vector3, radius: float, title: String) -> void:
@@ -1053,6 +1096,7 @@ func _process(delta: float) -> void:
 		GameState.notice.emit("Saliste de la Zona Safari: devolviste las Safari Balls.")
 	_in_safari = inside
 	_update_mart_queue(p, delta)
+	_update_daycare_egg()
 
 
 ## Fila real afuera de la Tienda entre las 8:30 y las 9:00 (NPC parados junto a la

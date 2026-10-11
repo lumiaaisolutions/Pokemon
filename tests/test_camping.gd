@@ -96,6 +96,14 @@ func _run() -> void:
 	_check(_player.health == 2.0, "de día no se puede dormir en la tienda")
 	GameState.play_time = (21.0 - GameState.START_HOUR) * 60.0
 	_check(GameState.is_night(), "a las 21:00 es de noche")
+	# Música: bw2_camp_night junto a tu tienda de noche (revisión de Fernando, 2026-10-11
+	# mañana; antes no tenía música propia, ver docs/decisiones_sin_preguntar.md).
+	if tent_pos != Vector3.INF:
+		var music := _main.get_node("Music") as MusicDirector
+		var before_pos := _player.global_position
+		_player.global_position = tent_pos
+		_check(music.pick() == "bw2_camp_night", "de noche junto a tu tienda suena bw2_camp_night (sonó %s)" % music.pick())
+		_player.global_position = before_pos
 	GameState.party = [{"species": "eevee", "shiny": false, "hp_ratio": 0.2}]
 	GameState.companion_index = 0
 	var hunger_before_sleep := GameState.hunger
