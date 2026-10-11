@@ -13,7 +13,9 @@
 
 ## Viaje
 - **Barco o avión al azar por región** (decisión 2026-10-10): al generarse, cada región sortea si tiene **muelle con barco** o **aeropuerto con avión** en su pueblo inicial, y siempre se viaja así desde ella. Es una **taquilla en el pueblo inicial** (decisión 2026-10-10: el agua queda a 40–420 m según la región) con el **capitán** (barco) o el **piloto** (avión); el barco o el avión se ven solo en la animación. Eliges una región abierta, ves una **animación corta** (barco en el mar o avión sobre las nubes) y llegas al pueblo inicial de la otra.
-  - **Animación en 3D** (pedido de Fernando, 2026-10-10: "en 3D con el estilo que ya conoces, que no se vea como lienzo, estilo BW2"): escena 3D con barco o avión de pocos polígonos y texturas pixel de B2W2, el agua del juego, islas y nubes, con cámara que lo sigue. **Pendiente:** cambiarlos por los modelos originales de B2W2 (Royal Unova, Ferry, Avión 1 y 2) cuando Fernando pase la verificación de Cloudflare en The Models Resource.
+  - **Animación en 3D** (pedido de Fernando, 2026-10-10: "en 3D con el estilo que ya conoces, que no se vea como lienzo, estilo BW2"): escena 3D con el agua del juego, islas y nubes, y cámara que sigue al vehículo.
+  - **Modelos originales de B2W2** (lote aprobado y descargado el 2026-10-10, The Models Resource, `art/models/b2w2_travel/`): Royal Unova, Ferry, Avión 1 (pasajeros), Avión 2 (carga de Mistralton), Aeropuerto de Mistralton y Torre de control.
+  - **Elección de Fernando:** barco = **Ferry**; avión = **al azar entre los dos** (por región); taquilla = **Aeropuerto de Mistralton con la Torre** en las regiones con avión, y en las de barco la caseta con el Ferry amarrado detrás en miniatura.
 
 ## Gimnasios y Liga
 - **8 gimnasios por región** con líderes **al azar de Kanto a Teselia** (generaciones 1–5), **sin repetirse** entre regiones; cada uno con **su tipo** y equipo de ese tipo. Sprites originales de B2W2 (Torneo Mundial Pokémon, hoja "Overworld Entities").

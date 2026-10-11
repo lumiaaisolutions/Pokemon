@@ -234,7 +234,7 @@ func _run() -> void:
 	_check(Regions.ticket_given() and GameState.regions[1]["unlocked"], "el profesor da el Boleto y abre la siguiente región")
 	var terminal := _main.get_node("TravelTerminal") as TravelTerminal
 	await _frames(5)
-	_check(terminal.booth_position != Vector3.INF and Vector2(terminal.booth_position.x, terminal.booth_position.z).distance_to(Vector2(float(home_town["x"]), float(home_town["z"]))) < 40.0,
+	_check(terminal.booth_position != Vector3.INF and Vector2(terminal.booth_position.x, terminal.booth_position.z).distance_to(Vector2(float(home_town["x"]), float(home_town["z"]))) < 70.0,
 			"la taquilla está en el pueblo inicial")
 	var destinations := terminal.destinations()
 	_check(destinations.size() == 1 and destinations[0] == 1, "desde la taquilla se puede ir a la región abierta")

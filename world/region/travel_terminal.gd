@@ -30,11 +30,13 @@ static func operator_title() -> String:
 	return "Capitán" if boat() else "Piloto"
 
 
-## Lugar libre al borde de la plaza del pueblo inicial (lejos de edificios y del monumento).
-func _spot(settlement: Dictionary) -> Vector2:
+## Lugar libre en el pueblo inicial (lejos de edificios y del monumento); clearance es el
+## medio ancho de lo que se construye (la caseta o el aeropuerto).
+func _spot(settlement: Dictionary, clearance: float = 0.0) -> Vector2:
 	var plaza := Vector2(float(settlement["x"]), float(settlement["z"]))
 	var buildings: Array = settlement["buildings"]
-	for ring: float in [15.0, 18.0, 22.0, 26.0]:
+	var rings: Array = [15.0, 18.0, 22.0, 26.0] if clearance <= 0.0 else [30.0, 36.0, 42.0, 48.0, 55.0, 62.0]
+	for ring: float in rings:
 		for k in 16:
 			var at := plaza + Vector2.from_angle(TAU * k / 16.0 + 0.3) * ring
 			# Lejos del monumento y fuera de la línea por donde sale el jugador.
@@ -44,7 +46,7 @@ func _spot(settlement: Dictionary) -> Vector2:
 			var free := true
 			for b: Dictionary in buildings:
 				# Los edificios giran: se usa su lado mayor en ambos ejes.
-				var half := Vector2.ONE * (maxf(float(b.get("w", 10.0)), float(b.get("d", 10.0))) * 0.5 + 4.0)
+				var half := Vector2.ONE * (maxf(float(b.get("w", 10.0)), float(b.get("d", 10.0))) * 0.5 + 4.0 + clearance)
 				var rel := at - Vector2(float(b["x"]), float(b["z"]))
 				if absf(rel.x) < half.x and absf(rel.y) < half.y:
 					free = false
@@ -58,6 +60,9 @@ func _build() -> void:
 	if _world.layout.settlements.is_empty():
 		return
 	var settlement: Dictionary = _world.layout.settlements[0]
+	if not boat():
+		_build_airport(settlement)
+		return
 	var at := _spot(settlement)
 	var plaza := Vector2(float(settlement["x"]), float(settlement["z"]))
 	var root := Node3D.new()
@@ -93,9 +98,90 @@ func _build() -> void:
 	root.add_child(npc)
 	npc.setup(NpcLooks.sheet("marinero" if boat() else "policia"), 3, 8, 0.057)
 	npc.position = Vector3(0, 0, -0.6)
+	# El Ferry amarrado detrás, en miniatura (decisión de Fernando, 2026-10-10).
+	var ferry := _travel_model("ferry1", 0.022)
+	ferry.position = Vector3(0, 0.05, -4.5)
+	ferry.rotation.y = PI * 0.5
+	root.add_child(ferry)
 	booth_position = root.global_position
 	var front := root.global_position + Vector3(to_plaza.x, 0, to_plaza.y) * 1.8
 	_point = _world.structures.add_point(front + Vector3.UP * 0.5, "Hablar con el %s (viajes a otras regiones)" % operator_title().to_lower(), talk, 2.4)
+
+
+## Aeropuerto de Mistralton con su Torre de control (modelos de B2W2) y el piloto en la puerta.
+func _build_airport(settlement: Dictionary) -> void:
+	var airport := _travel_model("mistralton_airport", BuildingModels.SCALE)
+	var tower := _travel_model("airport_tower", BuildingModels.SCALE * 0.8)
+	var airport_size: Vector3 = airport.get_meta("size")
+	var tower_size: Vector3 = tower.get_meta("size")
+	var at := _spot(settlement, maxf(airport_size.x, airport_size.z) * 0.5 + tower_size.x + 2.0)
+	var plaza := Vector2(float(settlement["x"]), float(settlement["z"]))
+	var root := Node3D.new()
+	root.name = "Airport"
+	add_child(root)
+	root.global_position = Vector3(at.x, _world.surface_height_at(at.x, at.y) - 0.1, at.y)
+	var to_plaza := (plaza - at).normalized()
+	root.rotation.y = atan2(to_plaza.x, to_plaza.y)
+	root.add_child(airport)
+	tower.position = Vector3(airport_size.x * 0.5 + tower_size.x * 0.5 + 1.5, 0, -airport_size.z * 0.15)
+	root.add_child(tower)
+	_solid(root, airport_size * Vector3(0.92, 1.0, 0.92), Vector3(0, airport_size.y * 0.5, 0))
+	_solid(root, tower_size * Vector3(0.85, 1.0, 0.85), tower.position + Vector3(0, tower_size.y * 0.5, 0))
+	var sign := Label3D.new()
+	sign.text = "✈ Aeropuerto\nVuelos a otras regiones"
+	sign.font_size = 52
+	sign.pixel_size = 0.012
+	sign.outline_size = 10
+	sign.outline_modulate = Color(0.55, 0.15, 0.15)
+	sign.position = Vector3(0, airport_size.y + 1.2, airport_size.z * 0.3)
+	sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	root.add_child(sign)
+	# El piloto frente a la puerta (la puerta del modelo mira a +Z, hacia la plaza).
+	var pilot := DirectionalSprite.new()
+	pilot.name = "Operator"
+	root.add_child(pilot)
+	pilot.setup(NpcLooks.sheet("policia"), 3, 8, 0.057)
+	pilot.position = Vector3(2.2, 0.1, airport_size.z * 0.5 + 1.6)
+	booth_position = root.global_position
+	var front := root.to_global(Vector3(0, 0.6, airport_size.z * 0.5 + 2.2))
+	_point = _world.structures.add_point(front, "Hablar con el piloto (vuelos a otras regiones)", talk, 2.6)
+
+
+## Modelo de art/models/b2w2_travel/ con píxel nítido, apoyado en el suelo y centrado.
+## Guarda su tamaño (m) en el meta "size".
+func _travel_model(name: String, scale: float) -> Node3D:
+	var holder := Node3D.new()
+	var path := TravelScene.ROOT + name + "/model.dae"
+	if not ResourceLoader.exists(path):
+		holder.set_meta("size", Vector3(4, 4, 4))
+		return holder
+	var node := (load(path) as PackedScene).instantiate() as Node3D
+	node.scale = Vector3.ONE * scale
+	holder.add_child(node)
+	var box := AABB()
+	var first := true
+	for mesh_node in node.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_node as MeshInstance3D
+		BuildingModels._fix_materials(mesh)
+		var local := BuildingModels._local_transform(mesh, node) * mesh.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	var center := box.get_center()
+	node.position = Vector3(-center.x, -box.position.y, -center.z) * scale
+	holder.set_meta("size", box.size * scale)
+	return holder
+
+
+func _solid(parent: Node3D, size: Vector3, at: Vector3) -> void:
+	var body := StaticBody3D.new()
+	body.collision_layer = WorldBuilder.LAYER_OBSTACLES | WorldBuilder.LAYER_CAMERA
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	shape.shape = box_shape
+	body.position = at
+	body.add_child(shape)
+	parent.add_child(body)
 
 
 func _box(parent: Node3D, size: Vector3, at: Vector3, color: Color, solid: bool) -> void:
@@ -160,21 +246,18 @@ func talk() -> void:
 					travel_to(places[choice]))
 
 
-## Viaje: animación corta (barco o avión) y la escena se recarga en la otra región.
+## Viaje: escena 3D del barco o el avión (TravelScene) y después la región nueva.
 func travel_to(target: int, animate := true) -> void:
 	if target < 0 or target >= Regions.COUNT or not GameState.regions[target]["unlocked"]:
 		return
-	var vehicle_boat := boat()
+	var by_boat := boat()
+	var plane := Regions.plane_model()
 	if _main.has_method("sync_companion_to_party"):
 		_main.sync_companion_to_party()
-	if animate:
-		var overlay := TravelOverlay.new()
-		overlay.boat = vehicle_boat
-		overlay.destination = Regions.region_name(target)
-		get_tree().root.add_child(overlay)
-		await get_tree().create_timer(TRAVEL_SECONDS).timeout
-		overlay.finish()
 	Regions.switch_to(target)
 	SaveSystem.pending_position = Vector3.INF
 	GameState.add_news("%s llegó a la %s." % [GameState.player_name, Regions.region_name()])
-	get_tree().change_scene_to_file("res://world/main.tscn")
+	if animate:
+		TravelScene.go(get_tree(), by_boat, plane, Regions.region_name())
+	else:
+		get_tree().change_scene_to_file(TravelScene.MAIN_SCENE)

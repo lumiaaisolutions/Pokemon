@@ -1,0 +1,50 @@
+# Blender MTL File: 'ORAS Map Lighting.blend'
+# Material Count: 4
+
+newmtl C3Ship1_1.002
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.778039 0.778039 0.778039
+Ks 0.500000 0.500000 0.500000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd C3Ship1_1.png
+map_Ka C3Ship1_1.png
+map_d C3Ship1_1.png
+
+newmtl C3Ship1_2.002
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.778039 0.778039 0.778039
+Ks 0.500000 0.500000 0.500000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd C3Ship1_2.png
+map_Ka C3Ship1_2.png
+map_d C3Ship1_2.png
+
+newmtl __h.002
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.778039 0.778039 0.778039
+Ks 0.500000 0.500000 0.500000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd __h.png
+map_Ka __h.png
+map_d __h.png
+
+newmtl h_mado.002
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.778039 0.778039 0.778039
+Ks 0.500000 0.500000 0.500000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd h_mado.png
+map_Ka h_mado.png
+map_d h_mado.png

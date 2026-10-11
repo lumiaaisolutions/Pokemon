@@ -183,6 +183,12 @@ static func transport(i: int = -1) -> String:
 	return String(GameState.regions[index() if i < 0 else i]["transport"])
 
 
+## Avión de la región (al azar entre los dos de B2W2, fijo por su semilla): de pasajeros
+## ("plane1") o de carga de Mistralton ("plane2"). Decisión de Fernando, 2026-10-10.
+static func plane_model(i: int = -1) -> String:
+	return "plane1" if absi(hash(int(GameState.regions[index() if i < 0 else i]["seed"]))) % 2 == 0 else "plane2"
+
+
 ## Cambia de región: guarda lo de la actual y carga lo de la otra (o lo crea).
 ## La escena principal se recarga después (ver Main.travel_to).
 static func switch_to(target: int) -> void:
