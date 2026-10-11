@@ -90,8 +90,8 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
    - Cinemática en 3D del profesor viajando y conociendo a los Pokémon; luego el profesor queda a tu lado y te ayuda a elegir, y después sigue su vida. Detalles por preguntar a Fernando.
 4. **Mensajes flotantes de la gente** según el contexto: lo que platican entre ellos, lo que hacen al pelear, comentarios de sucesos (p. ej. "está eligiendo su inicial").
 5. **Física de los objetos:** al saltar sobre bancas, macetas, etc. se debe quedar encima, no atravesarlas.
-6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia.
-7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano.
+6. **IA de los salvajes en combate:** no pegarse siempre al jugador; esquivar, tomar distancia y lanzar ataques con estrategia. **Hecho** (`world/actors/pokemon_actor.gd`, `_think_wild_fight`) → [combate](sistemas/combate.md).
+7. **Poké Ball al sacar o guardar al compañero:** aparece en la cabeza del personaje; debe salir de su mano. **Hecho** (`world/main.gd`, `_hand_position`) → [jugador](sistemas/jugador.md).
 8. **Tienda Pokémon sin puerta y con una pared negra** (la caja interior que tapa caras faltantes se ve): mejor diseño, que parezca real y tenga su puerta.
 9. **Prueba intermitente (resuelta):** la del viajero fallaba cuando el jugador caía en el agua o el viajero ya había pasado; la de la horda y la de huir esperaban cuadros de física y bajo carga (con el juego abierto) varios caben en uno. Ahora esperan cuadros reales.
 

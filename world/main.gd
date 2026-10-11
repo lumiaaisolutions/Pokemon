@@ -495,12 +495,19 @@ func _send_out_companion() -> void:
 	_busy = false
 
 
-## Mano del jugador: a un costado, a la altura del pecho.
+## Mano del jugador: a su costado y un poco adelantada hacia donde mira (como si
+## sacara la ball de su cinturón y la mostrara al frente), a la altura real de la
+## mano del sprite (no del pecho ni la cabeza).
+const HAND_HEIGHT := 0.5
+const HAND_FORWARD := 0.3
+const HAND_SIDE := 0.3
+
+
 func _hand_position() -> Vector3:
-	var camera := get_viewport().get_camera_3d()
-	var right := camera.global_basis.x if camera != null else Vector3.RIGHT
-	right.y = 0.0
-	return _player.global_position + Vector3.UP * 1.0 + right.normalized() * 0.35
+	var sprite := _player.get_node("Sprite") as DirectionalSprite
+	var forward := sprite.facing_world if sprite.facing_world.length() > 0.01 else Vector3.FORWARD
+	var side := Vector3(-forward.z, 0.0, forward.x)
+	return _player.global_position + Vector3.UP * HAND_HEIGHT + forward * HAND_FORWARD + side * HAND_SIDE
 
 
 func _side_offset() -> Vector3:

@@ -7,6 +7,8 @@ extends Node3D
 const SPEED := 13.0
 const HIT_RADIUS := 0.9
 const MAX_DISTANCE := 22.0
+## Grupo para que un salvaje en pelea pueda ver venir un proyectil y esquivarlo.
+const PROJECTILE_GROUP := &"attack_projectiles"
 const TYPE_COLORS := {
 	PokemonTypes.Type.NORMAL: Color(0.85, 0.85, 0.75), PokemonTypes.Type.FIRE: Color(1.0, 0.45, 0.15),
 	PokemonTypes.Type.WATER: Color(0.3, 0.6, 1.0), PokemonTypes.Type.ELECTRIC: Color(1.0, 0.9, 0.2),
@@ -65,6 +67,7 @@ static func launch(parent: Node, from: Vector3, to: Vector3, type: PokemonTypes.
 	projectile.add_child(orb)
 	projectile._orb = orb
 	parent.add_child(projectile)
+	projectile.add_to_group(PROJECTILE_GROUP)
 	projectile.global_position = from
 	var flat := to - from
 	projectile._direction = flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD

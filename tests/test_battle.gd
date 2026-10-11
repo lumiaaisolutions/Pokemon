@@ -166,7 +166,12 @@ func _run() -> void:
 	await _frames(5)
 	var aim := _player.get_node("ThrowAim") as ThrowAim
 	aim.locked = true
-	await _frames(5)
+	# Espera el cuadro real en que se nota el cambio (bajo carga, varios pasos de física
+	# pueden caber en un solo cuadro de proceso).
+	for wait in 30:
+		await get_tree().physics_frame
+		if not _main.companion.controlled:
+			break
 	_check(not _main.companion.controlled, "al apuntar, tu Pokémon pelea solo y tú controlas a Nate")
 	var health := _player.health
 	_player.dodge(Vector3.RIGHT)
@@ -344,7 +349,12 @@ func _run() -> void:
 		if _battle.active:
 			var foe := _battle.opponent
 			foe.hp = foe.hp_max * 0.2
-			await _frames(5)
+			# Espera el cuadro real en que cura (bajo carga, varios pasos de física pueden
+			# caber en un solo cuadro de proceso).
+			for wait in 30:
+				await get_tree().physics_frame
+				if foe.hp > foe.hp_max * 0.2:
+					break
 			_check(foe.hp > foe.hp_max * 0.2, "el héroe usa pociones cuando su Pokémon está bajo")
 			_battle.finish("flee")
 		await _frames(10)

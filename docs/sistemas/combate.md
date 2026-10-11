@@ -1,6 +1,6 @@
 # Combate en arena, captura en combate y megaevolución (Fases 3 y 4, hechas)
 
-[← Índice](../README.md) · Código: `world/battle/` (`battle_manager.gd`, `battle_ui.gd`, `mega_effect.gd`), `world/capture/throw_aim.gd`, `world/player/player.gd`. Prueba: `tests/test_battle.tscn`.
+[← Índice](../README.md) · Código: `world/battle/` (`battle_manager.gd`, `battle_ui.gd`, `mega_effect.gd`), `world/capture/throw_aim.gd`, `world/player/player.gd`, `world/actors/pokemon_actor.gd` (IA en pelea, `_think_wild_fight`). Prueba: `tests/test_battle.tscn`, `tests/test_fights.tscn`.
 
 Decidido por Fernando (2026-10-10): **arena en el lugar**, inicio al tocarse o al atacarse, cambio de Pokémon con espera y objetos con la Mochila (pausa).
 
@@ -10,6 +10,18 @@ Decidido por Fernando (2026-10-10): **arena en el lugar**, inicio al tocarse o a
 - La cámara pasa detrás de tu Pokémon y lo controlas directo (movimiento, esquiva, fijar objetivo y 4 movimientos). El jugador queda en el borde.
 - Los salvajes avisan sus ataques con un **anillo rojo en el suelo** durante la preparación (`PokemonActor._telegraph`).
 - `BattleManager.enabled` (estático) se apaga en las pruebas viejas, que revisan las peleas en el mundo.
+
+## IA de los salvajes en combate (pedido de Fernando, 2026-10-10, noche · hecho)
+"No debe estar siempre pegado al jugador; también deben esquivar o lanzar ataques con estrategia para que no parezca que solo me siguen." Código: `PokemonActor._think_wild_fight` (y auxiliares `_compute_tactic`, `_curved_approach`, `_orbit_point`, `_sees_incoming_attack`, `_dodge_chance`), usado tanto en el combate de arena como en las peleas sueltas del mundo (salvaje vs. salvaje, salvaje vs. jugador sin compañero fuera).
+- **Táctica según sus estadísticas** (`Tactic`), calculada al aparecer (y al megaevolucionar):
+  - **KITE** (veloces —velocidad ≥ 90— o de poca defensa —≤ 55—): si tienen un movimiento especial mejor que el físico pelean a distancia (igual que antes, entre `RANGED_MIN` y `RANGED_MAX`); si son cuerpo a cuerpo, mantienen media distancia (`MELEE_RANGE` × 1.6 a 2.6) y solo entran a golpear cuando el ataque está listo.
+  - **BRUISER** (ataque claramente mayor que el especial, ≥ 75): van directo a su rango de golpe y, tras atacar, se retiran a un punto fijo (hit-and-run) antes de volver a entrar; se retiran más lejos y más tiempo que los demás.
+  - **BALANCED** (el resto): como los KITE cuerpo a cuerpo, media distancia y entra solo a golpear.
+- **Rodeo (strafe):** mientras esperan a que su ataque esté listo, en vez de quedarse plantados rodean al rival (`_orbit_point`, cambia de lado cada 1.5–3 s); al acercarse lo hacen en curva (`_curved_approach`), no en línea recta.
+- **Esquivar ataques que ven venir:** si el rival está preparando un golpe (o hay un proyectil cerca, ver `AttackProjectile.PROJECTILE_GROUP`) y está a su alcance, puede esquivar de lado con un dash corto e invulnerable (el mismo `ai_dodge` de los rivales "listos"); la probabilidad sube con su velocidad (12–65 %). Se revisa cada 0.12 s (no cada cuadro de física) para no sumar carga de más al combate.
+- **Movimientos de estado cuando conviene:** ya elegía curarse con poca vida, usar una mejora o un movimiento de aturdir según el momento (`_choose_move`); sigue igual, combinado con la nueva posición.
+- Respeta la arena (`_clamp_to_arena`), las hordas (varios salvajes atacando a la vez) y los combates de entrenador (`trainer`, IA "lista" en `_smart_opponent`: cura y esquiva tus ataques cargados), que no se tocaron.
+- Prueba: `tests/test_fights.gd` — un veloz de ataque especial (Jolteon) mantiene distancia media > 3 m; un fuerte cuerpo a cuerpo (Machamp) se acerca a golpear y se retira después (no se queda pegado); en una pelea real (Jolteon vs. Absol) alguno esquiva al menos un ataque que vio venir.
 
 ## Dentro de la arena
 | Acción | Teclado / mando |

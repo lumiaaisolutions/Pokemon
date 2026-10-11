@@ -14,6 +14,11 @@ signal stunned(actor: PokemonActor)
 
 enum Role { WILD, COMPANION }
 enum State { IDLE, WANDER, APPROACH, FLEE, CHASE, RETURN, FOLLOW, HIDE, NOTICE, ESCAPE, FLY, FIGHT, STUNNED, PERCHED, AMBUSH, DROP }
+## Táctica de pelea de un salvaje según su carácter (decisión de Fernando, 2026-10-10): los
+## veloces o de poca defensa esquivan y atacan a distancia (KITE); los fuertes cuerpo a
+## cuerpo embisten y se retiran (BRUISER, hit-and-run); el resto ronda a media distancia
+## (BALANCED). Todos rodean en vez de quedarse plantados y esquivan ataques que ven venir.
+enum Tactic { KITE, BRUISER, BALANCED }
 
 const PIXEL_SIZE := 0.057
 const GRAVITY := 20.0
@@ -48,6 +53,8 @@ const ATTACK_COOLDOWN_MAX := 2.4
 const MELEE_RANGE := 1.8
 const RANGED_MIN := 5.0
 const RANGED_MAX := 9.0
+## A qué distancia nota un proyectil que viene hacia él, para poder esquivarlo.
+const PROJECTILE_WATCH_RADIUS := 6.0
 ## Emboscadas desde los árboles.
 const AMBUSH_TRIGGER_RADIUS := 3.0
 const AMBUSH_WATCH_RADIUS := 8.0
@@ -159,6 +166,20 @@ var hp_max: float = 50.0
 var fight_target: Node3D
 var _attack_cooldown: float = 0.0
 var _windup: float = 0.0
+## Táctica según sus estadísticas (ver Tactic), hacia dónde rodea y por cuánto tiempo más
+## (cambia de vez en cuando), y tiempo de retirada tras golpear cuerpo a cuerpo (hit-and-run).
+var _tactic: Tactic = Tactic.BALANCED
+var _strafe_sign: float = 1.0
+var _strafe_timer: float = 0.0
+var _retreat_time: float = 0.0
+## Punto fijo adonde se retira (calculado una sola vez al golpear, para no titubear
+## recalculándolo cada cuadro mientras huye).
+var _retreat_point := Vector3.ZERO
+## Enfriamiento entre intentos de esquivar un ataque que ve venir.
+var _dodge_cooldown: float = 0.0
+## No busca un ataque entrante en cada cuadro de física (recorrer los proyectiles de
+## la escena es caro): solo cada poco tiempo, suficiente para reaccionar a tiempo.
+var _threat_scan: float = 0.0
 var _rival_scan: float = 0.0
 var _health_bar: HealthBar3D
 var _faded := false
@@ -217,6 +238,7 @@ func _ready() -> void:
 		add_child(_question)
 	hp_max = 20.0 + species.hp * 0.6
 	hp = hp_max
+	_tactic = _compute_tactic()
 	_health_bar = HealthBar3D.create(species.overworld_cell * world_pixel_size() + 0.3, species.display_name + (" ♂" if gender == 0 else (" ♀" if gender == 1 else "")) + (" ✦" if shiny else ""))
 	add_child(_health_bar)
 	_rival_scan = _rng.randf() * RIVAL_SCAN_INTERVAL
@@ -827,6 +849,7 @@ func _swap_form(form: SpeciesData) -> void:
 	species = form
 	hp_max = 20.0 + species.hp * 0.6
 	hp = hp_max * ratio
+	_tactic = _compute_tactic()
 	var sheet := species.overworld_sheet_shiny if shiny and species.overworld_sheet_shiny != null else species.overworld_sheet
 	_sprite.setup(sheet, 2, 4, world_pixel_size(), species.foot_offset_px)
 	_health_bar.set_ratio(hp / hp_max)
@@ -1193,6 +1216,10 @@ func _think_fight() -> Array:
 		if _windup <= 0.0:
 			_deliver_attack()
 		return [global_position, 0.0]
+	if role == Role.WILD:
+		return _think_wild_fight(target_pos, distance)
+	# Compañero peleando solo (sin control directo, p. ej. mientras apuntas la Pokéball):
+	# se queda en su rango de ataque, sin la estrategia de los salvajes.
 	if is_ranged():
 		if distance > RANGED_MAX:
 			return [target_pos, run_speed()]
@@ -1209,9 +1236,123 @@ func _think_fight() -> Array:
 		if _pending_move != "":
 			_windup = ATTACK_WINDUP
 			_flash(Color(1.6, 1.6, 1.6))
-			if role == Role.WILD:
-				_telegraph(fight_target.global_position)
 	return [global_position, 0.0]
+
+
+## IA en pelea de un salvaje: "según su carácter" (Fernando, 2026-10-10). No se queda
+## pegado al rival: rodea (strafe) mientras espera, se acerca en curva (no en línea recta)
+## y, los veloces o de poca defensa, mantienen media distancia y solo entran a golpear;
+## los fuertes cuerpo a cuerpo (BRUISER) sí entran a su rango, pero se retiran un momento
+## tras el golpe (hit-and-run). Además esquiva ataques que ve venir (proyectil cerca o el
+## rival preparando un golpe) con un dash corto, con más probabilidad cuanto más veloz es.
+func _think_wild_fight(target_pos: Vector3, distance: float) -> Array:
+	var delta := get_physics_process_delta_time()
+	_retreat_time = maxf(_retreat_time - delta, 0.0)
+	_dodge_cooldown = maxf(_dodge_cooldown - delta, 0.0)
+	_threat_scan -= delta
+	_strafe_timer -= delta
+	if _strafe_timer <= 0.0:
+		_strafe_timer = _rng.randf_range(1.5, 3.0)
+		_strafe_sign = 1.0 if _rng.randf() < 0.5 else -1.0
+	if _threat_scan <= 0.0:
+		_threat_scan = 0.12
+		if not is_dashing() and _dodge_cooldown <= 0.0 and _sees_incoming_attack(target_pos):
+			_dodge_cooldown = _rng.randf_range(0.4, 0.8)
+			if _rng.randf() < _dodge_chance():
+				_dodge_cooldown = _rng.randf_range(1.3, 2.6)
+				ai_dodge(_side_direction(target_pos))
+				return [global_position, 0.0]
+	# Cuerpo a cuerpo: tras golpear se retira a un punto fijo (hit-and-run) antes de
+	# volver a entrar; los fuertes (BRUISER) se retiran más lejos.
+	if _retreat_time > 0.0:
+		return [_retreat_point, run_speed()]
+	var ranged := is_ranged()
+	# Los fuertes cuerpo a cuerpo (BRUISER) van directo a su rango de golpe; el resto
+	# (veloces o de poca defensa, y los de carácter equilibrado) prefieren media
+	# distancia y solo entran cuando van a golpear.
+	var far_band := RANGED_MAX if ranged else (MELEE_RANGE if _tactic == Tactic.BRUISER else MELEE_RANGE * 2.6)
+	if distance > far_band:
+		return [_curved_approach(target_pos), run_speed()]
+	if ranged and distance < RANGED_MIN:
+		var away := global_position - target_pos
+		away.y = 0.0
+		return [global_position + away.normalized() * 3.0, walk_speed()]
+	if _attack_cooldown > 0.0:
+		# A la espera del siguiente golpe, rodea en vez de quedarse plantado.
+		return [_orbit_point(target_pos), walk_speed() * 0.9]
+	if not ranged and distance > MELEE_RANGE:
+		# Listo para golpear: entra lo justo a su rango de golpe (dash de acercamiento).
+		return [target_pos, run_speed()]
+	_pending_move = _forced_move if _forced_move != "" else _choose_move(distance)
+	_forced_move = ""
+	_pending_style = Moves.Style.NORMAL
+	if _pending_move != "":
+		_windup = ATTACK_WINDUP
+		_flash(Color(1.6, 1.6, 1.6))
+		_telegraph(fight_target.global_position)
+	return [global_position, 0.0]
+
+
+## Táctica según sus estadísticas: veloz o frágil de defensa → KITE; fuerte cuerpo a
+## cuerpo (ataque claramente mayor que el especial) → BRUISER; el resto, BALANCED.
+func _compute_tactic() -> Tactic:
+	if species.speed >= 90 or species.defense <= 55:
+		return Tactic.KITE
+	if species.attack >= species.sp_attack + 10 and species.attack >= 75:
+		return Tactic.BRUISER
+	return Tactic.BALANCED
+
+
+## Punto para acercarse en curva (no en línea recta), como si rodeara al llegar.
+func _curved_approach(target_pos: Vector3) -> Vector3:
+	var to_target := target_pos - global_position
+	to_target.y = 0.0
+	if to_target.length() < 0.05:
+		return target_pos
+	var side := Vector3(-to_target.z, 0.0, to_target.x).normalized() * _strafe_sign
+	return target_pos + side * minf(to_target.length() * 0.4, 2.5)
+
+
+## Punto para rodear al rival manteniendo más o menos la distancia actual, en vez de
+## quedarse plantado mientras espera a que su ataque esté listo.
+func _orbit_point(target_pos: Vector3) -> Vector3:
+	var to_self := global_position - target_pos
+	to_self.y = 0.0
+	if to_self.length() < 0.05:
+		to_self = -_sprite.facing_world if _sprite.facing_world.length() > 0.01 else Vector3.FORWARD
+	return target_pos + to_self.rotated(Vector3.UP, _strafe_sign * 0.5)
+
+
+## Dirección lateral respecto al rival (para esquivar o rodear).
+func _side_direction(target_pos: Vector3) -> Vector3:
+	var away := global_position - target_pos
+	away.y = 0.0
+	if away.length() < 0.01:
+		away = -_sprite.facing_world
+	return Vector3(-away.z, 0.0, away.x).normalized() * _strafe_sign
+
+
+## ¿Ve venir un ataque del rival? (está preparando un golpe cerca, o un proyectil se acerca).
+func _sees_incoming_attack(target_pos: Vector3) -> bool:
+	if fight_target is PokemonActor and (fight_target as PokemonActor).winding_up():
+		return global_position.distance_to(target_pos) <= RANGED_MAX + 1.5
+	return _incoming_projectile() != null
+
+
+## Proyectil cercano que no es suyo (para esquivarlo si lo ve venir).
+func _incoming_projectile() -> AttackProjectile:
+	for node in get_tree().get_nodes_in_group(AttackProjectile.PROJECTILE_GROUP):
+		var proj := node as AttackProjectile
+		if proj == null or proj.attacker == self:
+			continue
+		if proj.global_position.distance_to(global_position) <= PROJECTILE_WATCH_RADIUS:
+			return proj
+	return null
+
+
+## Probabilidad de esquivar un ataque que ve venir: más alta cuanto más veloz es.
+func _dodge_chance() -> float:
+	return clampf(species.speed / 150.0, 0.12, 0.65)
 
 
 func _fight_target_valid() -> bool:
@@ -1234,6 +1375,21 @@ func _deliver_attack() -> void:
 		return
 	use_move(id, fight_target, _pending_style)
 	_pending_move = ""
+	# Cuerpo a cuerpo: se retira un momento tras golpear (hit-and-run). El punto se fija
+	# una sola vez (si se recalculara cada cuadro desde la posición actual, titubearía
+	# en vez de alejarse de verdad) y se cancela el impulso de la embestida (si no, tarda
+	# en frenar y girar, y casi no le queda tiempo para retirarse de verdad).
+	if role == Role.WILD and not is_ranged() and is_instance_valid(fight_target):
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_retreat_time = _rng.randf_range(0.65, 1.05) if _tactic == Tactic.BRUISER else _rng.randf_range(0.35, 0.65)
+		var away := global_position - fight_target.global_position
+		away.y = 0.0
+		if away.length() < 0.01:
+			away = -_sprite.facing_world
+		var side := Vector3(-away.z, 0.0, away.x).normalized() * _strafe_sign
+		var offset := 7.5 if _tactic == Tactic.BRUISER else 4.5
+		_retreat_point = global_position + (away.normalized() + side * 0.5).normalized() * offset
 
 
 # --- Movimientos ---------------------------------------------------------------------
