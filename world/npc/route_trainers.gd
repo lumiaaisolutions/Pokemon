@@ -198,6 +198,9 @@ func sees_player(trainer: Dictionary) -> bool:
 
 func _spotted(trainer: Dictionary) -> void:
 	trainer["state"] = "approach"
+	var battle := _main.get_node_or_null("Battle") as BattleManager
+	if battle != null:
+		battle.spotted(trainer["node"])
 	var mark := (trainer["node"] as Node3D).get_node("Mark") as Label3D
 	mark.visible = true
 	var tween := create_tween()
@@ -223,6 +226,11 @@ func _challenge(trainer: Dictionary) -> void:
 	var battle := _main.get_node_or_null("Battle") as BattleManager
 	(node.get_node("Mark") as Label3D).visible = false
 	if battle == null or not battle.ready_to_fight():
+		# Tu compañero aún está saliendo de su Ball: espera un momento (no te vas a escapar).
+		if battle != null and battle.player() != null and battle.player().spotted_by == node and battle.player().spotted_time > 1.0:
+			return
+		if battle != null:
+			battle.release_spotted()
 		GameState.notice.emit("%s %s: ¡Saca a tu Pokémon y peleamos!" % [spot["class"], spot["name"]])
 		trainer["state"] = "return"
 		trainer["retry"] = RETRY_SECONDS

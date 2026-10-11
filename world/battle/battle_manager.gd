@@ -62,6 +62,7 @@ var _dodge_cooldown := 0.0
 ## el rival, sigue el siguiente. horde_size: cuántos eran (para el premio).
 var horde: Array[PokemonActor] = []
 var horde_size := 0
+var _no_flee_notice := 0.0
 var _horde_check := 0.0
 const HORDE_RUSH_DISTANCE := 12.0
 
@@ -97,6 +98,28 @@ func can_start(wild: PokemonActor) -> bool:
 
 
 ## Tu Pokémon está fuera y tú caminas (sin montar): se puede pelear.
+## Un entrenador te vio: te detiene mirándolo y saca a tu compañero si estaba guardado,
+## para que el combate no se pueda saltar (regla de Fernando, 2026-10-10).
+const SPOTTED_MAX_SECONDS := 15.0
+
+
+func spotted(by: Node3D) -> void:
+	var p := player()
+	if p == null:
+		return
+	p.spotted_by = by
+	p.spotted_time = SPOTTED_MAX_SECONDS
+	p.velocity = Vector3.ZERO
+	if int(_main.get("companion_state")) == 1 and GameState.party.any(func(e: Dictionary) -> bool: return float(e.get("hp_ratio", 1.0)) > 0.0):
+		_main.call("_send_out_companion")
+
+
+func release_spotted() -> void:
+	var p := player()
+	if p != null:
+		p.spotted_by = null
+
+
 func ready_to_fight() -> bool:
 	var c := companion()
 	var p := player()
@@ -112,6 +135,7 @@ func start(wild: PokemonActor) -> bool:
 
 ## Combate contra un entrenador: saca su primer Pokémon junto a él (ver trainer).
 func start_trainer(info: Dictionary) -> bool:
+	release_spotted()
 	if not ready_to_fight() or (info.get("team", []) as Array).is_empty():
 		return false
 	trainer = info
@@ -320,8 +344,17 @@ func _process(delta: float) -> void:
 				opponent.start_fight(player())
 	elif opponent.fight_target == player() and c.state != PokemonActor.State.STUNNED:
 		opponent.start_fight(c)
+	# De un entrenador no se huye (regla de Fernando): tu Pokémon vuelve al círculo.
+	var out := Vector2(c.global_position.x - center.x, c.global_position.z - center.z)
+	if not trainer.is_empty() and out.length() > ARENA_RADIUS - 0.4:
+		var inside := out.normalized() * (ARENA_RADIUS - 0.6)
+		c.global_position = Vector3(center.x + inside.x, c.global_position.y, center.z + inside.y)
+		if _no_flee_notice <= 0.0:
+			_no_flee_notice = 4.0
+			GameState.notice.emit("¡No puedes huir de un combate contra un entrenador!")
+	_no_flee_notice = maxf(_no_flee_notice - delta, 0.0)
 	# Huir: tu Pokémon salió del círculo.
-	if c.controlled and Vector2(c.global_position.x - center.x, c.global_position.z - center.z).length() > ARENA_RADIUS + 1.0:
+	if c.controlled and trainer.is_empty() and out.length() > ARENA_RADIUS + 1.0:
 		opponent.set_meta("fled_until", GameState.play_time + FLEE_IGNORE)
 		opponent.lose_track(FLEE_IGNORE)
 		GameState.notice.emit("¡Escapaste del combate!" if trainer.is_empty() else "Te retiraste del combate contra %s." % trainer["name"])

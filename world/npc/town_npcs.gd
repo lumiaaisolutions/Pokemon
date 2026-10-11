@@ -689,6 +689,8 @@ func _sight_update(person: Dictionary, role: String, sprite: DirectionalSprite, 
 		if battle == null or battle.active or _player.mode != Player.Mode.WALK:
 			person["approaching"] = false
 			_set_mark(node, false)
+			if battle != null and not battle.active:
+				battle.release_spotted()
 			return false
 		if to.length() > 2.4:
 			var velocity := to.normalized() * 3.2
@@ -722,6 +724,7 @@ func _sight_update(person: Dictionary, role: String, sprite: DirectionalSprite, 
 		return false
 	person["approaching"] = true
 	_set_mark(node, true)
+	battle.spotted(node)
 	AudioBus.play_sfx("spotted")
 	AudioBus.play_jingle("bw1_spotted")
 	return true

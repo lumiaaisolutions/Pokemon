@@ -143,3 +143,5 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 - Árboles, rocas y piedras, arbustos, flores, cactus **y la hierba alta** pasan a 3D, con **modelos reales de B2W2** (models.spriters-resource.com; permiso por cada descarga, Fernando pasa el Cloudflare si aparece).
 - Fernando preguntó qué más está en 2D: se revisa y se le presenta la lista.
 - Todas estas correcciones son reglas permanentes: [reglas_calidad.md](reglas_calidad.md).
+- **Entrenadores que te ven (corregido 2026-10-10):** te podías ir caminando y saltarte el combate. Ahora al verte quedas quieto mirándolo hasta que llega (sale tu compañero si estaba guardado) y en combates contra entrenadores no se puede huir: tu Pokémon vuelve al círculo con el aviso "¡No puedes huir de un combate contra un entrenador!".
+- **Cofres en 2D** (y todo lo demás): regla ampliada en [reglas_calidad.md](reglas_calidad.md): todo en 3D salvo Pokémon, personajes y NPC.

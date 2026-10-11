@@ -6,6 +6,8 @@ extends RigidBody3D
 
 const RADIUS := 0.15
 const SHAKE_TIME := 0.7
+## Lo que tarda el rayo rojo en atrapar al Pokémon y la ball en caer, antes de sacudirse.
+const INTRO_TIME := 0.9
 const MISS_LIFETIME := 3.0
 
 var thrower: Node3D
@@ -34,6 +36,11 @@ static func create() -> PokeballProjectile:
 	ball.collision_layer = 0
 	# Choca con terreno (1), obstáculos (2) y actores (3).
 	ball.collision_mask = 1 | 2 | 4
+	# Rebota contra el suelo, árboles, rocas y paredes (no los atraviesa).
+	var bounce := PhysicsMaterial.new()
+	bounce.bounce = 0.45
+	bounce.friction = 0.7
+	ball.physics_material_override = bounce
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = RADIUS
@@ -57,6 +64,20 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_age += delta
+	# Los posados en árboles y los que no tienen colisión también se pueden atinar: se
+	# revisa la distancia a su cuerpo (el sprite) en cada cuadro.
+	if _target == null and not _done:
+		for node in get_tree().get_nodes_in_group(WildSpawner.WILD_GROUP):
+			var actor := node as PokemonActor
+			if actor == null or not actor.visible or actor.collision_layer != 0:
+				continue
+			var sprite := actor.get_node_or_null("Sprite") as Node3D
+			if sprite == null:
+				continue
+			var body := sprite.global_position + Vector3.UP * actor.species.overworld_cell * actor.world_pixel_size() * 0.4
+			if global_position.distance_to(body) < RADIUS + 0.45 * actor.species.size_scale:
+				_hit_actor(actor)
+				break
 	if _target == null and not _done and _age > MISS_LIFETIME:
 		PixelBurst.spawn(get_parent(), global_position, PixelBurst.Kind.DUST, 0.5)
 		queue_free()
@@ -65,9 +86,20 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node) -> void:
 	if _target != null or _done or not (body is PokemonActor):
 		return
-	var actor := body as PokemonActor
+	_hit_actor(body as PokemonActor)
+
+
+func _hit_actor(actor: PokemonActor) -> void:
+	if _target != null or _done:
+		return
 	if actor.role != PokemonActor.Role.WILD or actor.state == PokemonActor.State.DROP:
 		return
+	# Posado en un árbol: al atinarle cae al pie del árbol y ahí entra en la ball.
+	if actor.perched and actor.world != null:
+		var below := actor.global_position
+		below.y = actor.world.surface_height_at(below.x, below.z)
+		actor._drop_target = below
+		actor._land()
 	# Los Pokémon de un entrenador (gimnasio, Liga) no se capturan: la ball rebota.
 	if actor.has_meta("trainer"):
 		_done = true
@@ -88,11 +120,19 @@ func start_capture(actor: PokemonActor) -> void:
 	var stealth := thrower != null and CaptureRules.is_stealthy(actor, thrower)
 	ball_bonus = CaptureRules.ball_multiplier(ball_id, actor, thrower) * throw_bonus
 	var probability := CaptureRules.probability(actor.species, actor.hp / actor.hp_max, ball_bonus, stunned, stealth)
-	# La ball queda en el suelo frente al Pokémon y él entra en ella.
+	# Al atinar: la ball rebota hacia atrás, se abre con un destello y el rayo rojo atrapa
+	# al Pokémon (se pone rojo, se encoge y entra); luego cae al suelo y se sacude.
 	freeze = true
-	global_position = actor.global_position + Vector3.UP * RADIUS
-	PixelBurst.spawn(get_parent(), actor.global_position + Vector3.UP * 0.5, PixelBurst.Kind.SPLASH, 0.6)
+	var hit_at := global_position if is_inside_tree() else actor.global_position + Vector3.UP * 0.6
+	var back := (thrower.global_position - actor.global_position) if thrower != null else Vector3.BACK
+	back.y = 0.0
+	var open_at := hit_at + back.normalized() * 0.5 + Vector3.UP * 0.7
+	await _absorb(actor, hit_at, open_at)
+	if not is_instance_valid(actor):
+		queue_free()
+		return
 	actor.set_inside_ball(true)
+	await _fall_to_ground(actor)
 	var shake_chance := CaptureRules.shake_probability(probability)
 	var held := 0
 	for shake in CaptureRules.SHAKES:
@@ -138,6 +178,51 @@ func start_capture(actor: PokemonActor) -> void:
 	# Capturado: la ball se queda un momento con las estrellas antes de desaparecer.
 	await get_tree().create_timer(0.9).timeout
 	queue_free()
+
+
+## El rayo rojo: la ball sube, se abre con un destello y el Pokémon, rojo, se encoge y
+## viaja por el rayo hasta ella (como al guardar a tu compañero).
+func _absorb(actor: PokemonActor, from: Vector3, to: Vector3) -> void:
+	AudioBus.play_sfx("ball_open")
+	var lift := create_tween()
+	lift.tween_property(self, "global_position", to, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await lift.finished
+	if not is_instance_valid(actor):
+		return
+	var fx := RecallBeam.new()
+	get_parent().add_child(fx)
+	fx.ball.visible = false
+	fx.flash(global_position, 0.8)
+	var sprite := actor.get_node("Sprite") as Node3D
+	var start := actor.global_position
+	var center := Vector3.UP * actor.species.overworld_cell * actor.world_pixel_size() * 0.4
+	var tween := create_tween()
+	tween.tween_property(sprite, "modulate", Color(2.2, 0.35, 0.35), 0.12)
+	tween.parallel().tween_method(func(_t: float) -> void:
+		if is_instance_valid(actor):
+			fx.set_beam(global_position, actor.global_position + center), 0.0, 1.0, 0.12)
+	tween.tween_method(func(t: float) -> void:
+		if not is_instance_valid(actor):
+			return
+		actor.global_position = start.lerp(global_position - center * 0.2, t * t)
+		sprite.scale = Vector3.ONE * lerpf(1.0, 0.05, t)
+		fx.set_beam(global_position, actor.global_position + center * (1.0 - t)), 0.0, 1.0, 0.35)
+	await tween.finished
+	fx.queue_free()
+	if is_instance_valid(actor):
+		# Queda donde estaba (por si escapa) y con su aspecto normal.
+		actor.global_position = start
+		sprite.scale = Vector3.ONE
+		sprite.set("modulate", Color.WHITE)
+
+
+## Cae al suelo bajo la ball con un rebote y ahí se sacude.
+func _fall_to_ground(actor: PokemonActor) -> void:
+	var ground := global_position
+	ground.y = (actor.world.surface_height_at(ground.x, ground.z) if actor.world != null else actor.global_position.y) + RADIUS
+	var fall := create_tween()
+	fall.tween_property(self, "global_position", ground, 0.3).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	await fall.finished
 
 
 ## Una sacudida: la ball se tambalea, rueda un poco de lado a lado y da un saltito

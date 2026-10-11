@@ -110,6 +110,11 @@ func _ready() -> void:
 	_world = get_tree().get_first_node_in_group(WorldBuilder.WORLD_GROUP) as WorldBuilder
 
 
+## Quien te vio y viene a retarte (ver BattleManager.spotted); tope de seguridad en segundos.
+var spotted_by: Node3D = null
+var spotted_time := 0.0
+
+
 func _physics_process(delta: float) -> void:
 	if mode == Mode.DOWNED:
 		_process_downed(delta)
@@ -122,6 +127,15 @@ func _physics_process(delta: float) -> void:
 	# Hablando con alguien (caja de diálogo) no se mueve.
 	if DialogBox.blocking:
 		input = Vector2.ZERO
+	# Un entrenador te vio (regla de Fernando): te quedas quieto mirándolo hasta que llega;
+	# no puedes saltarte el combate.
+	if spotted_by != null:
+		spotted_time -= delta
+		if not is_instance_valid(spotted_by) or spotted_time <= 0.0:
+			spotted_by = null
+		else:
+			input = Vector2.ZERO
+			($Sprite as DirectionalSprite).look_at_point(spotted_by.global_position)
 	# En combate el teclado mueve a tu Pokémon; tú solo te mueves al apuntar la Pokéball.
 	var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
 	if battle != null and battle.active and not ($ThrowAim as ThrowAim).is_aiming():

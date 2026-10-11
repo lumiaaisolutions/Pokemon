@@ -56,19 +56,25 @@ func _run() -> void:
 	# Mira fija: un toque la fija, otro toque la suelta.
 	var lock_aim := _player.get_node("ThrowAim") as ThrowAim
 	Input.action_press("aim")
-	await _frames(3)
+	for i in 3:
+		await get_tree().process_frame
 	Input.action_release("aim")
-	await _frames(3)
+	for i in 3:
+		await get_tree().process_frame
 	_check(lock_aim.is_aiming() and lock_aim.locked, "un toque de apuntar debe fijar la mira")
 	Input.action_press("aim")
-	await _frames(3)
+	for i in 3:
+		await get_tree().process_frame
 	Input.action_release("aim")
-	await _frames(3)
+	for i in 3:
+		await get_tree().process_frame
 	_check(not lock_aim.is_aiming(), "otro toque debe soltar la mira")
 
 	# Apuntar: la cámara pasa al hombro y aparece el arco.
 	var rig := _main.get_node("CameraRig") as CameraRig
 	var arm := rig.get_node("Pitch/SpringArm") as SpringArm3D
+	# Espera a que la cámara vuelva de la mira fija.
+	await get_tree().create_timer(1.0).timeout
 	var normal_length := arm.spring_length
 	Input.action_press("aim")
 	await _frames(40)
@@ -97,7 +103,7 @@ func _run() -> void:
 	var handler := func(name: String, _shiny: bool, _location: String) -> void: caught[0] = name
 	GameState.pokemon_caught.connect(handler)
 	var hit_ball := _throw_at(target, 1)
-	await _frames(int((CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + 1.5) * 60))
+	await get_tree().create_timer(CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + PokeballProjectile.INTRO_TIME + 3.0).timeout
 	_check(caught[0] == bidoof.display_name, "debe avisar la captura de Bidoof")
 	_check(GameState.party.size() == party_before + 1, "el capturado debe entrar al equipo")
 	_check(not is_instance_valid(target), "el capturado sale del mundo")
@@ -109,7 +115,7 @@ func _run() -> void:
 	await _frames(5)
 	absol.set_physics_process(true)
 	_throw_at(absol, 0)
-	await _frames(int((PokeballProjectile.SHAKE_TIME + 1.5) * 60))
+	await get_tree().create_timer(PokeballProjectile.SHAKE_TIME + PokeballProjectile.INTRO_TIME + 3.0).timeout
 	_check(is_instance_valid(absol) and absol.visible, "si falla, el Pokémon debe salir de la ball")
 	_check(is_instance_valid(absol) and absol.state in [PokemonActor.State.FIGHT, PokemonActor.State.CHASE], "el agresivo debe enojarse tras escapar (estado %d)" % (absol.state if is_instance_valid(absol) else -1))
 	_clear_wild()
@@ -142,7 +148,7 @@ func _run() -> void:
 	var legend := _spawner.spawn_species(_species("raikou"), _ground(8.0), false, false, true)
 	await _frames(5)
 	_throw_at(legend, 1)
-	await _frames(int((CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + 1.5) * 60))
+	await get_tree().create_timer(CaptureRules.SHAKES * PokeballProjectile.SHAKE_TIME + PokeballProjectile.INTRO_TIME + 3.0).timeout
 	_check(GameState.legendary_caught.get("raikou", false), "capturar a Raikou debe marcarlo como capturado")
 
 	# Mapa: se descubre al explorar y el mapa completo pausa el juego.
@@ -164,7 +170,8 @@ func _escape(species: SpeciesData, distance: float) -> PokemonActor:
 	await _frames(5)
 	actor.set_physics_process(true)
 	_throw_at(actor, 0)
-	await _frames(int((PokeballProjectile.SHAKE_TIME + 1.5) * 60))
+	# Justo después de salir de la ball (vuelo, rayo, una sacudida y la pausa).
+	await get_tree().create_timer(PokeballProjectile.SHAKE_TIME + PokeballProjectile.INTRO_TIME + 1.3).timeout
 	return actor
 
 
