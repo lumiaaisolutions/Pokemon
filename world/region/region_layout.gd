@@ -472,9 +472,9 @@ func _plan_buildings(settlement: Dictionary, rng: RandomNumberGenerator) -> Arra
 	var wanted: Array = []
 	match kind:
 		"city":
-			wanted = ["center", "mart", "gym", "contest", "house", "house", "house", "house", "house", "house", "tower_small", "manhole"]
+			wanted = ["center", "mart", "gym", "contest", "restaurant", "food_stall", "house", "house", "house", "house", "house", "house", "tower_small", "manhole"]
 		"town":
-			wanted = ["center", "mart", "gym", "house", "house", "house", "house"]
+			wanted = ["center", "mart", "gym", "food_stall", "house", "house", "house", "house"]
 			if settlements.is_empty():
 				wanted.append("lab")
 		"village":
@@ -489,6 +489,7 @@ func _plan_buildings(settlement: Dictionary, rng: RandomNumberGenerator) -> Arra
 		if wanted[i] in ["center", "mart"]:
 			distance = radius * 0.32
 		var footprint: Vector2 = {"center": Vector2(14, 11), "mart": Vector2(11, 9), "gym": Vector2(20, 18), "contest": Vector2(18, 14),
+				"restaurant": Vector2(15, 9), "food_stall": Vector2(15, 8),
 				"lab": Vector2(16, 11), "house": Vector2(9, 8), "cabin": Vector2(7, 6), "tent": Vector2(5, 5), "tower_small": Vector2(8, 8), "manhole": Vector2(2, 2)}[wanted[i]]
 		list.append({"kind": wanted[i], "x": cx + cos(angle) * distance, "z": cz + sin(angle) * distance,
 				"w": footprint.x, "d": footprint.y, "facing": angle + PI, "color": rng.randi() % 6})

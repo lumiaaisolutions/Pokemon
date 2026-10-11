@@ -14,8 +14,12 @@ const MODELS := {
 	"house": ["house1", "house2", "house3", "house4", "floccesy_house", "house5", "accumula_house", "aspertia_house", "undella_house1",
 			"lacunosa_house", "icirrus_house", "humilau_house", "mistralton_house"],
 	"cabin": ["house6", "house5", "icirrus_house"],
-	"lab": ["lab", "lab2", "shop"],
-	"contest": ["aspertia_building2", "shop"],
+	# "shop" son puestos de mercado (no sirve para laboratorio ni concursos).
+	"lab": ["lab", "lab2"],
+	"contest": ["aspertia_building2"],
+	# Comida (campamento, comida y hambre): villa con terraza de Undella y puestos con toldo.
+	"restaurant": ["undella_house2"],
+	"food_stall": ["shop"],
 	"gym": ["gym_aspertia", "gym_mistralton", "gym_humilau", "gym_opelucid"],
 	"tower_small": ["aspertia_building1", "driftveil_building1"],
 	# Decoración.
@@ -91,11 +95,12 @@ static func instance(kind: String, variant: int) -> Dictionary:
 		var core := MeshInstance3D.new()
 		core.name = "Core"
 		var cube := BoxMesh.new()
-		cube.size = Vector3(size.x * 0.86, size.y * 0.72, size.z * 0.86)
+		var shape: Array = CORE_SHAPES.get(name, [0.0, 0.86, 0.86, 0.72, 0.0, ""])
+		cube.size = Vector3(size.x * float(shape[1]), size.y * float(shape[3]), size.z * float(shape[2]))
 		core.mesh = cube
-		core.position = Vector3(0, cube.size.y * 0.5, 0)
+		core.position = Vector3(size.x * float(shape[0]), cube.size.y * 0.5, size.z * float(shape[4]))
 		var material := StandardMaterial3D.new()
-		material.albedo_color = _wall_color(name)
+		material.albedo_color = Color.html(String(CORE_SHAPES[name][5])) if CORE_SHAPES.has(name) else _wall_color(name)
 		material.roughness = 1.0
 		material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		core.material_override = material
@@ -105,7 +110,11 @@ static func instance(kind: String, variant: int) -> Dictionary:
 
 
 ## Tipos que son decoración (sin núcleo).
-const DECOR_KINDS := ["lamp", "fence", "sign", "bench", "stump", "windmill"]
+const DECOR_KINDS := ["lamp", "fence", "sign", "bench", "stump", "windmill", "food_stall"]
+## Núcleo a la medida para modelos con partes abiertas (terrazas): [centro x, ancho, fondo,
+## alto, centro z] como fracción del tamaño y el color de sus paredes. La villa de Undella
+## tiene la terraza a la izquierda y la fachada adelantada.
+const CORE_SHAPES := {"undella_house2": [0.2, 0.46, 0.5, 0.62, -0.18, "e8ecf0"]}
 static var _wall_colors := {}
 
 

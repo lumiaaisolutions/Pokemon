@@ -23,6 +23,7 @@ const PLACE_NAMES := {
 }
 const BUILDING_NAMES := {
 	"center": "Centro Pokémon", "mart": "Tienda Pokémon", "gym": "Gimnasio", "contest": "Sala de Concursos", "lab": "Laboratorio",
+	"restaurant": "Restaurante", "food_stall": "Puesto de comida",
 	"house": "Casa", "cabin": "Cabaña", "tent": "Carpa", "tower_small": "Torre del Reloj", "manhole": "Alcantarilla",
 }
 const HOUSE_WALLS := [Color(0.93, 0.88, 0.78), Color(0.85, 0.9, 0.95), Color(0.95, 0.85, 0.8), Color(0.88, 0.93, 0.82), Color(0.96, 0.93, 0.85), Color(0.86, 0.8, 0.72)]
@@ -53,7 +54,6 @@ func build(builder: WorldBuilder) -> void:
 		# Identidad del pueblo: monumento, plaza y objetos de su tema.
 		TownIdentity.decorate(self, buildings, settlement)
 		# Restaurante (uno por ciudad) y puesto de comida (en todo pueblo y ciudad).
-		_food_places(settlement, buildings)
 	var landmarks := Node3D.new()
 	landmarks.name = "Landmarks"
 	add_child(landmarks)
@@ -343,8 +343,13 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		var model_title: String = BUILDING_NAMES[kind]
 		if kind == "gym":
 			model_title = gym_title(settlement)
-		if kind in ["mart", "gym", "contest", "lab"]:
+		if kind in ["mart", "gym", "contest", "lab", "restaurant", "food_stall"]:
 			_sign(root, model_title, Vector3(0, size.y + 0.8, size.z * 0.5))
+		# Comida: el restaurante y el puesto abren su menú (no tienen interior).
+		if kind == "restaurant":
+			add_point(door_world + Vector3.UP * 0.5, "Entrar: Restaurante", _open_restaurant.bind(settlement), INTERACT_RADIUS, inward)
+		elif kind == "food_stall":
+			add_point(door_world + Vector3.UP * 0.5, "Comprar en el puesto de comida", _open_food_stall, INTERACT_RADIUS)
 		_decorate(root, kind, size, settlement, building)
 		if kind in ["center", "mart", "lab", "house", "cabin", "contest", "gym"]:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
@@ -386,41 +391,10 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 	return root
 
 
-## Restaurante (uno por ciudad) y puesto de comida (en la plaza de todo pueblo y
-## ciudad): venden platillos que se comen ahí mismo y llenan el hambre (campamento,
-## comida y hambre; acordado con Fernando el 2026-10-10). El puesto es más barato y
-## llena menos; el restaurante tiene 3-4 platillos y da un efecto extra.
-## Simplificación: caseta de piezas simples en vez de un modelo de B2W2 completo
-## (propuesta por confirmar con Fernando); posición fija cerca del centro de la plaza.
-func _food_places(settlement: Dictionary, parent: Node3D) -> void:
-	var cx := float(settlement["x"])
-	var cz := float(settlement["z"])
-	var y := float(settlement["height"]) - 0.05
-	var stall := Node3D.new()
-	stall.name = "FoodStall_" + String(settlement["name"]).replace(" ", "")
-	stall.position = Vector3(cx - 9.0, y, cz + 6.0)
-	parent.add_child(stall)
-	_box(stall, Vector3(2.0, 0.9, 1.0), Vector3(0, 0.45, 0), Color(0.62, 0.45, 0.28))
-	_box(stall, Vector3(2.4, 0.1, 1.6), Vector3(0, 2.0, 0), Color(0.95, 0.65, 0.25))
-	for side: float in [-1.0, 1.0]:
-		_box(stall, Vector3(0.1, 2.0, 0.1), Vector3(side * 1.1, 1.0, 0.7), Color(0.45, 0.3, 0.2))
-	_collider(stall, Vector3(2.0, 1.0, 1.0), Vector3(0, 0.5, 0))
-	_sign(stall, "Puesto de comida", Vector3(0, 2.4, 0.6))
-	add_point(stall.position + Vector3(0, 0.6, 1.3), "Comprar en el puesto de comida", _open_food_stall, 2.6)
-	if String(settlement.get("kind", "")) != "city":
-		return
-	var restaurant := Node3D.new()
-	restaurant.name = "Restaurant_" + String(settlement["name"]).replace(" ", "")
-	restaurant.position = Vector3(cx + 9.0, y, cz - 6.0)
-	parent.add_child(restaurant)
-	_box(restaurant, Vector3(4.0, 2.6, 3.0), Vector3(0, 1.3, 0), Color(0.94, 0.88, 0.8))
-	_roof(restaurant, 4.0, 3.0, 2.0, 2.6, Color(0.75, 0.3, 0.25))
-	_box(restaurant, Vector3(1.6, 2.0, 0.12), Vector3(0, 1.0, 1.56), Color(0.4, 0.26, 0.16))
-	_collider(restaurant, Vector3(4.0, 2.8, 3.0), Vector3(0, 1.3, 0))
-	_sign(restaurant, "Restaurante", Vector3(0, 3.1, 1.8))
-	add_point(restaurant.position + Vector3(0, 0.6, 2.2), "Entrar: Restaurante", _open_restaurant.bind(settlement), 2.6)
-
-
+## Restaurante (uno por ciudad) y puesto de comida (en pueblos y ciudades): venden
+## platillos que se comen ahí mismo y llenan el hambre (campamento, comida y hambre;
+## acordado con Fernando el 2026-10-10). Son edificios del plano (region_layout) con
+## modelos de B2W2: la villa con terraza de Undella y los puestos de mercado con toldo.
 func _open_food_stall() -> void:
 	var layer := world.get_node_or_null("../MenuLayer") as CanvasLayer
 	if layer == null or layer.has_node("FoodStall"):
