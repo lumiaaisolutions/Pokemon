@@ -247,6 +247,6 @@ Pruebas (`tests/test_battle.tscn`, `tests/test_interiors.tscn`, `tests/test_worl
 - Tras la cinemática del profesor el jugador aparecía bajo el suelo (sin aire, se desmayaba). En arreglo (rama bugs-prueba).
 - Al elegir el inicial, el profesor se hundía y encogía al despedirse: debe irse caminando.
 - La ayuda de "Saltar" se ve pequeña y desfasada en la esquina inferior derecha (texto encimado).
-- Centro Pokémon: pared invisible a mitad del cuarto y zona negra junto a la máquina.
+- Centro Pokémon: pared invisible a mitad del cuarto (un borde que solo se pasa saltando) y zona negra junto a la máquina; la enfermera y el Chansey quedan tapados por el mostrador (revisar todos los NPC detrás de mostradores o muebles).
 - Los árboles no se ven estilo BW2 (en arreglo con el follaje 3D).
 - Pendientes que Fernando pidió terminar: esquina del núcleo visible tras el techo en 5 modelos, unificar los dos estilos de botón píldora, medir FPS con calidad alta, verificar caminando las escaleras de la Tienda y el Centro; al final, limpiar "Por preguntar" del plan y nota del cerebro + bitácora con BRÚJULA.
