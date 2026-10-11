@@ -790,6 +790,14 @@
       "desc": "Premio del profesor: los Pokémon shiny aparecen 3 veces más."
     },
     {
+      "id": "villain-emblem",
+      "name": "Emblema del Equipo Rival",
+      "pocket": "clave",
+      "price": 0,
+      "key": true,
+      "desc": "Trofeo de haber vencido al líder del equipo villano de la región (Fase 6)."
+    },
+    {
       "id": "tm-normal",
       "name": "MT de tipo Normal",
       "pocket": "mts",

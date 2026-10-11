@@ -575,7 +575,7 @@ func _trainer_card() -> Control:
 		["🗺", "%s (%d/%d regiones)" % [Regions.region_name(), Regions.unlocked().size(), Regions.COUNT], "Dónde estás y cuántas regiones has desbloqueado."],
 		["✨", "%d shiny · %d legendarios" % [shinies, GameState.legendary_caught.size()], "Shinies capturados y legendarios distintos capturados."],
 		["🎀", "%d / 5 cintas" % (GameState.world_flags.get("ribbons", []) as Array).size(), "Cintas de concursos ganadas."],
-		["🎚", GameState.DIFFICULTIES[GameState.difficulty]["name"], "Dificultad (se adapta a tu nivel)."],
+		["🎚", GameState.DIFFICULTIES[GameState.difficulty]["name"], "Dificultad (se adapta a tu nivel): %s" % AdaptiveDifficulty.label()],
 		["📷", _photo_booth_line(), "Fotos de la cabina del Centro Pokémon."],
 	]
 	for entry: Array in data:

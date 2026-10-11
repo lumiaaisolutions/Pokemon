@@ -148,6 +148,10 @@ func start_capture(actor: PokemonActor) -> void:
 		queue_free()
 		return
 	if held == CaptureRules.SHAKES:
+		# Dificultad adaptable (Fase 6): capturar sin pelear (o casi sin dañarla) reta
+		# menos, así que baja un poco el nivel de los rivales.
+		if stealth or actor.hp / actor.hp_max > 0.85:
+			AdaptiveDifficulty.record_easy_capture()
 		var heals: bool = Items.get_item(ball_id).get("ball", {}).get("heals", false)
 		var location := GameState.add_caught(actor.species, actor.shiny, 1.0 if heals else actor.hp / actor.hp_max, actor.gender, actor.size_factor)
 		var caught_entry: Array = GameState.party if location == "equipo" else GameState.box

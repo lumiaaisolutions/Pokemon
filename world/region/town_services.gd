@@ -13,6 +13,8 @@ const SAFARI_RADIUS := 40.0
 const DAYCARE_POINTS_PER_DAY := 2
 const HEAL_SPOT_RATE := 0.25
 const TUTOR_PRICE := 2000
+## Medallas mínimas para retar al líder del equipo villano (jefe final de la región).
+const VILLAIN_BADGE_GATE := 4
 ## Salvajes que curan al jugador si te acercas.
 const HEALERS := ["chansey", "blissey", "audino", "happiny"]
 ## Símbolos de las piedras de las ruinas (el orden correcto sale de la inscripción).
@@ -391,7 +393,7 @@ func gym_challenge(settlement: Dictionary, arena: Vector3) -> void:
 	var team := Leaders.gym_team(id, region, badges().size())
 	var info := {"id": "gym:" + id, "name": "Líder " + Leaders.name_of(id), "team": team,
 			"money": BADGE_MONEY * (badges().size() + 1) * (region + 1), "item": "rare-candy",
-			"smart": true, "heals": 1 + region / 2, "mega": Leaders.mega_for(team, region), "at": arena}
+			"smart": true, "heals": 1 + region / 2 + AdaptiveDifficulty.extra_heals(), "mega": Leaders.mega_for(team, region), "at": arena}
 	_challenge(info, func() -> void: _win_badge(settlement, id))
 
 
@@ -489,11 +491,11 @@ func league_challenge(slot: int, arena: Vector3) -> void:
 	if id.begins_with("hero:"):
 		var hero := id.trim_prefix("hero:")
 		info = {"id": "champion:" + hero, "name": "Campeón " + PlayerCharacters.find(hero)["name"], "team": Heroes.team_for(hero, 99),
-				"money": 20000 * (region + 1), "item": "master-ball", "smart": true, "heals": 3, "mega": Heroes.TEAMS[hero]["mega"], "at": arena}
+				"money": 20000 * (region + 1), "item": "master-ball", "smart": true, "heals": 3 + AdaptiveDifficulty.extra_heals(), "mega": Heroes.TEAMS[hero]["mega"], "at": arena}
 	else:
 		var team := Leaders.elite_team(id)
 		info = {"id": "elite:" + id, "name": "Alto Mando " + Leaders.name_of(id), "team": team, "money": 5000 * (region + 1),
-				"item": "", "smart": true, "heals": 2 + region / 2, "mega": Leaders.mega_for(team, region), "at": arena}
+				"item": "", "smart": true, "heals": 2 + region / 2 + AdaptiveDifficulty.extra_heals(), "mega": Leaders.mega_for(team, region), "at": arena}
 	_challenge(info, func() -> void: _league_win(slot), reset_league)
 
 
@@ -746,24 +748,78 @@ func open_merchant(place: Dictionary) -> void:
 	shop.open()
 
 
-## Base secreta: el jefe del equipo criminal reta con sus Pokémon Siniestro y Veneno.
-func villain_challenge(arena: Vector3) -> void:
-	if not _trial.is_empty():
+## Base secreta: el equipo del líder, de tipo Siniestro y Veneno (fuertes, con mega
+## desde la 3.ª región, igual que los líderes de gimnasio).
+func _villain_team(region: int, badge_count: int) -> Array[SpeciesData]:
+	var size := clampi(4 + region + badge_count / 4, 4, 6)
+	var dark := _team_of_type(PokemonTypes.Type.DARK, ceili(size / 2.0), 0.95)
+	var poison := _team_of_type(PokemonTypes.Type.POISON, size - dark.size(), 0.95)
+	var team: Array[SpeciesData] = []
+	team.append_array(dark)
+	team.append_array(poison)
+	return team
+
+
+## Base secreta, jefe final de la región (Fase 6): solo se puede retar "al final", tras
+## avanzar bastante por los caminos de la región (decisión: 4/8 medallas, ver
+## decisiones_sin_preguntar.md); antes, un guardia la rechaza. Al llegar, el líder habla
+## antes del combate (escena con diálogo) y, al vencerlo, hay un epílogo de la región.
+func villain_confront(arena: Vector3) -> void:
+	if trial_active() or (_battle() != null and _battle().active):
 		return
 	if _flags().get("villain_defeated", false):
 		GameState.notice.emit("La base está vacía. %s huyó de la región." % GameState.villain_team)
 		return
-	var team: Array[SpeciesData] = []
-	team.append_array(_team_of_type(PokemonTypes.Type.DARK, 2, 0.6))
-	team.append_array(_team_of_type(PokemonTypes.Type.POISON, 2, 0.7))
-	_start_trial("Jefe del %s" % GameState.villain_team, team, arena, func() -> void:
-		_flags()["villain_defeated"] = true
-		for group: String in GameState.reputation:
-			GameState.reputation[group] = mini(int(GameState.reputation[group]) + 15, 100)
-		GameState.occupied_zones.clear()
-		GameState.add_money(8000, "Base del %s" % GameState.villain_team)
-		GameState.add_news("¡%s desmanteló la base secreta del %s! Las zonas tomadas quedan libres." % [GameState.player_name, GameState.villain_team])
-		GameState.notice.emit("¡Derrotaste al jefe del %s! Las zonas tomadas quedan libres." % GameState.villain_team))
+	if badges().size() < VILLAIN_BADGE_GATE:
+		GameState.notice.emit("Guardia del %s: esta sala está fuertemente vigilada. Vuelve cuando tengas más medallas (%d/%d)." % [GameState.villain_team, badges().size(), VILLAIN_BADGE_GATE])
+		return
+	var dialog := _dialog()
+	var speaker := "Líder del %s" % GameState.villain_team
+	var lines := ["Vaya, vaya... %s, el entrenador que ha desmantelado nuestras zonas en %s." % [GameState.player_name, Regions.region_name()],
+			"Soy el líder del %s. Aquí se acaba tu suerte." % GameState.villain_team]
+	if dialog == null:
+		_villain_battle(arena)
+		return
+	dialog.open(speaker, lines, null, ["¡Acepto el reto!", "Retirarme"], func(choice: int) -> void:
+		if choice == 0:
+			_villain_battle(arena))
+
+
+func _villain_battle(arena: Vector3) -> void:
+	var region := Regions.index()
+	var team := _villain_team(region, badges().size())
+	if team.is_empty():
+		return
+	var info := {"id": "villain_leader", "name": "Líder del %s" % GameState.villain_team, "team": team,
+			"money": 8000 + region * 2000, "item": "villain-emblem", "smart": true,
+			"heals": 2 + region / 2 + AdaptiveDifficulty.extra_heals(), "mega": Leaders.mega_for(team, region), "at": arena}
+	_challenge(info, _win_villain)
+
+
+func _win_villain() -> void:
+	_flags()["villain_defeated"] = true
+	for group: String in GameState.reputation:
+		GameState.reputation[group] = mini(int(GameState.reputation[group]) + 15, 100)
+	GameState.occupied_zones.clear()
+	Achievements.add("villain_leaders")
+	GameState.add_news("¡%s desmanteló la base secreta del %s y venció a su líder! Las zonas tomadas quedan libres." % [GameState.player_name, GameState.villain_team])
+	_region_epilogue()
+
+
+## Epílogo corto de la región (créditos ligeros, ver docs/sistemas/jefes.md): no hay
+## cinemática nueva, solo una caja de diálogo con el cierre de la amenaza y un resumen.
+func _region_epilogue() -> void:
+	AudioBus.play_jingle("me_badge")
+	var champion := bool(GameState.world_flags.get("champion", false))
+	var lines := ["El %s se retira de %s. Las rutas vuelven a la normalidad." % [GameState.villain_team, Regions.region_name()],
+			"%s · %d/%d medallas · Campeón: %s" % [Regions.region_name(), badges().size(), Regions.GYMS, "sí" if champion else "todavía no"],
+			"¡Gracias por jugar esta región, %s!" % GameState.player_name]
+	var dialog := _dialog()
+	if dialog != null:
+		dialog.open("Narrador", lines, null)
+	else:
+		for line: String in lines:
+			GameState.notice.emit(line)
 
 
 func giant_tree(place: Dictionary) -> void:

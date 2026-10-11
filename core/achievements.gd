@@ -22,6 +22,8 @@ const LIST := [
 	["trainers_10", "Retador", "Vence a 10 entrenadores en los caminos.", "trainers", 10],
 	["photos_25", "Fotógrafo", "Saca 25 fotos.", "photos", 25],
 	["mega_stones_3", "Coleccionista de megapiedras", "Consigue 3 megapiedras.", "mega_stones", 3],
+	["guardians_4", "Cazador de guardianes", "Vence a 4 guardianes de bioma.", "guardians", 4],
+	["villain_leaders_3", "Némesis", "Vence al líder del equipo villano en 3 regiones.", "villain_leaders", 3],
 ]
 
 

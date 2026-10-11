@@ -213,4 +213,4 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 8. Tienda y Centro Pokémon con todas sus funciones.
 8. Tienda y Centro Pokémon con todas sus funciones. **Hecho (2026-10-11, rama `tienda-centro`):** ver [pueblos e interiores](sistemas/pueblos_e_interiores.md#tienda-pokémon-por-dentro-todas-sus-funciones-2026-10-11) y [#centro-pokémon-todas-sus-funciones-2026-10-11](sistemas/pueblos_e_interiores.md#centro-pokémon-todas-sus-funciones-2026-10-11).
 9. Mundo más lleno (algo cada ~300 m) y pueblos ×2 con identidad.
-10. Fase 6 (guardianes, líder villano, dificultad adaptable) y fase 7 (app de Mac y pasada final).
+10. ~~Fase 6 (guardianes, líder villano, dificultad adaptable)~~ **Hecho** (2026-10-11, rama `fase6`): ver [jefes.md](sistemas/jefes.md). Pendiente: fase 7 (app de Mac y pasada final).

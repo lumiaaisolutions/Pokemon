@@ -29,7 +29,7 @@
 - **Si no cumples a tiempo:**
   - pierdes la recompensa (puede volver más tarde);
   - baja tu reputación con ese grupo (menos misiones y precios más altos);
-  - el mundo cambia (el equipo criminal toma una zona hasta que la liberes);
+  - el mundo cambia (el equipo criminal toma una zona hasta que la liberes, venciendo a su líder en la base secreta: con bastantes medallas es el jefe final de la región, ver [jefes](jefes.md));
   - el rival se adelanta (gana la medalla o el descubrimiento y la siguiente prueba es más difícil);
   - salen noticias en el mundo: los NPC y el Rotom Móvil comentan lo que pasó y cambian los precios o los Pokémon de la zona.
 

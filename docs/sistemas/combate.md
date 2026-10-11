@@ -61,3 +61,7 @@ Elegidas por Fernando: Puntos de Entrenamiento, objetos, vínculo y dominio, inv
 
 ## Interfaz
 `BattleUI`: tarjeta del rival arriba (nombre, tipos y vida), la tuya abajo a la izquierda con retrato y aviso de mega, los 4 movimientos con su recarga, la barra de potencia y una fila de ayudas que cambia al apuntar.
+
+## Jefes y dificultad adaptable (Fase 6)
+Los guardianes de bioma, el líder del equipo villano y la dificultad que se ajusta sola
+a cómo vas jugando están en [jefes.md](jefes.md).

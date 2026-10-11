@@ -57,6 +57,13 @@ func _ready() -> void:
 	battle.name = "Battle"
 	add_child(battle)
 	battle.ended.connect(_on_battle_ended)
+	# Guardianes de bioma (Fase 6): uno por bioma de la región, enorme y con fases.
+	var bosses := BossManager.new()
+	bosses.name = "Bosses"
+	bosses.world_path = NodePath("../World")
+	bosses.player_path = NodePath("../Player")
+	bosses.spawner_path = NodePath("../Spawner")
+	add_child(bosses)
 	var music := MusicDirector.new()
 	music.name = "Music"
 	add_child(music)
@@ -600,6 +607,8 @@ func _on_blacked_out() -> void:
 	if battle != null:
 		battle.finish("lose")
 	BattleManager.reset_streak()
+	# Dificultad adaptable (Fase 6): un desmayo baja un poco el nivel de los rivales.
+	AdaptiveDifficulty.record_battle(false, 0.0, 0)
 	var lost := GameState.apply_blackout_penalty()
 	# En el Centro Pokémon se cura todo el equipo.
 	for member: Dictionary in GameState.party:
