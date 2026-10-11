@@ -85,6 +85,23 @@ Detalles en [jugador](sistemas/jugador.md#campamento-comida-y-hambre-pedido-de-f
 - Prueba nueva `test_camping`.
 - **Después, con Fernando:** el restaurante usa la casa de la villa de Undella y el puesto los puestos de mercado de B2W2; rueda rápida de objetos (mantener T); pesca animada en 3D; tienda, fogata y campamentos en 3D; comida para llevar o para comer ahí, con caducidad (pan y latas 3 días, platillos 1 día) y comida echada a perder que se tira y quita un poco de vínculo.
 
+## 2026-10-10 (noche) — Todo el mundo abierto en 3D (`3a3b691b`)
+Regla 1 de [reglas_calidad.md](reglas_calidad.md): nada plano en el mundo salvo Pokémon,
+personajes y NPC. Al revisar los mapas de B2W2 descargados se encontró que sus árboles,
+hierba y flores vienen pintados dentro del terreno (no como piezas sueltas); se probó
+extraerlos (`tools/extract_b2w2_props.gd`) y no fue fiable por el esqueleto/skin del
+importador. Solución: sus texturas reales en mallas 3D propias de pocas caras
+(`world/region/prop_models.gd`: cruz de follaje, malla de `BreakableRock` con color plano
+para rocas, primitivas para troncos/conchas/huesos) más los 16 modelos sueltos reales de
+B2W2 que sí existen (árboles muertos, tocones, árbol grande, rocas, cerca, santuario).
+Árboles/rocas/decoración/hierba alta del mundo, recolectables, lugares de interés (cofre 3D
+propio con 3 niveles, `world/poi/chest_3d.gd`) y las flores/arbustos de los pueblos pasan a
+3D con luz normal (siguen el día/noche solas) y tinte de estación conservado
+(`world/effects/foliage_material.gdshader`). De paso: el Pokémon posado en un árbol ya no
+sigue la inclinación del billboard (ya no existe) y dos pruebas con margen de tiempo/lectura
+de Sprite3D obsoleta se ajustaron (`test_starter`, `test_player_movement`). Nueva prueba
+`test_no_flat_vegetation`. Pendiente: revisión visual por bioma con capturas y FPS.
+
 ## 2026-10-10 — Fase 5.8 (en curso): hordas, temporada y migraciones
 Decisiones de Fernando en el [catálogo](catalogo_mundo.md#fase-58--decisiones-fernando-2026-10-10).
 - **Hordas:** 2 % de las apariciones en cualquier lugar, 5 de la misma especie, 1 % con líder evolucionado y shiny ×3. Se lanzan sobre ti al acercarte a 12 m, pelean todas a la vez contra tu compañero, se vencen una tras otra y dan premio extra ($150 por miembro y un Caramelo Raro). Detalles en [Pokémon salvajes](sistemas/pokemon_salvajes.md).
