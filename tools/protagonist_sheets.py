@@ -49,7 +49,9 @@ CHARACTERS = {
     "brendan": {"file": "candidates/cand_brendan_hyo_0.png",
                 "walk": {"box": (0, 0, 70, 122), "rows": ["down", "left", "up", "right"], "frames": [1, 0, 2]},
                 "run": {"box": (85, 0, 160, 122), "rows": ["up", "left", "down", "right"], "frames": [1, 0, 2]}},
-    "calem": {"file": "candidates/cand_calem_tobalcr.png", "scale": 2,
+    # Fondo ya transparente: solo la transparencia es fondo (si no, el contorno negro y el
+    # blanco de los ojos, que son abundantes, se borraban y quedaban huecos).
+    "calem": {"file": "candidates/cand_calem_tobalcr.png", "scale": 2, "alpha_only": True,
               "walk": {"box": (0, 0, 256, 256), "rows": ["down", "left", "right", "up"], "frames": [0, 1, 3]},
               # Su cuadro quieto de perfil viene roto en la fuente: se usa el primer paso.
               "side_stand_from_step": True},
@@ -72,8 +74,13 @@ def is_background(pixel, keys) -> bool:
     return pixel[3] < 16 or pixel[:3] in keys
 
 
+ALPHA_ONLY = False
+
+
 def background_keys(image: Image.Image, box) -> set:
     """Colores de fondo: la esquina de la hoja y los colores que llenan bordes de celda."""
+    if ALPHA_ONLY:
+        return set()
     px = image.load()
     keys = {px[0, 0][:3]}
     x0, y0, x1, y1 = box
@@ -202,6 +209,8 @@ def extract_cells(spec: dict, image: Image.Image) -> list:
 
 
 def build(name: str, config: dict, debug_dir: Path | None) -> Path | None:
+    global ALPHA_ONLY
+    ALPHA_ONLY = bool(config.get("alpha_only", False))
     image = Image.open(SRC / config["file"]).convert("RGBA")
     if config.get("scale", 1) > 1:
         s = config["scale"]
