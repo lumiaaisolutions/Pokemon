@@ -69,7 +69,10 @@ func next_activity_id() -> int:
 
 
 func add_news(text: String) -> void:
-	news.push_front({"day": game_day() + 1, "text": text, "type": news_type(text)})
+	# "hour" desde 2026-10-11 (revisión de Fernando: "guardar la hora y mostrarla en la
+	# app de Noticias"); las noticias de partidas viejas no la tienen, ver
+	# ui/menu/rotom_tab.gd (_app_news), que ya lo trata como opcional.
+	news.push_front({"day": game_day() + 1, "text": text, "type": news_type(text), "hour": clock_hour()})
 	if news.size() > 30:
 		news.resize(30)
 	notice.emit("[Rotom] " + text)

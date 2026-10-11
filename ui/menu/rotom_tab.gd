@@ -361,7 +361,12 @@ static func _app_news(menu: GameMenu) -> Control:
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(text)
 		text.add_child(MenuStyle.wrapped(String(item["text"]), 16))
-		text.add_child(MenuStyle.label("Día %d" % int(item["day"]), 13, MenuStyle.MUTED))
+		# La hora se guarda desde 2026-10-11 (revisión de Fernando); las noticias de
+		# partidas viejas no la tienen, así que se muestra solo si existe.
+		var day_label := "Día %d" % int(item["day"])
+		if item.has("hour"):
+			day_label += " · %s" % DayNight.clock_text(float(item["hour"]))
+		text.add_child(MenuStyle.label(day_label, 13, MenuStyle.MUTED))
 		if i == 0 and kind == "brote" and not outbreak.is_empty():
 			var see := MenuStyle.button("Ver en el mapa", 14)
 			see.pressed.connect(func() -> void:

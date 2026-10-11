@@ -20,6 +20,9 @@ const INTERIOR := {"center": "bw1_pokecenter", "mart": "bw2_pokemart", "lab": "b
 const PLACES := {"ruins": "bw1_ruins_relic", "grotto": "bw2_grotto", "ranch": "bw2_ranch", "berry_farm": "bw2_ranch", "volcano": "bw2_reversal_mountain",
 		"floating_ruins": "bw2_black_tower", "giant_tree": "bw1_forest_white", "sanctuary": "bw1_n_castle", "league": "bw1_victory_road",
 		"safari": "bw1_route10", "oasis": "bw1_route4_summer", "hot_spring": "bw2_reversal_mountain"}
+## Qué tan cerca de tu tienda de campaña hace falta estar de noche para que suene
+## bw2_camp_night (revisión de Fernando, 2026-10-11 mañana).
+const CAMP_MUSIC_RADIUS := 14.0
 
 @export var main_path: NodePath = NodePath("..")
 
@@ -74,6 +77,14 @@ func pick() -> String:
 		return "bw1_bicycle"
 	if player.ride == Player.Ride.FLY:
 		return "bw1_bridge"
+	# Campamento de noche junto a tu tienda (antes no tenía música propia, ver
+	# docs/decisiones_sin_preguntar.md: "pide un archivo de música nuevo…"; ya existe).
+	if GameState.is_night():
+		var camp := _main.get_node_or_null("CampManager") as CampManager
+		if camp != null:
+			for entry: Dictionary in camp.tents():
+				if pos.distance_to(entry.get("pos", Vector3.INF)) < CAMP_MUSIC_RADIUS:
+					return "bw2_camp_night"
 	# 4. Pueblos.
 	var settlement := world.settlement_at(pos.x, pos.z, 20.0)
 	if not settlement.is_empty() and settlement.get("kind", "") != "sanctuary":

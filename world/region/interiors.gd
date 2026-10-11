@@ -705,8 +705,8 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			_point(cafe_at + Vector3(0, 0.5, 0), "Café ($%d)" % CenterServices.CAFE_PRICE, services.center_services.cafe, 1.8)
 			var rest_look := NpcLooks.pick(["joven_a", "chica_a", "dama_a", "guay_a"], rng)
 			var rest_at := Vector3(2.4, 0, back + size.y * 0.45)
-			_npc(root, rest_at, rest_look)
-			_point(rest_at + Vector3(0, 0.5, 1.2), "Hablar con el entrenador que descansa", services.center_services.resting_trainer.bind(rest_look), 1.8)
+			var rest_npc := _npc(root, rest_at, rest_look)
+			_point(rest_at + Vector3(0, 0.5, 1.2), "Hablar con el entrenador que descansa", services.center_services.resting_trainer.bind(rest_look, rest_npc), 1.8)
 			# Sala de entrenamiento con muñecos y taquilla de excursiones.
 			var train_at := Vector3(-2.6, 0, back + size.y * 0.6)
 			_point(train_at, "Sala de entrenamiento (muñecos)", services.center_services.training_room, 1.8)
@@ -723,17 +723,17 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 			var visitor := services.center_services.maybe_visitor(settlement)
 			if not visitor.is_empty():
 				var visitor_at := Vector3(-1.2, 0, back + size.y * 0.2)
-				_npc(root, visitor_at, visitor["sprite_id"])
+				var visitor_npc := _npc(root, visitor_at, visitor["sprite_id"])
 				var verb: String = {"leader": "al líder", "hero": "a", "rival": "al rival"}.get(visitor["kind"], "a")
-				_point(visitor_at + Vector3(0, 0.5, 1.2), "Hablar con %s %s" % [verb, visitor["name"]], services.center_services.talk_visitor.bind(visitor), 1.8)
+				_point(visitor_at + Vector3(0, 0.5, 1.2), "Hablar con %s %s" % [verb, visitor["name"]], services.center_services.talk_visitor.bind(visitor, visitor_npc), 1.8)
 			# Segundo piso real del modelo: club de combate (retos amistosos con tabla de
 			# récords de racha) y más zona de descanso.
 			if has_upper_floor():
 				var up_size := upper_size()
 				var club_at := upper_point(Vector3(0, 0, -minf(up_size.y, 10.0) * 0.1))
 				var ref_look := NpcLooks.pick(["karateka_a", "karateka_b"], rng)
-				_npc(root, club_at, ref_look)
-				_point(club_at + Vector3(0, 0.5, 1.4), "Club de combate (retos amistosos)", services.center_services.combat_club, 1.8)
+				var club_npc := _npc(root, club_at, ref_look)
+				_point(club_at + Vector3(0, 0.5, 1.4), "Club de combate (retos amistosos)", services.center_services.combat_club.bind(club_npc), 1.8)
 				_point(upper_point(Vector3(0, 0, minf(up_size.y, 10.0) * 0.3)), "Zona de descanso de arriba.",
 						func() -> void: GameState.notice.emit("Te sientas un momento en la zona de descanso de arriba."), 1.8)
 		"mart":

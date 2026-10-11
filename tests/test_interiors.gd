@@ -328,13 +328,9 @@ func _check_center_visitors() -> void:
 	_check(visitor.has("kind") and visitor.has("sprite_id") and visitor.has("name"), "la visita debe traer aspecto y nombre para la sala y el diálogo")
 	var portrait := center._visitor_portrait(visitor)
 	_check(portrait != null, "debe poder dibujarse un retrato para la visita (%s)" % visitor.get("kind", ""))
-	var before_money := GameState.money
-	center._friendly_duel(visitor["name"], visitor["sprite_id"])
-	_check(not center._friendly.is_empty(), "pedirle un combate amistoso a la visita debe sacar un Pokémon")
-	if not center._friendly.is_empty():
-		var actor: PokemonActor = center._friendly["actor"]
-		center._on_friendly_stunned(actor)
-		_check(GameState.money > before_money, "ganar el combate amistoso a la visita debe dar una recompensa")
+	# El combate amistoso real (equipo, IA lista, curas) se prueba en test_battle.gd,
+	# donde BattleManager.enabled sigue encendido; aquí BattleManager.enabled = false
+	# (ver _ready) para que los salvajes no interrumpan las pruebas de interiores.
 
 
 ## Curación clásica animada: entregas el equipo, las Balls se encienden una a una y

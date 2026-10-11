@@ -55,9 +55,16 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	# 1. Hay un guardián por bioma presente en la región, y el mar no tiene guardián.
+	# 1. Hay un guardián por bioma presente en la región, incluido el mar (revisión de
+	# Fernando, 2026-10-11 mañana: "sí, junto a una isla con arena en tierra; llegas
+	# surfeando"). Su guarida queda forzada a tierra (RegionLayout.ensure_islet si el
+	# archipiélago natural no puso una isla justo ahí), nunca en pleno mar abierto.
 	_check(not _bosses._lairs.is_empty(), "hay al menos un bioma con guarida de guardián")
-	_check(not _bosses._lairs.has(int(RegionLayout.Biome.SEA)), "el mar no tiene guardián")
+	_check(_bosses._lairs.has(int(RegionLayout.Biome.SEA)), "el mar sí tiene guardián")
+	if _bosses._lairs.has(int(RegionLayout.Biome.SEA)):
+		var sea_spot: Vector3 = _bosses._lairs[RegionLayout.Biome.SEA]
+		_check(_world.layout.biome_at(sea_spot.x, sea_spot.z) != RegionLayout.Biome.SEA, "la guarida del mar queda en tierra (isla o islote forzado), no en agua")
+		_check(Bosses.GUARDIAN_TYPE[RegionLayout.Biome.SEA] == PokemonTypes.Type.WATER, "el guardián del mar es de tipo Agua")
 
 	# 2. Aparece enorme y fuerte, con fases: cambia al bajar de umbral e invoca ayudantes.
 	var spot := _world.start_position() + Vector3(0, 0, -8)

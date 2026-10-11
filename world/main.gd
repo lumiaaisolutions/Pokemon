@@ -610,19 +610,24 @@ func _return_companion(ratio: float) -> void:
 ## Pokémon con todo curado.
 func _on_blacked_out() -> void:
 	var battle := get_node_or_null("Battle") as BattleManager
+	# Combate amistoso (café, club de combate y visitas del Centro, revisión de Fernando
+	# 2026-10-11 mañana: "sin perder dinero al perder"): se captura antes de finish(),
+	## que vacía battle.trainer.
+	var no_penalty := battle != null and battle.active and bool(battle.trainer.get("no_penalty", false))
 	if battle != null:
 		battle.finish("lose")
 	BattleManager.reset_streak()
 	# Dificultad adaptable (Fase 6): un desmayo baja un poco el nivel de los rivales.
 	AdaptiveDifficulty.record_battle(false, 0.0, 0)
-	var lost := GameState.apply_blackout_penalty()
+	var lost := 0 if no_penalty else GameState.apply_blackout_penalty()
 	# En el Centro Pokémon se cura todo el equipo.
 	for member: Dictionary in GameState.party:
 		member["hp_ratio"] = 1.0
 	var name := companion.species.display_name if companion != null else "Tu equipo"
 	var player_name := GameState.player_name
 	var message := ("¡%s se desmayó!" % player_name) if companion_state != CompanionState.FAINTED else "¡%s no puede continuar!" % name
-	($Hud as Hud).show_blackout("%s\nCorriste al Centro Pokémon...\nPerdiste $%d en el camino.\n\n%s y %s están curados." % [message, lost, name, player_name], 2.6)
+	var money_line := "No perdiste dinero (era un combate amistoso)." if no_penalty else "Perdiste $%d en el camino." % lost
+	($Hud as Hud).show_blackout("%s\nCorriste al Centro Pokémon...\n%s\n\n%s y %s están curados." % [message, money_line, name, player_name], 2.6)
 	await get_tree().create_timer(0.7).timeout
 	if companion != null:
 		companion.set_controlled(false)

@@ -216,13 +216,13 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 10. ~~Fase 6 (guardianes, líder villano, dificultad adaptable)~~ **Hecho** (2026-10-11, rama `fase6`): ver [jefes.md](sistemas/jefes.md). Pendiente: fase 7 (app de Mac y pasada final).
 
 ### Revisión de Fernando de las decisiones de la noche (2026-10-11 mañana)
-- **Follaje:** 3D de verdad propio (árboles con tronco y copa de volúmenes, arbustos y flores con volumen, texturas pixel de B2W2); nada plano desde ningún ángulo (reemplaza la "cruz de 2 planos").
-- **Combate amistoso** (café y club del Centro): combate de entrenador real en arena (equipo, IA, curas), sin perder dinero.
-- **Rotom Teléfono:** redibujarlo en pixel art estilo BW2.
-- **Música:** buscar pistas de BW2 que falten (campamento de noche, tienda, centro, cinemática) y pedir permiso del lote.
-- **Guardián del mar:** sí, junto a una isla con arena en tierra; llegas surfeando.
-- **Líder villano:** desde 4 medallas; más fuerte mientras más medallas tengas al retarlo.
-- **Epílogo:** cinemática corta (~20 s: la base se desmorona, profesor y gente celebran, resumen del viaje).
-- **Huevo de guardería:** llega como huevo y nace tras caminar un rato.
-- **Noticias del Rotom:** guardar y mostrar la hora.
+- **Follaje:** 3D de verdad propio (árboles con tronco y copa de volúmenes, arbustos y flores con volumen, texturas pixel de B2W2); nada plano desde ningún ángulo (reemplaza la "cruz de 2 planos"). Pendiente (no es parte de esta ronda: la tocó otro agente de la sesión, ver `world/region/prop_models.gd`).
+- **Completado 2026-10-11 (CHISPA):** **Combate amistoso** (café y club del Centro, y visitas): combate de entrenador real en arena (equipo, IA lista, curas), sin perder dinero al perder. `world/region/center_services.gd` (`_start_friendly`), `world/main.gd` (`_on_blacked_out`, `no_penalty`).
+- **Completado 2026-10-11 (CHISPA):** **Rotom Teléfono:** redibujado en pixel art estilo BW2 (textura generada por código, filtro NEAREST). `ui/kit/rotom_character.gd`.
+- **Música:** `bw2_pokemart` ya estaba conectado en la Tienda (`world/music/music_director.gd::INTERIOR["mart"]`, no hizo falta tocarlo). **Completado 2026-10-11 (CHISPA):** `bw2_camp_night` junto a la tienda de campaña de noche. `bw2_the_end` ya suena en el epílogo del líder villano (ver abajo). Las claves `bw2_pokemart`, `bw2_camp_night` y `bw2_the_end` ya existían en `art/music/` (no se pidió ni se descargó nada nuevo).
+- **Completado 2026-10-11 (CHISPA):** **Guardián del mar:** sí, de tipo Agua, junto a una isla del archipiélago del sur (o un islote forzado si no había una ahí, `RegionLayout.ensure_islet`) con arena de combate en tierra; se llega surfeando. `core/bosses.gd`, `world/bosses/boss_manager.gd`, `world/region/region_layout.gd`.
+- **Completado 2026-10-11 (CHISPA):** **Líder villano:** desde 4 medallas (ya estaba); ahora además más fuerte mientras más medallas tengas al retarlo (tamaño, etapa, mega desde 7). `world/region/town_services.gd` (`_villain_team`, `_villain_mega`).
+- **Completado 2026-10-11 (CHISPA):** **Epílogo:** cinemática corta (~20 s, se puede saltar: la base se desmorona, corte al pueblo inicial con el profesor y la gente celebrando, resumen del viaje; música `bw2_the_end`). `world/region/region_epilogue_cinematic.gd`.
+- **Completado 2026-10-11 (CHISPA):** **Huevo de guardería:** llega como huevo (sin ocupar un puesto del equipo/Caja mientras se incuba) y nace tras caminar ~1,6 km de verdad, con animación de eclosión. `world/region/town_services.gd` (`_update_daycare_egg`), `world/effects/egg_hatch_scene.gd`.
+- **Completado 2026-10-11 (CHISPA):** **Noticias del Rotom:** guarda la hora al agregar cada noticia y la muestra en la app (compatible con partidas viejas sin hora). `core/game_state.gd` (`add_news`), `ui/menu/rotom_tab.gd` (`_app_news`).
 - Lo demás de la noche se queda (5 Poké Balls de regalo, probabilidades de cofres).

@@ -18,6 +18,9 @@ signal guardian_defeated(biome: int, species: SpeciesData)
 const DISCOVER_RADIUS := 90.0
 ## Paso de la rejilla con que se busca el punto más alejado de cada bioma (4096 m / 160).
 const GRID_STEP := 160.0
+## Radio del islote forzado para el Guardián del mar (RegionLayout.ensure_islet) cuando
+## el archipiélago natural no puso una isla justo en el punto elegido.
+const SEA_ISLET_RADIUS := 26.0
 
 @export var world_path: NodePath
 @export var player_path: NodePath
@@ -74,6 +77,13 @@ func _build_lairs() -> void:
 	for biome: int in farthest:
 		var info: Dictionary = farthest[biome]
 		_lairs[biome] = Vector3(float(info["x"]), 0.0, float(info["z"]))
+	# Guardián del mar: su guarida tiene que quedar en tierra para poder pelear ahí; el
+	# punto elegido es el de bioma SEA (agua) más alejado de los pueblos, así que si el
+	# archipiélago natural no puso una isla justo ahí, se fuerza un islote (revisión de
+	# Fernando 2026-10-11 mañana: "si no hay isla, crea un islote con terreno").
+	if _lairs.has(RegionLayout.Biome.SEA):
+		var sea_spot: Vector3 = _lairs[RegionLayout.Biome.SEA]
+		layout.ensure_islet(sea_spot.x, sea_spot.z, SEA_ISLET_RADIUS)
 
 
 static func _distance_to_settlement(layout: RegionLayout, x: float, z: float) -> float:

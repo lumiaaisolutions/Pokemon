@@ -1,11 +1,12 @@
 # Jefes y dificultad adaptable (Fase 6)
 
-[← Índice](README.md) · Decisión de Fernando (ver [plan_pulido_mundo.md](../plan_pulido_mundo.md#últimas-decisiones-antes-de-la-noche-fernando-2026-10-10)): guardianes por bioma, el líder del equipo villano al final, y dificultad que se adapta sola a cómo vas jugando. Hecho el 2026-10-11.
+[← Índice](README.md) · Decisión de Fernando (ver [plan_pulido_mundo.md](../plan_pulido_mundo.md#últimas-decisiones-antes-de-la-noche-fernando-2026-10-10)): guardianes por bioma, el líder del equipo villano al final, y dificultad que se adapta sola a cómo vas jugando. Hecho el 2026-10-11. Actualizado el mismo día con la "Revisión de Fernando de las decisiones de la noche" (mañana): el mar sí tiene guardián, el líder villano escala más (etapa y mega desde 7 medallas) y su epílogo es una cinemática corta, no solo una caja de diálogo.
 
 ## Guardianes de bioma
 `core/bosses.gd` (`Bosses`, datos y reglas puras) + `world/bosses/boss_manager.gd` (`BossManager`, el nodo que los crea y los vigila en el mundo).
 
-- **Uno por bioma presente en la región** (de los 16; el mar no tiene guardián, ver "Decisiones" abajo), en el punto de ese bioma más alejado de cualquier pueblo (su "zona más difícil"): al llegar la región escanea una rejilla de 160 m sobre los 4 × 4 km y guarda, por bioma, el punto más lejano de un asentamiento.
+- **Uno por bioma presente en la región, los 17 (incluido el mar desde la revisión de la mañana)**, en el punto de ese bioma más alejado de cualquier pueblo (su "zona más difícil"): al llegar la región escanea una rejilla de 160 m sobre los 4 × 4 km y guarda, por bioma, el punto más lejano de un asentamiento.
+- **Guardián del mar:** tipo Agua (`Bosses.GUARDIAN_TYPE[SEA]`, antes Dragón solo como dato sin guardián real), vive en una isla del archipiélago del sur; si el archipiélago natural (ruido en `RegionLayout.base_height`) no puso una isla justo en el punto elegido, `RegionLayout.ensure_islet()` fuerza un islote de tierra ahí mismo (llamado desde `BossManager._build_lairs`), igual que los conos de volcán. Solo se llega surfeando (el punto es, a propósito, el de bioma mar más alejado de los pueblos).
 - **Especie:** un Pokémon evolucionado del tipo de ese bioma (`Bosses.GUARDIAN_TYPE`, sin repetir tipo entre biomas), al azar por la semilla de la región entre los 5 más fuertes de su tipo (evolución final si existe alguna); puede ser de fuera de la Pokédex regional si no hay uno fuerte dentro de ella.
 - **Enorme y fuerte:** escala ×2 a ×3 según la región (`Bosses.size_scale`) y de 2,4 a casi 4 veces la vida normal (`Bosses.hp_scale`); reaparece más grande y con más vida en cada región siguiente. Aura de su tipo (luz de color) y marcado con `set_meta("guardian", true)`.
 - **Aparece** cuando te acercas a 90 m de su guarida (como los Territorios Alfa); vive ahí hasta que lo vences. Al aparecer, noticia del Rotom y aviso en pantalla.
@@ -18,8 +19,8 @@
 `world/region/town_services.gd` (`villain_confront`, `_villain_battle`, `_win_villain`, `_region_epilogue`), reemplaza al antiguo `villain_challenge` (un combate de reto simple sin IA ni mega).
 
 - La base secreta (una por región, `world/region/structures.gd` y `region_layout.gd`) solo se puede retar de verdad **tras avanzar bastante por los caminos de la región**: con menos de `VILLAIN_BADGE_GATE` (4 de 8) medallas, un guardia rechaza el reto.
-- Con medallas suficientes, el líder habla antes del combate (caja de diálogo, igual que un líder de gimnasio) y, si aceptas, el combate es un **combate de entrenador de verdad** (`TownServices._challenge`, el mismo camino que gimnasio y Liga: IA lista que esquiva y se cura, megaevolución si su equipo tiene una del tipo Siniestro o Veneno y la región ya la permite).
-- Al vencerlo: la reputación sube, las zonas tomadas por el equipo se liberan, el emblema único del equipo villano (`villain-emblem`) y dinero (parte del combate normal), y un **epílogo corto de la región** (caja de diálogo con el cierre de la amenaza y un resumen de medallas/Campeón; no hay cinemática nueva, ver "Decisiones").
+- Con medallas suficientes, el líder habla antes del combate (caja de diálogo, igual que un líder de gimnasio) y, si aceptas, el combate es un **combate de entrenador de verdad** (`TownServices._challenge`, el mismo camino que gimnasio y Liga: IA lista que esquiva y se cura). **Más fuerte mientras más medallas tengas al retarlo** (`TownServices._villain_team`): tamaño de 4 a 8, etapa evolutiva (como `Heroes.team_for`) y mega **desde 7 medallas** (`_villain_mega`, antes dependía solo de la región, no de cuánto hubieras avanzado en ella).
+- Al vencerlo: la reputación sube, las zonas tomadas por el equipo se liberan, el emblema único del equipo villano (`villain-emblem`) y dinero (parte del combate normal), y un **epílogo cinemático corto** (`world/region/region_epilogue_cinematic.gd`, ~20 s, se puede saltar con Esc/menu: la base se desmorona con polvo y temblor de cámara, corte al pueblo inicial donde el profesor y unos vecinos celebran con burbujas, música `bw2_the_end`; al terminar, una caja de diálogo del Narrador resume el viaje: medallas de la región y totales, capturas, guardianes vencidos y si ya eres Campeón). Antes era solo esa caja de diálogo, sin cinemática.
 
 ## Dificultad adaptable
 `core/difficulty.gd` (`AdaptiveDifficulty`), encima de la dificultad que ya elige Fernando en Opciones (`GameState.difficulty` / `DIFFICULTIES`, que no cambia).
@@ -29,7 +30,6 @@
 - Se explica en Opciones (fila "Se adapta a tu nivel", pestaña Dificultad) y en la Ficha de entrenador (chip de dificultad).
 
 ## Decisiones tomadas sin preguntar (ver `decisiones_sin_preguntar.md` para el detalle completo)
-- El mar no tiene guardián (una arena de combate en pleno mar complica mucho la navegación sin aportar tanto).
 - Las fases no reescriben las estadísticas del guardián (eso exigiría duplicar su especie como hace la megaevolución): "más rápido y nuevos ataques" se nota en que el intervalo entre ataques en área baja y aparecen ayudantes, no en sus estadísticas base.
-- El "epílogo de la región" es una caja de diálogo con un resumen, no una cinemática nueva (coherente con el resto del juego, que no tiene más cinemáticas que la de inicio).
 - Medallas mínimas para el líder del equipo villano: 4 de 8 (la mitad del camino de gimnasios de esa región).
+- (Revisión de la mañana, ya aplicada arriba) El mar sí tiene guardián, en una isla (forzada si hace falta); el líder villano escala etapa y mega con las medallas; su epílogo es una cinemática corta, no solo texto.

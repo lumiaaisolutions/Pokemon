@@ -63,6 +63,11 @@ var places: Array[Dictionary] = []
 var passes: Array[Dictionary] = []
 ## Punto de inicio (en el pueblo inicial).
 var start := Vector2.ZERO
+## Islotes forzados en el mar (Guardián del mar, Bosses/BossManager, 2026-10-11): cada
+## Vector3(x, z, radio). El archipiélago del sur ya pone islas al azar con ruido
+## (ver base_height, "Islas del archipiélago"); si ahí no cayó ninguna cerca de la
+## guarida elegida, BossManager.ensure_islet() fuerza una de todos modos.
+var _forced_islets: Array[Vector3] = []
 
 var _continent := FastNoiseLite.new()
 var _ridge := FastNoiseLite.new()
@@ -177,6 +182,11 @@ func base_height(x: float, z: float) -> float:
 		var island := _special.get_noise_2d(x * 1.5, z * 1.5)
 		if island > 0.45:
 			h = maxf(h, sea_level + (island - 0.45) * 40.0)
+	# Islote forzado (Guardián del mar: "si no hay isla, crea un islote con terreno").
+	for islet: Vector3 in _forced_islets:
+		var d := Vector2(x - islet.x, z - islet.y).length()
+		if d < islet.z:
+			h = maxf(h, sea_level + (1.0 - d / islet.z) * 18.0)
 	# Cordillera del borde (norte, este y oeste).
 	h += float(edge["rim"]) * 90.0 * (1.0 - float(edge["south"]))
 	return h
@@ -184,6 +194,15 @@ func base_height(x: float, z: float) -> float:
 
 func _is_mesa(x: float, z: float) -> bool:
 	return temperature_at(x, z) > 0.62 and moisture_at(x, z) < 0.35 and _special.get_noise_2d(x + 999.0, z) > 0.35
+
+
+## Fuerza un islote de tierra en (x, z) si el archipiélago natural no puso uno ahí
+## (BossManager lo llama para la guarida del Guardián del mar antes de que el mundo
+## hornee ese trozo; es idempotente, llamarlo varias veces en el mismo punto no hace
+## daño). radius en metros; el centro queda igual de alto que un volcán bajo, de sobra
+## para una arena de combate.
+func ensure_islet(x: float, z: float, radius: float = 26.0) -> void:
+	_forced_islets.append(Vector3(x, z, radius))
 
 
 ## Conos de volcán: Vector3(x, z, radio). Se generan con los lugares.
