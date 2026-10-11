@@ -178,7 +178,7 @@ static func rock_mesh(size: Vector3, rng: RandomNumberGenerator) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var tri := func(a: Vector3, b: Vector3, c: Vector3) -> void:
-		for v: Vector3 in [a, c, b]:
+		for v: Vector3 in [a, b, c]:
 			st.set_uv(Vector2(v.x + v.z, v.y))
 			st.add_vertex(v * scale)
 	for i in sides:
