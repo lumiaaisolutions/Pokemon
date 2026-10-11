@@ -115,3 +115,13 @@ Decisión de Fernando en [plan_pulido_mundo.md](plan_pulido_mundo.md#últimas-de
 - **Líder del equipo villano:** ahora es el jefe final de la región: solo se puede retar con 4 de 8 medallas, habla antes del combate y pelea de verdad (IA lista, cura y mega si corresponde, igual que un líder de gimnasio); al vencerlo, epílogo corto de la región (diálogo) además de la recompensa y las zonas liberadas de siempre.
 - **Dificultad adaptable:** `GameState.performance` (-1 a +1, guardado con la partida) sube con victorias con vida alta y racha, y con capturas fáciles; baja con un desmayo. Ajusta un poco el daño recibido, las curaciones y esquivas de los rivales listos, y los premios — sin tocar la dificultad elegida a mano (a rendimiento neutral no cambia nada). Se explica en Opciones y en la Ficha de entrenador.
 - Nueva prueba `test_bosses`.
+
+## 2026-10-10 noche → 2026-10-11 — Pulido general tras la prueba de Fernando
+Fernando probó el juego, reportó con capturas y fijó [reglas de calidad permanentes](reglas_calidad.md). En la noche, con agentes en paralelo (máximo 3) y decisiones anotadas en [decisiones_sin_preguntar.md](decisiones_sin_preguntar.md):
+- Mundo en 3D estilo B2W2 (modelos descargados con permiso), física real de edificios y mobiliario, puertas al frente, cámara que no choca con cosas pequeñas, faroles y noche más claros.
+- Interiores con luz propia y sin vacíos; Tienda y Centro Pokémon con todas sus funciones (dependientes, enfermera, curación animada, guardería, cafés, club, tablones…).
+- Cinemática del profesor y ceremonia del inicial con pared invisible y tutorial; pantalla de carga con Poké Ball estilo BW2.
+- IA salvaje por carácter, Poké Ball con rayo rojo y física, entrenadores y rival con combate obligatorio, pantano tóxico con veneno.
+- Campamento animado, botones de acción, Rotom Teléfono en pixel con apps, menú en tarjetas.
+- Pueblos ×2 con identidad, contenido en el campo cada ~300 m, eventos, desfiladeros con rocas grandes; fase 6 (guardianes, villano con epílogo, dificultad adaptable).
+- Las pruebas se cambiaron a esperar tiempo real (bajo carga los cuadros de física se adelantan).

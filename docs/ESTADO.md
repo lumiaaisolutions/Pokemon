@@ -19,8 +19,9 @@
 | 5.5 | Hecha | `b68fe8d` | Evolución sin niveles, Piedra Llave en las ruinas, misiones de megapiedras, fotografía con misiones ([progresión](sistemas/progresion.md)) |
 | 5.6 | Hecha | `b68fe8d` | Entrenadores en los caminos con campo de visión, premio y revancha diaria ([entrenadores](sistemas/entrenadores.md)) |
 | Pulido del mundo | Hecho | `c13a1a9` → `e3858d9` | Plan acordado tras la prueba de Fernando ([plan](plan_pulido_mundo.md)): bugs, interfaz Pokopia, mapa con zoom, tablero de misiones, NPC de BW2 con oficio y diálogo, héroes, profesor, rival, interiores B2W2, biomas, puntos de interés, pueblos con identidad |
-| Regiones | Hecho (Cilan y Volkner con sprite provisional) | 2026-10-10 | 6 regiones, 48 líderes con vida propia, Liga con Alto Mando y héroe Campeón, Pokédex regional, Boleto y viaje en barco o avión ([regiones](sistemas/regiones.md)) |
-| 5.8 | En curso | 2026-10-10 | Pesca, hordas, especies de temporada y migraciones (hechas); rocas rompibles ([catálogo](catalogo_mundo.md)) |
+| Regiones | Hecho | 2026-10-10/11 | 6 regiones, 48 líderes con vida propia, Liga con Alto Mando y héroe Campeón, Pokédex regional, Boleto y viaje en barco o avión ([regiones](sistemas/regiones.md)) |
+| 5.8 | Hecha | 2026-10-11 | Pesca, hordas, especies de temporada, migraciones, rocas rompibles y desfiladeros ([catálogo](catalogo_mundo.md)) |
+| Pulido tras la prueba (noche 10–11) | Hecho | 2026-10-11 | Mundo en 3D, física de edificios y mobiliario, interiores, Tienda y Centro completos, cinemática e inicio, campamento animado, Rotom y menú, pueblos ×2 y mundo lleno, pantano tóxico, pantalla de carga, reglas de calidad ([plan](plan_pulido_mundo.md), [reglas](reglas_calidad.md)) |
 | 6 | Hecho | 2026-10-11 | Guardianes por bioma, líder del equipo villano al final (con epílogo) y dificultad adaptable ([jefes](sistemas/jefes.md)); nueva prueba `test_bosses` |
 | 7 | Pendiente | — | Pulido y entrega |
 
