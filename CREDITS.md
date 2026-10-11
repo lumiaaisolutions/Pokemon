@@ -39,3 +39,8 @@ De The Models Resource (models.spriters-resource.com, Pokémon Black 2 / White 2
 - Mapas: Desert Resort, Entree Forest, Floccesy Ranch, Lostlorn Forest (subidos por pentaenix), para extraer árboles, arbustos, flores, hierba y rocas.
 - Objetos de mapa: Blue Rock, Cave Rock, Dead Tree 01 y 02, Stump 1 y 2, White Forest Tree 2, Fence, Sign 01 a 04, Street Lamp 1 a 3, Shrine.
 De The Spriters Resource (Pokémon Black / White, "Overworld Entities", ripeado por Barubary): `sprites/overworld/bw_overworld_entities.png`, para el sprite definitivo de Cilan.
+
+### Lote 2 (descargado 2026-10-10, con permiso de Fernando)
+- The Models Resource, Pokémon Black 2 / White 2, mapas (subidos por pentaenix) en `art/models/b2w2_nature/`: Route 01, 02, 04, 06, 07, 13, 18, Pinwheel Forest, Moor of Icirrus, Icirrus City, Humilau City, Reversal Mountain, Giant Chasm, Nature Preserve.
+- The Spriters Resource, interfaz de B2W2 (Bags, Box Backgrounds, Key Items, Medals, Options Screen, Pokémart Screen Rip, Save Menu, Trainer Card, HP Bars) y de BW (Menu Icons, Party Screen, Battle HUD, Starter Selection Screen, Large Mugs), en `sprites/ui_sources/` (fuentes locales, sin subir al repo).
+- The Spriters Resource, Pokémon Diamond / Pearl, "NPCs (Overworld)" en `sprites/overworld/dp_npcs_overworld.png`, para Volkner.
