@@ -8,7 +8,7 @@
 [ext_resource type="Texture2D" path="res://art/world/b2w2_leaf/puff_forest_dark.png" id="6"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/rock_brown.png" id="7"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/tuft_small.png" id="8"]
-[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft.png" id="9"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2_leaf/tuft_real.png" id="9"]
 
 [resource]
 script = ExtResource("1_cfg")

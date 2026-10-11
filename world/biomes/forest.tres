@@ -10,7 +10,7 @@
 [ext_resource type="Texture2D" path="res://art/world/b2w2/rock_brown.png" id="8"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/bush.png" id="9"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/plant.png" id="10"]
-[ext_resource type="Texture2D" path="res://art/world/b2w2/tuft.png" id="11"]
+[ext_resource type="Texture2D" path="res://art/world/b2w2_leaf/tuft_real.png" id="11"]
 [ext_resource type="Texture2D" path="res://art/world/b2w2/lavender.png" id="12"]
 
 [resource]

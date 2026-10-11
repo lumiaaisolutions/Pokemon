@@ -223,6 +223,71 @@ el mínimo real de un jugador solo es más alto; no hay una medición "antes" pa
 (los sprites billboard de antes no tenían un costo muy distinto: menos triángulos por
 instancia pero el mismo número de objetos y de MultiMesh).
 
+### Hierba, flores, arbustos y vegetación menor con sprites reales de B2W2 (2026-10-11, rama `hierba`)
+Segunda pasada sobre el follaje, pendiente de la revisión anterior: hierba alta, flores y
+arbustos pasan a usar los sprites reales de B2W2 ya extraídos (`art/world/b2w2_leaf/
+tuft_real.png`, `flower_real.png`) en vez de arte generado por código; cactus, acacia y
+hongo gigante se revisaron contra B2W2 (sin sprite real equivalente en los mapas
+descargados, ver más abajo) y arbustos ganan la misma técnica de "puffs" que los árboles.
+
+- **Hierba alta y mechones de pasto** (`PropArt._grass_tuft`, `world/biomes/*.tres`
+  `tall_grass_texture`): ya no son un dibujo de 6 hojas a mano, son el sprite real de B2W2
+  `tuft_real.png` (una mata en X, como la arma el propio B2W2) recoloreado píxel a píxel
+  por bioma — cada píxel conserva su sombreado original (oscuro en la base, claro en la
+  punta, `TUFT_LUM_RANGE`) pero el matiz pasa al verde de pradera/más claro de flores/seco
+  de sabana que antes salía dibujado a mano. La malla (`foliage_mesh` forma `"tuft"`,
+  `_blade_cluster` de hojas en V con volumen) no cambió: solo la textura. Mismo sprite para
+  la hierba alta de pradera/bosque/montaña (antes cada una tenía su propio `tuft.png`) y
+  para los mechones sueltos del suelo (`tuft_green`/`tuft_light`/`tuft_dry`).
+- **Flores** (`PropArt._flowers`, usado por `flowers_pink/blue/white` y los manchones de
+  `world_builder.gd`): mismo tratamiento con `flower_real.png` (dos flores de B2W2 con sus
+  hojas). Clasifica cada píxel por su color real: la hoja verde (`g` bien por encima de `r`
+  y `b`) y el centro naranja/amarillo de la flor (`r` por encima de `g`) se quedan igual sin
+  importar el tipo; el pétalo (el resto) pasa al color pedido (rosa/azul/blanco,
+  `PETAL_LUM_RANGE` normaliza su sombreado real antes de mezclarlo). La forma `"flower"` de
+  `foliage_mesh` (cono + `_mound_nubs`) se ajustó para que el color del pétalo (`top_uv`)
+  vaya en los lados —la mayor parte de lo que se ve— y la hoja (`base_uv`) quede solo en la
+  tapa chica de abajo (antes era al revés y la mata entera salía verde sin importar el color
+  pedido).
+- **Arbustos** (forma `"bush"`, la que cae por defecto cuando `auto_shape` no reconoce la
+  textura — `bush.png`, `lavender.png`, `flower_bush_pink.png`/`flowers_yellow.png` del
+  pueblo, matas de flor de `BiomeConfig` sin forma propia): pedido de Fernando, "burbujas de
+  hoja como los árboles, más bajos". Antes era un montículo/cono genérico de una sola
+  superficie; ahora son varias burbujas tipo `PUFF_PROFILE` (la misma forma redondeada que
+  arma la copa de los árboles "round"/"forest") apiladas sin tronco y más bajas, con el color
+  real de la textura (`solid_uv`, no se envuelve: estos sprites son dibujos de frente, no
+  redondos como un puff de hoja suelto, así que envolverlos los cortaría en tajadas — misma
+  razón que cactus/acacia).
+- **Arreglo de fondo que afectaba a cactus, acacia, hongos, arbustos secos y ahora
+  flores — `PropModels3D._sample_uv`:** el muestreo de color real (`solid_uv`) escaneaba la
+  textura desde la esquina de cada franja, y el contorno oscuro de 1 px que `PropArt._outline`
+  pinta alrededor de todo sprite generado (`Color(0.1, 0.08, 0.08)`) casi siempre quedaba
+  primero en ese orden de escaneo — el resultado: cactus, acacia, hongo gigante y arbusto
+  seco salían casi negros en vez de con su color real (se notó al armar la sonda de
+  comparación `tests/_tmp/veg_preview.gd`, bug ya existía antes de esta pasada, probablemente
+  desde que se agregó `_outline`). Ahora `_sample_uv` descarta los píxeles con luminancia por
+  debajo de `OUTLINE_LUMINANCE` (0.15, muy por debajo del verde más oscuro usado en
+  cualquier sprite real) y solo cae en ellos si la franja fuera *solo* contorno.
+- **Acacia** (`_build_foliage` forma `"acacia"`): de paso se ajustó el perfil para que lea
+  más a sabana — tronco expuesto más alto y copa aplastada en forma de sombrilla (ancha y
+  baja) en vez del domo redondo casi esférico de antes.
+- **Cactus, hongo gigante, palmera y juncos/cattails:** se revisaron los 7 mapas de B2W2 ya
+  descargados con vegetación de bioma (`art/models/b2w2_nature/b2w2map_{desert_resort,
+  route04, route13, humilau_city, moor_icirrus, lostlorn_forest, pinwheel_forest}`) buscando
+  un objeto o textura suelta de cactus/palmera/hongo/junco (nodos del `.dae` y los PNG de
+  textura sueltos de cada mapa): **ninguno existe como pieza separada** en estos packs — solo
+  tienen terreno, rocas, señales, casas y (en Pinwheel/Floccesy) los árboles `ki02`/`ki03` y
+  matas `kusa`/`hana` ya usados para los puffs de copa y `tuft_real`/`flower_real`. Quedan
+  como "arte propio de pocas caras con textura pixel BW2" (`PropArt`, permiso explícito de
+  Fernando si no hay sprite real), con el arreglo de color de arriba y (acacia) el perfil
+  nuevo; no se descargó nada nuevo (habría que pedir permiso por lote, y esta pasada no
+  encontró qué pedir). Reeds/cattails (`PropArt._reeds`) no se tocaron más allá del arreglo
+  de color indirecto (no usan `solid_uv`, estiran su propia textura sobre el mechón).
+- Herramienta de revisión nueva: `tests/_tmp/veg_preview.gd`/`.tscn` (no se versiona) arma
+  una fila de `PropModels3D.decor_visual` de cada tipo nuevo/tocado (arbustos, mechones,
+  flores, cactus, acacia, hongo, palmera, juncos) con luz plana, para compararlos de cerca
+  sin cargar el mundo — más rápido que buscarlos a pie en el mapa grande.
+
 ### Qué quedó fuera de esta pasada
 - Los íconos pequeños que acompañan a un objeto 3D (las bayas sobre el árbol grande, los
   minerales/conchas que se recogen en `GatherManager`, el tesoro de mazmorra) siguen como
@@ -230,11 +295,7 @@ instancia pero el mismo número de objetos y de MultiMesh).
   `tests/test_no_flat_vegetation.gd` los excluye a propósito.
 - Capturas de los biomas que faltan (ver arriba) y una medición de FPS sin otros agentes
   corriendo a la vez, para un número comparable de verdad.
-- Hierba alta/matas de piso y flores siguen con la textura actual (`tuft.png`/PropArt),
-  no con los sprites reales extraídos `tuft_real.png`/`flower_real.png` (ya en
-  `art/world/b2w2_leaf/`, sin usar todavía): Fernando pidió aplicar el estilo BW2 "lo mismo"
-  a hierba/flores, pero el tiempo de esta pasada se fue en el rediseño de los árboles
-  (que era lo explícitamente roto). Cactus, acacia y hongo gigante tampoco tienen un sprite
-  real de B2W2 equivalente (son arte propio generado por código, ver `PropArt`): se
-  arregló que ya no se cortan en tajadas (`solid_uv`), pero su silueta/estilo no se revisó
-  a fondo contra una referencia BW2.
+- ~~Hierba alta/matas de piso y flores con la textura real `tuft_real.png`/`flower_real.png`;
+  cactus, acacia y hongo gigante revisados contra BW2.~~ **Hecho** (2026-10-11, rama
+  `hierba`): ver "Hierba, flores, arbustos y vegetación menor con sprites reales de B2W2"
+  más abajo.
