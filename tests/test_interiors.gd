@@ -215,10 +215,13 @@ func _check_mart_customer(settlement: Dictionary) -> void:
 	var door: Vector3 = _services.interiors.current.get("door", Vector3.ZERO)
 	var shelves: Array = _services.interiors.current.get("shelves", [])
 	_check(not shelves.is_empty(), "la tienda debe registrar sus estantes para que los clientes caminen a uno real")
+	# Sin el _process de la tienda: sus clientes automáticos no deben mezclarse con este.
+	mart.set_process(false)
 	mart._customers.clear()
 	mart._spawn_customer(settlement)
 	_check(mart._customers.size() == 1, "debe entrar un cliente real a la tienda")
 	if mart._customers.is_empty():
+		mart.set_process(true)
 		return
 	var customer: Dictionary = mart._customers[0]
 	var sprite: Node3D = customer["node"]
@@ -234,6 +237,7 @@ func _check_mart_customer(settlement: Dictionary) -> void:
 	if is_instance_valid(sprite):
 		sprite.queue_free()
 	mart._customers.clear()
+	mart.set_process(true)
 
 
 ## Horario de la tienda (9:00–21:00, decisión de Fernando 2026-10-10): cerrada antes y
