@@ -79,6 +79,8 @@ static func play(by: PokemonActor, to: Node3D, id: String, on_hit: Callable) -> 
 			fx._signature()
 		"ultimate":
 			fx._ultimate()
+		"typed":
+			fx._typed()
 	return true
 
 
@@ -161,7 +163,8 @@ func _impact(mark: String) -> void:
 		tween.tween_method(func(v: float) -> void: sprite.set_instance_shader_parameter("flash", v), 0.9 if strong else 0.55, 0.0, 0.25)
 	if strong:
 		var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
-		if rig != null and attacker.player != null and attacker.global_position.distance_to(attacker.player.global_position) < 35.0:
+		# El atacante pudo desaparecer (capturado) mientras su proyectil volaba.
+		if rig != null and _alive(attacker) and attacker.player != null and attacker.global_position.distance_to(attacker.player.global_position) < 35.0:
 			rig.shake(0.7)
 		if mark != "" and _alive(target):
 			_ground_mark(mark, target.global_position)
@@ -641,7 +644,7 @@ func _ground_attack(kind: String) -> void:
 	var struck := false
 	if kind == "quake":
 		var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
-		if rig != null and attacker.player != null and origin.distance_to(attacker.player.global_position) < 40.0:
+		if rig != null and _alive(attacker) and attacker.player != null and origin.distance_to(attacker.player.global_position) < 40.0:
 			rig.shake(1.0)
 		var texture := PixelShapes.get_texture("ring", Color(0.75, 0.6, 0.35))
 		for k in 3:
@@ -1028,7 +1031,7 @@ func _explosion() -> void:
 	for k in 6:
 		PixelBurst.spawn(get_parent(), center + Vector3(_rng.randf_range(-1.5, 1.5), _rng.randf_range(-0.3, 1.2), _rng.randf_range(-1.5, 1.5)), PixelBurst.Kind.SMOKE, 1.2)
 	await _wait(0.15)
-	if _alive(target) and attacker.global_position.distance_to(target.global_position) < PokemonActor.RANGED_MAX:
+	if _alive(target) and _alive(attacker) and attacker.global_position.distance_to(target.global_position) < PokemonActor.RANGED_MAX:
 		_strike("scorch")
 	await _wait(0.6)
 	queue_free()
@@ -1451,3 +1454,14 @@ func _place_hazards() -> void:
 		var spot := center + Vector3(cos(TAU * k / count), 0, sin(TAU * k / count)) * (1.6 if count > 1 else 0.0)
 		hazard.global_position = _ground(spot) + Vector3.UP * (0.25 if shape != "web" else 0.05)
 	await _wait(0.2)
+
+
+## Ataques sin familia propia: según su tipo. Los físicos golpean con la forma de su tipo
+## (puño, tajo, zarpazo, cruz); los especiales lanzan un proyectil con la forma del tipo.
+func _typed() -> void:
+	var move := Moves.get_move(move_id)
+	var type := int(move["type"])
+	if move["class"] == "physical":
+		_melee([MoveFamilies.TYPE_MELEE.get(type, "fist"), "", 1])
+	else:
+		_shaped([MoveFamilies.TYPE_SHAPES.get(type, "orb"), 1, 0.06, 13.0, ""])

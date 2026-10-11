@@ -1321,7 +1321,7 @@ func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> vo
 			# Animación propia del ataque (familias de MoveFx); Mordisco y similares embisten.
 			var family := MoveFamilies.family(id)
 			if family != "" and target != null:
-				if family in ["bite", "melee"]:
+				if family in ["bite", "melee"] or (family == "typed" and move["class"] == "physical"):
 					var lunge := target.global_position - global_position
 					lunge.y = 0.0
 					velocity += lunge.normalized() * 6.0
