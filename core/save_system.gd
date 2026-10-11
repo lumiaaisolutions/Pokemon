@@ -54,7 +54,7 @@ func save_slot(slot: int, main: Node) -> bool:
 		"gender": GameState.gender, "difficulty": GameState.difficulty,
 		"play_time": GameState.play_time, "world_seed": GameState.world_seed, "world_flags": GameState.world_flags, "regions": GameState.regions, "region_index": GameState.region_index, "money": GameState.money,
 		"party": GameState.party, "box": GameState.box, "companion_index": GameState.companion_index,
-		"bag": GameState.bag, "selected_ball": GameState.selected_ball, "hunger": GameState.hunger,
+		"bag": GameState.bag, "selected_ball": GameState.selected_ball, "quick_items": GameState.quick_items, "hunger": GameState.hunger,
 		"dex": GameState.dex, "legendary_caught": GameState.legendary_caught,
 		"tips_seen": GameState.tips_seen, "rewards_claimed": GameState.rewards_claimed,
 		"professor": GameState.professor, "rival": GameState.rival, "villain_team": GameState.villain_team,
@@ -101,6 +101,7 @@ func load_slot(slot: int) -> bool:
 		GameState.bag["tent"] = int(GameState.bag.get("tent", 0)) + int(GameState.bag["explorer-kit"])
 		GameState.bag.erase("explorer-kit")
 	GameState.selected_ball = data.get("selected_ball", "poke-ball")
+	GameState.quick_items = data.get("quick_items", ["tent", "bicycle"])
 	GameState.hunger = float(data.get("hunger", GameState.HUNGER_MAX))
 	GameState.dex = data.get("dex", {})
 	GameState.legendary_caught = data.get("legendary_caught", {})

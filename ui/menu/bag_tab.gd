@@ -176,6 +176,21 @@ func _item_detail(box: VBoxContainer, id: String) -> void:
 			_message = result
 			_menu.show_tab(_menu.tab))
 		content.add_child(use)
+		# Rueda rápida: agregar o quitar este objeto (hasta 6).
+		var in_wheel := GameState.quick_items.has(id)
+		var wheel := UiKit.slant_button("Quitar de la rueda rápida" if in_wheel else "Poner en la rueda rápida (T)", UiKit.GOLD, 20)
+		wheel.custom_minimum_size = Vector2(320, 48)
+		wheel.pressed.connect(func() -> void:
+			if in_wheel:
+				GameState.quick_items.erase(id)
+				_message = "Quitaste %s de la rueda." % item.get("name", id)
+			elif GameState.quick_items.size() >= GameState.QUICK_MAX:
+				_message = "La rueda ya tiene %d objetos: quita uno primero." % GameState.QUICK_MAX
+			else:
+				GameState.quick_items.append(id)
+				_message = "%s está en la rueda rápida (mantén T)." % item.get("name", id)
+			_menu.show_tab(_menu.tab))
+		content.add_child(wheel)
 	if _message != "":
 		content.add_child(UiKit.wrapped(_message, 20, UiKit.MINT))
 

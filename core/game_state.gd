@@ -85,6 +85,9 @@ var party: Array[Dictionary] = []
 var box: Array[Dictionary] = []
 ## Mochila: id del objeto -> cantidad (catálogo en Items). Empieza con Items.starting_bag().
 var bag: Dictionary = Items.starting_bag()
+## Rueda rápida de objetos (hasta 6, se eligen en la Mochila; mantener T o la cruceta →).
+const QUICK_MAX := 6
+var quick_items: Array = ["tent", "bicycle"]
 ## Ball elegida para lanzar (se cambia con la cruceta ↑↓ o R / F).
 var selected_ball: String = "poke-ball"
 ## Cantidad de la ball elegida (compatibilidad: antes era un solo contador).

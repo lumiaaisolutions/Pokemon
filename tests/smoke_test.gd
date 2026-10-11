@@ -8,7 +8,7 @@ const ACTIONS: Array[String] = [
 	"camera_left", "camera_right", "camera_up", "camera_down", "zoom_in", "zoom_out",
 	"interact", "menu", "map", "companion", "help", "ball_next", "ball_prev", "menu_prev", "menu_next", "move_modifier", "jump", "dive",
 	"dodge", "lock_on", "attack_1", "attack_2", "attack_3", "attack_4", "mega_evolve", "capture",
-	"aim", "throw", "ride", "bag", "photo", "missions",
+	"aim", "throw", "ride", "bag", "photo", "missions", "quick_items",
 ]
 ## En el mando el zoom es un solo botón que da la vuelta (cruceta →): zoom_out solo va en mouse.
 ## La Mochila en el mando se abre desde el menú (Start).

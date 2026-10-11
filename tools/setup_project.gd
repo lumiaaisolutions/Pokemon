@@ -126,6 +126,8 @@ func _setup_input_map() -> void:
 	_action("photo", [_key(KEY_P), _button(JOY_BUTTON_MISC1)])
 	# Tablero de misiones (en el mando: mantener la cruceta ↓).
 	_action("missions", [_key(KEY_J)])
+	# Rueda rápida de objetos (mantener T; en el mando mantener la cruceta →, que tocada es zoom).
+	_action("quick_items", [_key(KEY_T), _button(JOY_BUTTON_DPAD_RIGHT)])
 
 	# Combate
 	_action("dodge", [_key(KEY_SPACE), _button(JOY_BUTTON_B)])

@@ -70,6 +70,11 @@ func _ready() -> void:
 	var professor := Professor.new()
 	professor.name = "Professor"
 	add_child(professor)
+	# Rueda rápida de objetos (mantener T / cruceta →).
+	var wheel := QuickWheel.new()
+	wheel.name = "QuickWheel"
+	wheel.main = self
+	add_child(wheel)
 	# Taquilla de viajes a otras regiones (barco o avión) en el pueblo inicial.
 	var terminal := TravelTerminal.new()
 	terminal.name = "TravelTerminal"

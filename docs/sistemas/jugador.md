@@ -91,3 +91,9 @@ Código: `core/game_state.gd` (hambre), `core/save_system.gd` (persistencia), `c
 - **Decisión:** modelos 3D propios de pocos polígonos con texturas pixel art como las de B2W2 (no hay tienda ni fogata en los modelos de B2W2): tienda de lona con postes y estacas, troncos con brasas y llamas cruzadas visibles desde cualquier lado, olla con tapa, troncos para sentarse y mochila.
 - **También los campamentos de los NPC** viajeros, con los mismos modelos (lona de otro color).
 - **Hecho** (`world/npc/camp.gd`: `tent_model`, `firepit` con olla y trípode en la tuya, tronco y mochila; lo usan los viajeros, tu tienda y el campamento abandonado de los puntos de interés). La tienda tiene colisión. Partidas viejas: el Kit Explorador se convierte en Tienda de Campaña al cargar.
+
+### Ajustes tras la primera versión (decisiones de Fernando, 2026-10-10)
+- **Restaurante:** con un modelo de edificio de B2W2 y letrero; el **puesto**, caseta 3D con toldo. **Por hacer.**
+- **Rueda rápida de objetos — hecha** (`ui/quick_wheel.gd`, acción `quick_items`): mantener T (o la cruceta →; tocada sigue siendo zoom) abre la rueda con hasta 6 objetos (`GameState.quick_items`, se guardan con la partida); se apunta con el mouse o el stick y al soltar se usa. En la Mochila, cada objeto usable tiene "Poner en / Quitar de la rueda rápida". Empieza con la Tienda de Campaña y la Bicicleta. Íconos pixel art nuevos de la comida y la tienda (`tools/food_icons.py`; la soda es la oficial).
+- **Pesca animada:** Nate saca la caña, el sedal vuela al agua, el corcho flota y se hunde con ondas al picar; al sacar, el pez o el Pokémon salta del agua. **Por hacer.**
+- **Sprites de Cilan y Volkner:** Fernando pasará la verificación de Spriters Resource más adelante (siguen provisionales).
