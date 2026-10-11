@@ -26,6 +26,9 @@
 - **Salto** de unos 1.4 m.
 - Sprite: hoja overworld de Nate (caminar y correr en 4 direcciones). El lado visible depende de la cámara (`DirectionalSprite`).
 
+### Subir escalones sin saltar (step-up, 2026-10-11)
+`CharacterBody3D` no sube solo un escalón bajo: lo trata como pared y hay que saltarlo a mano. Bug de Fernando ("parece que hay una pared" en el Centro Pokémon, pero se podía pasar saltando; las escaleras del segundo piso "obligan a saltar"). `Player._step_up()` (`world/player/player.gd`), llamada cada cuadro en tierra antes de `move_and_slide()`: si el paso de ese cuadro chocaría de frente (`test_move`), prueba el mismo paso un poco más arriba (`STEP_HEIGHT = 0.5 m`); si ahí ya cabe, es un escalón bajo (mostrador, borde de piso, peldaño) y sube de golpe esa altura para que `move_and_slide()` complete el avance; si sigue bloqueado incluso más arriba, es una pared de verdad y no se toca nada. Genérico: no hace falta marcar qué es un "escalón", funciona con cualquier geometría (modelos reales de B2W2 incluidos) mientras el desnivel sea ≤ 0.5 m, como una escalera normal de varios peldaños. Probado con `tests/test_player_movement.tscn` (sigue sin fallos) y con capturas reales en el Centro Pokémon (ver [pueblos e interiores](pueblos_e_interiores.md#centro-pokémon-cámara-fuera-del-edificio-y-escalones-que-parecían-pared-2026-10-11-chispa)).
+
 ## Vida (estilo Minecraft)
 - 20 de vida = 10 corazones en el HUD.
 - **Caídas:** de más de 4 m quitan 1 por metro extra.

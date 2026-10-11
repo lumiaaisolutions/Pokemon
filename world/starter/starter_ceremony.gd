@@ -121,17 +121,51 @@ func _on_vanished(actor: PokemonActor) -> void:
 	chosen.emit(species, shiny, at)
 
 
-## El profesor se despide (y vuelve a su rutina normal: el Professor de main.gd sigue
-## sin que haga falta nada más).
+## Metros por segundo al alejarse (mismo paso que el resto de la gente del pueblo, ver
+## TownNPCs.WALK_SPEED) y cuánto camina antes de desaparecer ya lejos de la plaza.
+const LEAVE_SPEED := 2.2
+const LEAVE_DISTANCE := 9.0
+
+
+## El profesor se despide y se va CAMINANDO (con su hoja de pasos de mundo, como
+## cualquier NPC) hacia su laboratorio o hacia la salida de la plaza, y entonces vuelve a
+## su rutina normal (el Professor de main.gd sigue sin que haga falta nada más: de día
+## está en el laboratorio). Antes se encogía hasta desaparecer en el sitio (se veía como
+## si se hundiera en el suelo; bug de Fernando 2026-10-11).
 func _leave_professor() -> void:
 	if _prof_node == null or not is_instance_valid(_prof_node):
 		return
-	var tween := create_tween()
-	tween.tween_property(_prof_node, "scale", Vector3.ZERO, 0.6)
-	await tween.finished
+	var sprite := _prof_node.get_node_or_null("Sprite") as DirectionalSprite
+	var direction := _leave_direction()
+	var walked := 0.0
+	while walked < LEAVE_DISTANCE and is_instance_valid(_prof_node):
+		await get_tree().process_frame
+		var delta := get_process_delta_time()
+		var step := direction * LEAVE_SPEED * delta
+		_prof_node.global_position += step
+		_prof_node.global_position.y = world.surface_height_at(_prof_node.global_position.x, _prof_node.global_position.z)
+		if sprite != null:
+			sprite.animate(step / maxf(delta, 0.001), delta)
+		walked += LEAVE_SPEED * delta
 	if is_instance_valid(_prof_node):
 		_prof_node.queue_free()
 	_prof_node = null
+
+
+## Hacia su laboratorio (si el pueblo tiene uno) o, si no, hacia afuera de la plaza en
+## línea recta desde el centro.
+func _leave_direction() -> Vector3:
+	var settlement: Dictionary = world.settlement_at(_prof_node.global_position.x, _prof_node.global_position.z)
+	for building: Dictionary in settlement.get("buildings", []):
+		if building.get("kind", "") == "lab":
+			var to := Vector2(float(building["x"]), float(building["z"])) - Vector2(_prof_node.global_position.x, _prof_node.global_position.z)
+			if to.length() > 0.5:
+				return Vector3(to.normalized().x, 0.0, to.normalized().y)
+	var away := Vector2(_prof_node.global_position.x, _prof_node.global_position.z) - _center
+	if away.length() < 0.5:
+		away = Vector2(1.0, 0.0)
+	away = away.normalized()
+	return Vector3(away.x, 0.0, away.y)
 
 
 ## Si hay vecinos cerca, comentan la ceremonia (burbujas).

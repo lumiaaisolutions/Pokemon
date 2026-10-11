@@ -52,24 +52,40 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(_fade)
+	# Abajo a la IZQUIERDA (no a la derecha, bug de Fernando 2026-10-11: el texto quedaba
+	# chico y desfasado, encimado con la leyenda y el panel de la Poké Ball del HUD, que ya
+	# ocupan esa esquina incluso durante la cinemática). A la izquierda solo vive la
+	# tarjeta del compañero, oculta mientras no hay uno. Se añade al árbol ANTES de fijar
+	# el ancla (con PRESET_MODE_MINSIZE necesita el tamaño mínimo real del texto; fuera del
+	# árbol, sin tema, Godot lo media mal y el aviso quedaba cortado en el borde).
 	var hint := InputGlyph.row("menu", "Saltar (o Esc)", 20)
-	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	layer.add_child(hint)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
 	_dolly = Node3D.new()
 	_dolly.name = "CinematicDolly"
 	add_child(_dolly)
 
 
 ## Sondea el salto en vez de _unhandled_input: así responde aunque un diálogo bloqueante
-## esté consumiendo la entrada, y es fácil de probar con Input.action_press.
+## esté consumiendo la entrada, y es fácil de probar con Input.action_press. El flanco se
+## calcula a mano (en vez de is_action_just_pressed) porque ese método se queda en falso
+## si la pulsación llega entre dos cuadros de _process (p. ej. tras un await largo, como
+## el diálogo del profesor: bug de Fernando 2026-10-11, "el salto no se detecta tras 8 s,
+## sí al inicio"); comparar el estado contra el del cuadro anterior no depende de en qué
+## cuadro exacto se registró la pulsación.
+var _skip_was_down := false
+
+
 func _process(_delta: float) -> void:
 	if _skip:
 		return
-	if Input.is_action_just_pressed("ui_cancel") or Input.is_action_just_pressed("menu"):
+	var skip_down := Input.is_action_pressed("ui_cancel") or Input.is_action_pressed("menu")
+	if skip_down and not _skip_was_down:
 		_skip = true
 		var dialog := _dialog()
 		if dialog != null and dialog.is_open():
 			dialog.close()
+	_skip_was_down = skip_down
 
 
 ## Juega la cinemática completa (o la salta) y devuelve los 4 candidatos elegidos, para

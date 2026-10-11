@@ -22,6 +22,7 @@ Barra lateral "MENÚ" con íconos y chip de encabezado por sección. Pokémon (t
 
 ## HUD
 Paneles del kit: tarjeta del compañero con **retrato**, nombre, vida y estado; panel de la Pokéball (franja roja); reloj y clima en píldora; nombre del lugar, avisos y ayuda de interacción en píldoras que se ajustan al texto (la de ayuda se oculta si está vacía); leyenda de botones según el contexto.
+- **Leyenda y pestaña "Controles [H]" (`ui/hud.gd`), arreglado 2026-10-11 (CHISPA):** tenían una altura fija (pensada para el panel de la Pokéball de antes) que las dejaba flotando a medio camino entre las misiones y ese panel, chicas y desfasadas (bug de Fernando, se veían "muy pequeñas y desfasadas en la esquina inferior derecha" con "un texto desfasado ahí"). Ahora `_update_hints()` las ancla cada cuadro justo encima del panel real de la Pokéball (`_ball_panel.size.y`, que cambia según el texto), pegadas a la esquina sin hueco ni encimarse con nada; probado a 1280×720 y 1920×1080 (el proyecto escala con `canvas_items`/`expand`, mismo resultado en ambas). El texto de la pestaña subió de 17 a 19 px. La pista "Saltar (o Esc)" de `IntroCinematic` (ver [inicio](inicio.md)) se movió de la esquina inferior derecha (donde se encimaba con ese mismo panel, con el texto cortado en el borde) a la inferior izquierda, donde solo vive la tarjeta del compañero, oculta mientras no hay uno.
 
 ## Estilo claro (Pokopia) — reemplaza al azul marino (2026-10-10, segunda parte)
 Fernando pidió el estilo de Pokémon Pokopia (sus imágenes, solo como referencia) en **toda** la interfaz.

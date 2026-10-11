@@ -211,10 +211,15 @@ static func _fix_materials(mesh: MeshInstance3D) -> void:
 					base.emission_energy_multiplier = 0.35 if hour < 6.5 or hour >= 18.5 else 0.0
 					window_materials.append(base)
 				if path.contains("kage") or base.resource_name.contains("kage"):
-					# Sombra pintada del modelo: semitransparente, sin escribir profundidad.
+					# Sombra pintada del modelo: semitransparente suave, sin escribir
+					# profundidad. La textura original suele venir sin canal alfa (negro
+					# sólido de verdad): forzamos la opacidad aquí para que nunca tape una
+					# cara entera como una barra negra (reporte de Fernando 2026-10-11,
+					# "sombra negra tapa la cara de la asistente" en el laboratorio).
 					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 					base.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 					base.render_priority = 1
+					base.albedo_color.a = 0.35
 				elif texture != null and texture.get_image() != null and texture.get_image().detect_alpha() != Image.ALPHA_NONE:
 					base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 					base.alpha_scissor_threshold = 0.5

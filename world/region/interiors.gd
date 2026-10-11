@@ -12,6 +12,12 @@ signal entered(kind: String)
 signal exited
 
 const ORIGIN := Vector3(20000.0, 0.0, 0.0)
+## Distancia en Z, siempre la misma, entre dónde aparece el jugador en una sala con
+## modelo real (_build_room, "door" = size.y*0.5-2.2, spawn = door-1.5) y el muro de la
+## entrada (_model_room, en half.y+0.5 = size.y*0.5+0.5): 0.5+2.2+1.5 = 4.2, sin importar
+## el tamaño de la sala (size.y se cancela). _model_room la usa para que la cámara nunca
+## termine fuera del edificio, mirando hacia dentro por encima de ese muro.
+const ENTRANCE_CLEARANCE := 4.2
 const CELL := 7.0
 ## Muros bajos y sin choque con la cámara: desde arriba se ve todo el interior (HD-2D).
 const WALL_H := 2.6
@@ -364,7 +370,14 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 			[Vector3(1.0, wall_height, size.y + 2.0), Vector3(half.x + 0.5, wall_height * 0.5 - 0.3, 0), false]]
 	for wall: Array in walls:
 		var fence := StaticBody3D.new()
-		fence.collision_layer = WorldBuilder.LAYER_OBSTACLES
+		# También en la capa de cámara: son paredes grandes de verdad (reglas_calidad
+		# #7), y el SpringArm de CameraRig solo choca con terreno/frontera/LAYER_CAMERA
+		# (el mobiliario chico se deja fuera a propósito). Sin esto la cámara, calculada
+		# solo según el tamaño de la sala, podía quedar fuera del edificio mirando hacia
+		# dentro por encima del muro de la entrada (bug visual de Fernando 2026-10-11,
+		# "Centro Pokémon": una franja plana enorme del color del muro tapando media
+		# pantalla, con el cartel de salida flotando encima).
+		fence.collision_layer = WorldBuilder.LAYER_OBSTACLES | WorldBuilder.LAYER_CAMERA
 		var wall_shape := BoxShape3D.new()
 		wall_shape.size = wall[0]
 		var wall_collision := CollisionShape3D.new()
@@ -413,9 +426,15 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	root.add_child(apron)
 	# Cámara que cabe bajo el techo real (si no, se metía dentro del modelo o del piso de
 	# arriba) y lámparas de techo propias: los modelos de B2W2 no traen luces, solo
-	# geometría y texturas.
+	# geometría y texturas. El componente horizontal nunca pasa de ENTRANCE_CLEARANCE
+	# (la distancia real y constante del punto de aparición al muro de la entrada, ver
+	# door/spawn más abajo): si no, con techos altos (pitch más plano, más distancia
+	# horizontal) la cámara terminaba fuera del edificio, mirando hacia dentro por encima
+	# de ese muro (bug visual de Fernando 2026-10-11: una franja enorme del color del muro
+	# tapando media pantalla). La capa LAYER_CAMERA del muro (más arriba) no basta sola
+	# porque el muro es más bajo que la altura a la que cruza ese rayo en techos altos.
 	var vertical := clampf(ceiling - 1.2 - 0.6, 0.8, 7.0)
-	var horizontal := clampf(minf(size.x, size.y) * 0.45, 2.5, 9.0)
+	var horizontal := clampf(minf(minf(size.x, size.y) * 0.45, ENTRANCE_CLEARANCE - 0.6), 2.5, ENTRANCE_CLEARANCE - 0.6)
 	current["cam_pitch"] = clampf(rad_to_deg(atan2(vertical, horizontal)), 14.0, 60.0)
 	current["cam_zoom"] = clampf(sqrt(vertical * vertical + horizontal * horizontal), 3.0, 11.0)
 	_ceiling_lamps(root, size, ceiling)
