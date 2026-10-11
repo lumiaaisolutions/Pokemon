@@ -134,7 +134,7 @@ func _scatter_grass(node: Node3D, a: Vector2, b: Vector2) -> void:
 		var p := a.lerp(b, t) + side * offset
 		var texture := PropArt.texture(["tuft_green", "tuft_light"][rng.randi() % 2])
 		var mesh_instance := MeshInstance3D.new()
-		mesh_instance.mesh = PropModels3D.cross_mesh(texture, _world.config.pixel_size)
+		mesh_instance.mesh = PropModels3D.foliage_mesh(texture, _world.config.pixel_size)
 		mesh_instance.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, true, false)
 		mesh_instance.position = Vector3(p.x, _world.surface_height_at(p.x, p.y) - 0.04, p.y)
 		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

@@ -216,7 +216,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 10. ~~Fase 6 (guardianes, líder villano, dificultad adaptable)~~ **Hecho** (2026-10-11, rama `fase6`): ver [jefes.md](sistemas/jefes.md). Pendiente: fase 7 (app de Mac y pasada final).
 
 ### Revisión de Fernando de las decisiones de la noche (2026-10-11 mañana)
-- **Follaje:** 3D de verdad propio (árboles con tronco y copa de volúmenes, arbustos y flores con volumen, texturas pixel de B2W2); nada plano desde ningún ángulo (reemplaza la "cruz de 2 planos").
+- ~~**Follaje:** 3D de verdad propio (árboles con tronco y copa de volúmenes, arbustos y flores con volumen, texturas pixel de B2W2); nada plano desde ningún ángulo (reemplaza la "cruz de 2 planos").~~ **Hecho** (2026-10-11, rama `follaje`): `PropModels3D.foliage_mesh` reemplaza `cross_mesh` en todo el mundo (árboles por bioma, arbustos, flores, cactus, hongos, hierba alta, juncos, coral, cristal). Segunda vuelta el mismo día (Fernando: "los árboles actuales NO tienen estilo BW2"): pradera/bosque/pino pasaron de envolver el árbol completo en un tambor (se veía cortado en tajadas) a tronco corto marrón + copa de "puffs" redondos con sprites reales de B2W2 extraídos de los mapas (`art/world/b2w2_leaf/`). Detalle en [arte.md](sistemas/arte.md#follaje-3d-de-verdad-2026-10-11-rama-follaje).
 - **Combate amistoso** (café y club del Centro): combate de entrenador real en arena (equipo, IA, curas), sin perder dinero.
 - **Rotom Teléfono:** redibujarlo en pixel art estilo BW2.
 - **Música:** buscar pistas de BW2 que falten (campamento de noche, tienda, centro, cinemática) y pedir permiso del lote.

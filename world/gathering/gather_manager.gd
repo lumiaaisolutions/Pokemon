@@ -11,7 +11,7 @@ signal prompt_changed(text: String)
 ## Cada punto tiene contexto: las bayas crecen en arbustos, los bonguris en árboles, las
 ## setas al pie de un árbol de la zona, los minerales en rocas y las conchas en la orilla.
 ## Lo que se recoge desaparece de su arbusto/árbol/roca y vuelve a crecer al otro día.
-const BASES := {"Arbusto de bayas": "res://art/world/b2w2/bush.png", "Árbol de bonguri": "res://art/world/b2w2/tree_round.png",
+const BASES := {"Arbusto de bayas": "res://art/world/b2w2/bush.png", "Árbol de bonguri": "res://art/world/b2w2_leaf/puff_forest_dark.png",
 		"Roca con minerales": "res://art/world/b2w2/rock_brown.png"}
 ## Dónde van los frutos sobre la base (en metros, relativos a su pie).
 const FRUIT_SPOTS := {"Arbusto de bayas": [Vector3(-0.35, 0.75, 0.15), Vector3(0.3, 0.95, 0.12), Vector3(0.05, 0.55, 0.2)],
@@ -140,8 +140,8 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 	node.set_meta("regrow_day", int((GameState.world_flags.get("gather", {}) as Dictionary).get(id, -1)))
 	parent.add_child(node)
 	node.global_position = at
-	# Base: arbusto, árbol o roca en 3D (cruz de 2 planos para el follaje; malla de
-	# BreakableRock con color plano para la roca; regla 1 de docs/reglas_calidad.md).
+	# Base: arbusto, árbol o roca en 3D (follaje 3D de verdad: tronco + copa de volúmenes;
+	# malla de BreakableRock con color plano para la roca; regla 1 de docs/reglas_calidad.md).
 	if BASES.has(kind[0]):
 		var base := MeshInstance3D.new()
 		base.name = "Base"
@@ -153,7 +153,8 @@ func _make_node(kind: Array, at: Vector3, parent: Node3D, id: String) -> Node3D:
 			base.material_override = PropModels3D.solid_material(Color(0.55, 0.48, 0.42))
 		else:
 			var scale_factor := 1.4 if kind[0] == "Árbol de bonguri" else 1.0
-			base.mesh = PropModels3D.cross_mesh(texture, _world.config.pixel_size * scale_factor)
+			var shape := "forest" if kind[0] == "Árbol de bonguri" else ""
+			base.mesh = PropModels3D.foliage_mesh(texture, _world.config.pixel_size * scale_factor, shape)
 			base.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, true, false)
 		base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		node.add_child(base)

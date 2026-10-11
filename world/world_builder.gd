@@ -698,7 +698,8 @@ func _plan_props(key: Vector2i, heights: PackedFloat32Array, ponds: Array) -> Di
 		var scale_factor := 2.0 if big < float(style["big"]) else 1.0
 		var width := texture.get_size().x * config.pixel_size * scale_factor
 		var y := _local_base(heights, key, x, z, width * 0.5) - config.obstacle_sink
-		obstacles.append([texture, scale_factor, radius, Vector3(x, y, z), style["tint"], is_tree])
+		var shape := _tree_shape(layout.biome_at(x, z), texture) if is_tree else ""
+		obstacles.append([texture, scale_factor, radius, Vector3(x, y, z), style["tint"], is_tree, shape])
 	var decor := {}
 	for i in DECOR_TRIES:
 		var x := x0 + rng.randf() * CHUNK
@@ -835,7 +836,8 @@ func _plan_far_trees(key: Vector2i, grid: PackedFloat32Array, m: int, cell: floa
 		var h := grid[(clampi(int((z - z0) / cell), 0, m - 3) + 1) * m + clampi(int((x - x0) / cell), 0, m - 3) + 1]
 		if layout.water_level_at(x, z) - h > -0.4 or _in_settlement(x, z, 4.0) or layout.road_info(x, z).x < 4.0:
 			continue
-		var group := [trees[pick % trees.size()], style["tint"]]
+		var far_texture: Texture2D = trees[pick % trees.size()]
+		var group := [far_texture, style["tint"], _tree_shape(layout.biome_at(x, z), far_texture)]
 		if not by_texture.has(group):
 			by_texture[group] = PackedVector3Array()
 		# PackedVector3Array se copia por valor: hay que volver a guardarlo.
@@ -1101,7 +1103,7 @@ func _instantiate(key: Vector2i, data: Dictionary) -> void:
 		var far: Dictionary = data["far_trees"]
 		for group: Array in far:
 			var texture: Texture2D = group[0]
-			var far_mesh := PropModels3D.cross_mesh(texture, config.pixel_size * 1.6)
+			var far_mesh := PropModels3D.foliage_mesh(texture, config.pixel_size * 1.6, group[2], true)
 			var far_instance := _multimesh("FarTrees", far_mesh, far[group], 0.0)
 			far_instance.material_override = FoliageMaterials.for_texture(texture, group[1], true, texture == PropArt.texture("glow_mushroom"))
 			root.add_child(far_instance)
@@ -1118,7 +1120,7 @@ func _build_props(root: Node3D, props: Dictionary, chunk: Dictionary) -> void:
 	for entry: Array in props["obstacles"]:
 		count += 1
 		var is_tree: bool = entry[5]
-		var body := _obstacle(("Tree%d" if is_tree else "Rock%d") % count, entry[0], entry[1], entry[2], entry[3], entry[4], is_tree)
+		var body := _obstacle(("Tree%d" if is_tree else "Rock%d") % count, entry[0], entry[1], entry[2], entry[3], entry[4], is_tree, entry[6])
 		if is_tree:
 			body.add_to_group(TREES_GROUP)
 		root.add_child(body)
@@ -1140,8 +1142,9 @@ func _build_props(root: Node3D, props: Dictionary, chunk: Dictionary) -> void:
 		(chunk["patch_biomes"] as Array).append(entry[3])
 
 
-## Malla y material de una mata de hierba alta (cruz de 2 planos, 3D en vez del plano
-## billboard de antes) con viento y empuje (world/terrain/tall_grass_3d.gdshader).
+## Malla y material de una mata de hierba alta (mechón de hojas en V con grosor real, 3D de
+## verdad en vez del plano billboard/la cruz de antes) con viento y empuje
+## (world/terrain/tall_grass_3d.gdshader).
 func _grass_quad(style: BiomeConfig) -> Dictionary:
 	if _grass_quads.has(style):
 		return _grass_quads[style]
@@ -1153,7 +1156,7 @@ func _grass_quad(style: BiomeConfig) -> Dictionary:
 	material.set_shader_parameter("tint_top", Vector3(style.tall_grass_tint_top.r, style.tall_grass_tint_top.g, style.tall_grass_tint_top.b))
 	material.set_shader_parameter("blade_height", size.y)
 	_grass_materials.append(material)
-	var mesh := PropModels3D.cross_mesh(style.tall_grass_texture, config.pixel_size)
+	var mesh := PropModels3D.foliage_mesh(style.tall_grass_texture, config.pixel_size, "tuft")
 	var result := {"mesh": mesh, "material": material}
 	_grass_quads[style] = result
 	return result
@@ -1180,6 +1183,28 @@ func _rebuild_patch_lists() -> void:
 			for pond: Vector4 in _ponds_of(key):
 				swamp_ponds.append(Vector3(pond.x, pond.y, pond.z))
 				swamp_pond_levels.append(pond.w)
+
+
+## Forma de copa para un árbol de ese bioma/textura (PropModels3D.foliage_mesh): "pradera
+## redondo, bosque, pino/nevado, palmera, árbol seco... hongo gigante" (pedido de Fernando,
+## 2026-10-11). Primero deduce por la textura (cactus/palmera/acacia/hongo, que siempre son
+## la misma forma venga del bioma que venga) y por si es el tronco muerto fijo; si no, por
+## bioma (las texturas de meadow/forest/mountain.tree_textures se repiten entre biomas —
+## p. ej. tree_round.png la usan pradera y bosque — así que la forma la decide el bioma
+## donde se está plantando, no solo la imagen).
+func _tree_shape(biome: int, texture: Texture2D) -> String:
+	var auto := PropModels3D.auto_shape(texture)
+	if auto != "":
+		return auto
+	if texture == config.dead_tree_texture:
+		return "dead"
+	match biome:
+		RegionLayout.Biome.FOREST, RegionLayout.Biome.JUNGLE, RegionLayout.Biome.DARK_FOREST, RegionLayout.Biome.MUSHROOM, RegionLayout.Biome.SWAMP:
+			return "forest"
+		RegionLayout.Biome.MOUNTAIN, RegionLayout.Biome.TUNDRA:
+			return "pine"
+		_:
+			return "round"
 
 
 ## Densidad (por zona de 128 m) y arte de cada bioma de la región.
@@ -1570,11 +1595,12 @@ func _multimesh(instance_name: String, mesh: Mesh, positions: PackedVector3Array
 
 ## Árbol o roca en 3D (de pocas caras, estilo B2W2) apoyado en el suelo (posición ya con
 ## la altura), con sombra de contacto y colisión en la capa de obstáculos. Los árboles son
-## una cruz de 2 planos con su textura pixel (siguen la luz y, si son follaje, el tinte de
-## estación: PropModels3D.cross_mesh + FoliageMaterials); las rocas reusan la malla de
-## BreakableRock con color plano. Algunos troncos muertos usan el modelo real de B2W2
-## (regla 1 de docs/reglas_calidad.md, 2026-10-10: nada plano salvo Pokémon/personajes/NPC).
-func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, position_3d: Vector3, tint: Color, foliage: bool = false) -> StaticBody3D:
+## tronco + copa de volúmenes reales con su textura pixel (siguen la luz y, si son follaje,
+## el tinte de estación: PropModels3D.foliage_mesh + FoliageMaterials, forma por bioma de
+## _tree_shape); las rocas reusan la malla de BreakableRock con color plano. Algunos
+## troncos muertos usan el modelo real de B2W2 (regla 1 de docs/reglas_calidad.md,
+## 2026-10-10: nada plano salvo Pokémon/personajes/NPC).
+func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, position_3d: Vector3, tint: Color, foliage: bool = false, shape: String = "") -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = obstacle_name
 	body.collision_layer = LAYER_OBSTACLES
@@ -1588,7 +1614,7 @@ func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, r
 	body.add_child(visual)
 	if foliage:
 		var mesh_instance := MeshInstance3D.new()
-		mesh_instance.mesh = PropModels3D.cross_mesh(texture, config.pixel_size)
+		mesh_instance.mesh = PropModels3D.foliage_mesh(texture, config.pixel_size, shape)
 		var glow := texture == PropArt.texture("glow_mushroom")
 		var seasonal := not glow and texture != PropArt.texture("cactus") and texture != PropArt.texture("palm")
 		mesh_instance.material_override = FoliageMaterials.for_texture(texture, tint, seasonal, glow)
@@ -1616,11 +1642,11 @@ func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, r
 		mesh_instance.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
 		visual.add_child(mesh_instance)
 	body.set_meta("obstacle_height", height)
-	var shape := CylinderShape3D.new()
-	shape.radius = radius * scale_factor
-	shape.height = height
+	var collision_shape := CylinderShape3D.new()
+	collision_shape.radius = radius * scale_factor
+	collision_shape.height = height
 	var collision := CollisionShape3D.new()
-	collision.shape = shape
+	collision.shape = collision_shape
 	collision.position.y = height * 0.5
 	body.add_child(collision)
 	return body

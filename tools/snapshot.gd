@@ -254,7 +254,9 @@ func _ready() -> void:
 			await get_tree().process_frame
 	# "bioma:NOMBRE": lleva al jugador al punto más cercano al inicio de ese bioma (nombre
 	# del enum RegionLayout.Biome, p. ej. "bioma:FOREST"); gira la cámara con "giro:N"
-	# grados de yaw como argumento extra (revisión de vegetación 3D, 2026-10-10).
+	# grados de yaw y la inclina con "pitch:N" grados de pitch, como argumentos extra
+	# (revisión de vegetación 3D, 2026-10-10; pitch añadido 2026-10-11 para revisar el
+	# follaje 3D de verdad desde arriba sin usar "arriba", que no deja elegir el bioma).
 	if args.size() > 5 and args[5].begins_with("bioma:"):
 		var world := scene.get_node("World") as WorldBuilder
 		var player := scene.get_node("Player") as Player
@@ -280,11 +282,19 @@ func _ready() -> void:
 		var bioma_rig := scene.get_node("CameraRig") as CameraRig
 		bioma_rig.snap()
 		var giro_arg := ""
+		var pitch_arg := ""
+		var zoom_arg := ""
 		for extra in args.slice(6):
 			if extra.begins_with("giro:"):
 				giro_arg = extra
+			elif extra.begins_with("pitch:"):
+				pitch_arg = extra
+			elif extra.begins_with("zoom:"):
+				zoom_arg = extra
 		bioma_rig.set("_yaw_deg", float(giro_arg.substr(5)) if giro_arg != "" else 0.0)
-		bioma_rig.set("_pitch_deg", 18.0)
+		bioma_rig.set("_pitch_deg", float(pitch_arg.substr(6)) if pitch_arg != "" else 18.0)
+		if zoom_arg != "":
+			bioma_rig.set("_zoom", float(zoom_arg.substr(5)))
 		for i in 150:
 			await get_tree().process_frame
 	# "lugar:tipo": lleva al jugador frente al primer lugar especial de ese tipo.
