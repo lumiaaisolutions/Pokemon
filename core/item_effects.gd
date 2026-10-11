@@ -6,6 +6,8 @@ extends RefCounted
 ## Texto del botón según el objeto ("" si no se puede usar desde la Mochila).
 static func action_label(id: String) -> String:
 	var item := Items.get_item(id)
+	if item.has("spoiled"):
+		return "Tirar"
 	if item.has("ball"):
 		return "Elegir para lanzar"
 	if item.has("heal_companion") or item.has("cure_status"):
@@ -37,6 +39,14 @@ static func use(id: String, main: Node) -> String:
 		return "No te quedan."
 	var player := main.get_node_or_null("Player") as Player if main != null else null
 	var companion := main.get("companion") as PokemonActor if main != null else null
+	# Comida echada a perder: se tira y a tu compañero no le gusta (pierde un poco de
+	# vínculo: lo que gana en 2 victorias).
+	if item.has("spoiled"):
+		GameState.use_item(id, GameState.item_count(id))
+		if not GameState.party.is_empty():
+			var member: Dictionary = GameState.party[GameState.companion_index]
+			member["bond_xp"] = maxf(float(member.get("bond_xp", 0.0)) - 6.0, 0.0)
+		return "Tiraste la comida echada a perder. A tu compañero no le gustó que se desperdiciara."
 	if item.get("pocket", "") == "evolucion" and not item.has("ball"):
 		if GameState.party.is_empty():
 			return "No tienes Pokémon."
@@ -211,12 +221,19 @@ static func craft(recipe: Dictionary) -> String:
 ## Cocina en la fogata de la tienda de campaña (acordado con Fernando el 2026-10-10):
 ## consume los ingredientes y se come al instante (llena mucho el hambre y da un efecto
 ## extra simple); tu equipo sale a comer contigo y sube su vínculo.
-static func cook(recipe: Dictionary, main: Node) -> String:
+## Cocina la receta; eat_now: comerlo ahí (si no, se guarda en la Mochila y caduca).
+## Tu equipo come contigo y sube su vínculo en los dos casos.
+static func cook(recipe: Dictionary, main: Node, eat_now: bool = true) -> String:
 	if not can_craft(recipe):
 		return "Te faltan ingredientes."
 	for id: String in recipe["needs"]:
 		GameState.use_item(id, int(recipe["needs"][id]))
 	var dish := Items.get_item(String(recipe["result"]))
+	if not eat_now:
+		GameState.add_item(String(recipe["result"]), int(recipe.get("amount", 1)))
+		for member: Dictionary in GameState.party:
+			member["bond_xp"] = float(member.get("bond_xp", 0.0)) + 2.0
+		return "¡Cocinaste %s y lo guardaste en la Mochila! Tu equipo comió contigo. Caduca en %d día(s)." % [Items.display_name(String(recipe["result"])), int(dish.get("shelf_days", 1))]
 	GameState.feed(float(dish.get("feed", 0.0)) * float(recipe.get("amount", 1)))
 	var player := main.get_node_or_null("Player") as Player if main != null else null
 	if dish.has("heal_hearts") and player != null:

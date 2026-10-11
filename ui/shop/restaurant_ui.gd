@@ -5,10 +5,10 @@ extends Control
 ## come ahí mismo (no ocupa espacio en la mochila). Pausa el juego, como la tienda.
 
 const MENU := [
-	{"name": "Curry de la casa", "price": 400, "feed": 7.0, "boost": {"kind": "speed", "seconds": 240}},
-	{"name": "Estofado del chef", "price": 450, "feed": 7.5, "heal_hearts": 8.0},
-	{"name": "Plato del pescador", "price": 500, "feed": 8.0, "heal_companion": 0.25},
-	{"name": "Postre de la casa", "price": 250, "feed": 5.0},
+	{"item": "house-curry", "name": "Curry de la casa", "price": 400, "feed": 7.0, "boost": {"kind": "speed", "seconds": 240}},
+	{"item": "chef-stew", "name": "Estofado del chef", "price": 450, "feed": 7.5, "heal_hearts": 8.0},
+	{"item": "fisher-plate", "name": "Plato del pescador", "price": 500, "feed": 8.0, "heal_companion": 0.25},
+	{"item": "house-dessert", "name": "Postre de la casa", "price": 250, "feed": 5.0},
 ]
 
 var settlement_name := "la ciudad"
@@ -64,20 +64,30 @@ func _refresh() -> void:
 		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(spacer)
 		row.add_child(MenuStyle.label("$%d" % int(dish["price"]), 18))
-		var button := MenuStyle.button("Pedir", 18)
+		# Comer aquí o para llevar (caduca; decisión de Fernando, 2026-10-10).
+		var button := MenuStyle.button("Comer aquí", 18)
 		button.pressed.connect(func() -> void:
 			_buy(dish)
 			_refresh())
 		row.add_child(button)
+		var take := MenuStyle.button("Para llevar", 18)
+		take.pressed.connect(func() -> void:
+			_buy(dish, false)
+			_refresh())
+		row.add_child(take)
 		_list.add_child(row)
 
 
-func _buy(dish: Dictionary) -> void:
+func _buy(dish: Dictionary, eat_now: bool = true) -> void:
 	var price := int(dish["price"])
 	if GameState.money < price:
 		GameState.notice.emit("No alcanza.")
 		return
 	GameState.add_money(-price, "Restaurante: %s" % String(dish["name"]))
+	if not eat_now:
+		GameState.add_item(String(dish["item"]))
+		GameState.notice.emit("Para llevar: %s (caduca en 1 día)." % String(dish["name"]))
+		return
 	GameState.feed(float(dish.get("feed", 0.0)))
 	if dish.has("heal_hearts") and player != null:
 		player.heal(float(dish["heal_hearts"]))

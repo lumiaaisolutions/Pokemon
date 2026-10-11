@@ -405,7 +405,8 @@
       "pocket": "bayas",
       "price": 150,
       "feed": 1.5,
-      "desc": "Pan de la Tienda Pokémon. Llena algo de hambre."
+      "desc": "Pan de la Tienda Pokémon. Llena algo de hambre.",
+      "shelf_days": 3
     },
     {
       "id": "sandwich-shop",
@@ -413,7 +414,8 @@
       "pocket": "bayas",
       "price": 250,
       "feed": 2.0,
-      "desc": "Sándwich de la Tienda Pokémon. Llena algo de hambre."
+      "desc": "Sándwich de la Tienda Pokémon. Llena algo de hambre.",
+      "shelf_days": 1
     },
     {
       "id": "curry-can",
@@ -421,7 +423,8 @@
       "pocket": "bayas",
       "price": 300,
       "feed": 2.5,
-      "desc": "Curry enlatado de la Tienda Pokémon. Llena algo de hambre."
+      "desc": "Curry enlatado de la Tienda Pokémon. Llena algo de hambre.",
+      "shelf_days": 3
     },
     {
       "id": "soda",
@@ -429,7 +432,8 @@
       "pocket": "bayas",
       "price": 100,
       "feed": 1.0,
-      "desc": "Bebida fría de la Tienda Pokémon. Llena un poco de hambre."
+      "desc": "Bebida fría de la Tienda Pokémon. Llena un poco de hambre.",
+      "shelf_days": 3
     },
     {
       "id": "curry-dish",
@@ -441,7 +445,8 @@
         "kind": "speed",
         "seconds": 180
       },
-      "desc": "Cocinado en la fogata: llena mucho el hambre y te hace correr más rápido un rato."
+      "desc": "Cocinado en la fogata: llena mucho el hambre y te hace correr más rápido un rato.",
+      "shelf_days": 1
     },
     {
       "id": "sandwich-dish",
@@ -453,7 +458,8 @@
         "kind": "stealth",
         "seconds": 180
       },
-      "desc": "Cocinado en la fogata: llena mucho el hambre y te vuelve más sigiloso un rato."
+      "desc": "Cocinado en la fogata: llena mucho el hambre y te vuelve más sigiloso un rato.",
+      "shelf_days": 1
     },
     {
       "id": "berry-stew",
@@ -462,7 +468,8 @@
       "price": 0,
       "feed": 5.5,
       "heal_hearts": 6,
-      "desc": "Cocinado en la fogata: llena mucho el hambre y recupera algunos corazones."
+      "desc": "Cocinado en la fogata: llena mucho el hambre y recupera algunos corazones.",
+      "shelf_days": 1
     },
     {
       "id": "grilled-fish",
@@ -471,7 +478,8 @@
       "price": 0,
       "feed": 5.0,
       "heal_hearts": 4,
-      "desc": "Cocinado en la fogata con tu pesca: llena mucho el hambre y recupera algunos corazones."
+      "desc": "Cocinado en la fogata con tu pesca: llena mucho el hambre y recupera algunos corazones.",
+      "shelf_days": 1
     },
     {
       "id": "red-apricorn",
@@ -979,6 +987,83 @@
       "price": 0,
       "icon": "",
       "desc": "Brilla con energía de combate. Lo sueltan los Pokémon fuertes (Alfa, dominantes, rachas de victorias). Con 4 se fabrica una MT del tipo que quieras."
+    },
+    {
+      "id": "house-curry",
+      "name": "Curry de la casa",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 7.0,
+      "boost": {
+        "kind": "speed",
+        "seconds": 240
+      },
+      "shelf_days": 1,
+      "desc": "Para llevar del restaurante. Llena mucho el hambre y te da velocidad un rato. Caduca en 1 día."
+    },
+    {
+      "id": "chef-stew",
+      "name": "Estofado del chef",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 7.5,
+      "heal_hearts": 8.0,
+      "shelf_days": 1,
+      "desc": "Para llevar del restaurante. Llena mucho el hambre y cura tus corazones. Caduca en 1 día."
+    },
+    {
+      "id": "fisher-plate",
+      "name": "Plato del pescador",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 8.0,
+      "heal_hearts": 4.0,
+      "shelf_days": 1,
+      "desc": "Para llevar del restaurante. Llena mucho el hambre. Caduca en 1 día."
+    },
+    {
+      "id": "house-dessert",
+      "name": "Postre de la casa",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 5.0,
+      "shelf_days": 1,
+      "desc": "Para llevar del restaurante. Caduca en 1 día."
+    },
+    {
+      "id": "stall-fruit",
+      "name": "Fruta del puesto",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 1.5,
+      "shelf_days": 1,
+      "desc": "Para llevar del puesto de comida. Caduca en 1 día."
+    },
+    {
+      "id": "stall-sandwich",
+      "name": "Bocadillo del puesto",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 2.0,
+      "shelf_days": 1,
+      "desc": "Para llevar del puesto de comida. Caduca en 1 día."
+    },
+    {
+      "id": "stall-skewer",
+      "name": "Brocheta del puesto",
+      "pocket": "bayas",
+      "price": 0,
+      "feed": 2.5,
+      "shelf_days": 1,
+      "desc": "Para llevar del puesto de comida. Caduca en 1 día."
+    },
+    {
+      "id": "spoiled-food",
+      "name": "Comida echada a perder",
+      "pocket": "bayas",
+      "price": 0,
+      "spoiled": true,
+      "desc": "Ya no sirve: hay que tirarla. A tu compañero no le gusta que se desperdicie comida."
     }
   ],
   "recipes": [

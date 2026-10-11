@@ -93,10 +93,52 @@ def fish(cooked):
     return outline(im)
 
 
+def cake():
+    im = canvas(); d = ImageDraw.Draw(im)
+    d.rectangle([6, 14, 24, 24], fill=(245, 225, 190, 255))
+    d.rectangle([6, 12, 24, 15], fill=(255, 245, 245, 255))
+    d.rectangle([6, 19, 24, 20], fill=(230, 120, 140, 255))
+    d.ellipse([13, 6, 18, 11], fill=(220, 40, 60, 255))
+    return outline(im)
+
+
+def apple():
+    im = canvas(); d = ImageDraw.Draw(im)
+    d.ellipse([6, 9, 24, 26], fill=(220, 50, 50, 255))
+    d.ellipse([9, 11, 13, 15], fill=(255, 140, 140, 255))
+    d.line([(15, 5), (15, 10)], fill=(110, 70, 40, 255), width=2)
+    d.polygon([(16, 7), (22, 5), (19, 9)], fill=(80, 170, 70, 255))
+    return outline(im)
+
+
+def skewer():
+    im = canvas(); d = ImageDraw.Draw(im)
+    d.line([(4, 26), (26, 4)], fill=(200, 170, 120, 255), width=2)
+    for i, col in enumerate([(190, 90, 50, 255), (90, 170, 70, 255), (200, 100, 60, 255), (240, 200, 80, 255)]):
+        c = 8 + i * 5
+        d.ellipse([c - 3, 30 - c - 7, c + 3, 30 - c - 1], fill=col)
+    return outline(im)
+
+
+def spoiled():
+    im = canvas(); d = ImageDraw.Draw(im)
+    d.ellipse([3, 14, 27, 26], fill=(230, 230, 235, 255))
+    d.ellipse([7, 13, 22, 22], fill=(120, 140, 70, 255))
+    d.ellipse([12, 15, 18, 19], fill=(90, 100, 50, 255))
+    for p in [(6, 6), (20, 4), (25, 10)]:
+        d.point([p], fill=INK)
+        d.point([(p[0] + 1, p[1] - 1), (p[0] - 1, p[1] - 1)], fill=(160, 160, 170, 255))
+    for x in (10, 15, 20):
+        d.line([(x, 12), (x + 1, 8)], fill=(150, 170, 100, 255))
+    return outline(im)
+
+
 def main():
     icons = {"tent": tent(), "bread": bread(), "sandwich-shop": sandwich(), "sandwich-dish": sandwich(True),
              "curry-can": can(), "curry-dish": plate("curry"), "berry-stew": plate("stew"),
-             "raw-fish": fish(False), "grilled-fish": fish(True)}
+             "raw-fish": fish(False), "grilled-fish": fish(True),
+             "house-curry": plate("curry"), "chef-stew": plate("stew"), "fisher-plate": fish(True), "house-dessert": cake(),
+             "stall-fruit": apple(), "stall-sandwich": sandwich(), "stall-skewer": skewer(), "spoiled-food": spoiled()}
     for name, im in icons.items():
         im.save(OUT / f"{name}.png")
     print(f"{len(icons)} íconos en {OUT}")

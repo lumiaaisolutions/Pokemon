@@ -65,12 +65,19 @@ func _refresh() -> void:
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name.tooltip_text = str(Items.get_item(String(recipe["result"])).get("desc", ""))
 		row.add_child(name)
-		var button := MenuStyle.button("Cocinar", 18)
+		# Comer ahí o guardarlo en la Mochila (decisión de Fernando, 2026-10-10; caduca).
+		var button := MenuStyle.button("Cocinar y comer", 18)
 		button.pressed.connect(func() -> void:
-			_message = ItemEffects.cook(recipe, main)
+			_message = ItemEffects.cook(recipe, main, true)
 			_refresh())
 		MenuStyle.style_button(button, ItemEffects.can_craft(recipe))
 		row.add_child(button)
+		var keep := MenuStyle.button("Guardar", 18)
+		keep.pressed.connect(func() -> void:
+			_message = ItemEffects.cook(recipe, main, false)
+			_refresh())
+		MenuStyle.style_button(keep, ItemEffects.can_craft(recipe))
+		row.add_child(keep)
 		_list.add_child(row)
 		if first == null:
 			first = button

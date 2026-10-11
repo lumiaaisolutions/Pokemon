@@ -24,3 +24,9 @@ Orden por capas: primero el mundo exterior, luego la vida (NPC, día y noche, cl
 - Puntos de vuelo con Pokémon volador.
 - Base de guardabosques con misiones de rescate.
 - Jardín botánico con plantas raras.
+
+## Fase 5.8 — decisiones (Fernando, 2026-10-10)
+- **Pesca:** hecha con el campamento (ver [jugador](sistemas/jugador.md)).
+- **Hordas de 5 que te rodean** (como Rubí Omega): 5 de la misma especie pelean contra tu compañero a la vez, dan más premios y más probabilidad de shiny.
+- **Migraciones, las dos:** bandadas visibles que cruzan el mapa a ciertas horas y estaciones (Wingull al atardecer, Swablu en primavera, Butterfree en verano…), aterrizan en un lugar y se quedan un día (el Rotom avisa), **y** especies de temporada (solo en ciertas estaciones).
+- **Rocas rompibles, ambas:** rocas agrietadas en montañas, cuevas y caminos que tu compañero rompe con un ataque (o Golpe Roca) y sueltan minerales, fósiles, piedras evolutivas o un Pokémon escondido; **y además** tapan entradas de cuevas y atajos que se abren al romperlas.

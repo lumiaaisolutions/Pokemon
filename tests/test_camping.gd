@@ -153,6 +153,29 @@ func _run() -> void:
 	_check(stall_fill > 0.0, "el puesto de comida llena hambre")
 	_check(restaurant_fill > stall_fill, "el restaurante llena más hambre que el puesto (%.2f vs %.2f)" % [restaurant_fill, stall_fill])
 
+	# 9. Para llevar: queda en la Mochila y caduca; echada a perder se tira y quita vínculo.
+	GameState.money = 5000
+	GameState.bag.erase("stall-fruit")
+	GameState.bag.erase("spoiled-food")
+	stall._buy(FoodStallUI.MENU[0], false)
+	_check(GameState.item_count("stall-fruit") == 1, "el puesto vende para llevar")
+	GameState.play_time += GameState.DAY_SECONDS * 1.1
+	GameState.check_spoiled()
+	_check(GameState.item_count("stall-fruit") == 0 and GameState.item_count("spoiled-food") == 1, "la comida para llevar se echa a perder al día")
+	if not GameState.party.is_empty():
+		var member: Dictionary = GameState.party[GameState.companion_index]
+		member["bond_xp"] = 20.0
+		ItemEffects.use("spoiled-food", _main)
+		_check(GameState.item_count("spoiled-food") == 0 and float(member["bond_xp"]) < 20.0, "tirar comida echada a perder quita vínculo")
+	# Cocinar y guardar: el platillo queda en la Mochila.
+	var keep_recipe: Dictionary = Items.cook_recipes()[0]
+	for id: String in keep_recipe["needs"]:
+		GameState.add_item(id, int(keep_recipe["needs"][id]))
+	var dish := String(keep_recipe["result"])
+	var before := GameState.item_count(dish)
+	ItemEffects.cook(keep_recipe, _main, false)
+	_check(GameState.item_count(dish) == before + int(keep_recipe.get("amount", 1)), "cocinar y guardar deja el platillo en la Mochila")
+
 
 ## Busca un lugar fuera de los asentamientos, en tierra firme, para armar la tienda.
 func _find_open_spot() -> Vector3:

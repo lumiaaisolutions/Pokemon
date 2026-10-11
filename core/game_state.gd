@@ -263,13 +263,66 @@ func item_count(id: String) -> int:
 
 func add_item(id: String, amount: int = 1) -> void:
 	bag[id] = item_count(id) + amount
+	# Comida preparada: cada unidad caduca (decisión de Fernando, 2026-10-10).
+	var days := float(Items.get_item(id).get("shelf_days", 0.0))
+	if days > 0.0 and amount > 0:
+		var list: Array = food_expiry.get(id, [])
+		for i in amount:
+			list.append(play_time + days * DAY_SECONDS)
+		list.sort()
+		food_expiry[id] = list
 	bag_changed.emit()
+
+
+## Caducidad de la comida preparada: id -> tiempos de juego en que vence cada unidad
+## (la primera es la que se come primero). Se guarda con la partida.
+var food_expiry := {}
+var _spoil_check := 0.0
+
+
+## Lo que venció se vuelve "Comida echada a perder" (hay que tirarla). Devuelve los nombres.
+func check_spoiled() -> Array[String]:
+	var spoiled: Array[String] = []
+	for id: String in food_expiry.keys():
+		var list: Array = food_expiry[id]
+		var count := 0
+		while not list.is_empty() and float(list[0]) <= play_time:
+			list.pop_front()
+			count += 1
+		count = mini(count, item_count(id))
+		if count > 0:
+			bag[id] = item_count(id) - count
+			if bag[id] <= 0:
+				bag.erase(id)
+			bag["spoiled-food"] = item_count("spoiled-food") + count
+			spoiled.append(Items.display_name(id))
+		if list.is_empty():
+			food_expiry.erase(id)
+	if not spoiled.is_empty():
+		bag_changed.emit()
+		notice.emit("Se echó a perder: %s. Ya no sirve; tírala desde la Mochila." % ", ".join(spoiled))
+	return spoiled
+
+
+func _process(delta: float) -> void:
+	_spoil_check -= delta
+	if _spoil_check <= 0.0:
+		_spoil_check = 5.0
+		if not food_expiry.is_empty():
+			check_spoiled()
 
 
 ## Gasta amount; devuelve false si no hay suficientes.
 func use_item(id: String, amount: int = 1) -> bool:
 	if item_count(id) < amount:
 		return false
+	# Se gasta primero la que vence antes.
+	if food_expiry.has(id):
+		var list: Array = food_expiry[id]
+		for i in mini(amount, list.size()):
+			list.pop_front()
+		if list.is_empty():
+			food_expiry.erase(id)
 	bag[id] = item_count(id) - amount
 	if bag[id] <= 0:
 		bag.erase(id)
