@@ -186,3 +186,25 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 ### Recursos descargados (2026-10-10 noche, con permiso)
 - 20 modelos de B2W2 en `art/models/b2w2_nature/` (4 mapas con vegetación y 16 objetos de mapa) para pasar árboles, arbustos, flores, hierba, rocas, letreros, cercas y faroles a 3D. Hallazgo: como piezas sueltas solo existen algunos objetos; los árboles normales, arbustos, flores y la hierba vienen dentro de los mapas y hay que extraerlos de ahí.
 - Hoja "Overworld Entities" de BW en `sprites/overworld/bw_overworld_entities.png`: trae a Cilan. **Volkner no está** (es de Sinnoh): falta pedir permiso para la hoja de DP "NPCs (Overworld)" 6931.
+
+### Últimas decisiones antes de la noche (Fernando, 2026-10-10)
+- **Cofres:** 3D propio estilo BW2 (madera de pocas caras con textura pixel y herrajes; se abren con animación y brillo); variantes común (madera), raro (plata) y legendario (oro).
+- **Cinemática:** 4 candidatos, uno por lugar visitado (pradera, bosque, costa, montaña), al azar entre los básicos de ese hábitat; la protagoniza el profesor de la región, que narra en cajas de texto cortas, con la música de introducción de BW2.
+- **Túneles:** desfiladero a cielo abierto (paso estrecho entre paredes de roca, 40–80 m, algo de pasto, a veces un cofre, Pokémon de roca, sin pantalla de carga), tapado por una roca grande.
+- **Jefes (fase 6):** guardianes por bioma (Pokémon enorme y fuerte con fases, ataques en área que se esquivan y premio único; uno fuerte del bioma elegido al azar por región, marcado por el Rotom) **y** el líder del equipo villano al final.
+- **Dificultad:** se adapta sola a tu nivel (si ganas mucho, los rivales se vuelven más listos).
+- **Pueblos:** todos el doble de grandes.
+- **Entrega (fase 7):** aplicación de Mac (.app) en el Escritorio con ícono propio, guardado en la carpeta de usuario, y pasada final de rendimiento y bugs.
+- **Trabajo de noche:** si surge una duda de diseño nueva, elijo la opción recomendada y la anoto en [decisiones_sin_preguntar.md](decisiones_sin_preguntar.md) con sus alternativas para que Fernando la revise. Máximo 3 agentes a la vez (en cuanto uno termina, entra el siguiente).
+
+## Plan de la noche (orden de trabajo)
+1. Integrar lo de los agentes en curso (IA salvaje y Poké Ball en mano; interiores base) con la batería completa.
+2. Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios.
+3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso).
+4. Faroles más fuertes de noche y el molino que cambiaba de color; Cilan y Volkner con sus sprites definitivos.
+5. Túneles-desfiladero tapados por rocas grandes.
+6. Campamento animado y extras; botones nuevos en todas las interfaces.
+7. Rotom Teléfono con apps y menú con tarjetas visuales.
+8. Tienda y Centro Pokémon con todas sus funciones.
+9. Mundo más lleno (algo cada ~300 m) y pueblos ×2 con identidad.
+10. Fase 6 (guardianes, líder villano, dificultad adaptable) y fase 7 (app de Mac y pasada final).

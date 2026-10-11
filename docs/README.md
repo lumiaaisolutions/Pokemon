@@ -11,6 +11,7 @@ Fan game **personal y privado** en Godot 4.7.2 para macOS (M1): mundo abierto HD
 | Documento | Contenido |
 |---|---|
 | [reglas_calidad.md](reglas_calidad.md) | **Reglas permanentes de calidad visual y de mundo** (3D, física, luz, puertas, sprites de mundo…) |
+| [decisiones_sin_preguntar.md](decisiones_sin_preguntar.md) | Decisiones de diseño tomadas de noche sin preguntar, para que Fernando las revise |
 | [GDD.md](GDD.md) | Visión, ciclo principal, reglas de trabajo y fases con su criterio de "hecho" |
 | [ESTADO.md](ESTADO.md) | Tabla de estado de las fases y pendientes |
 | [decisiones.md](decisiones.md) | Registro de decisiones de diseño |
