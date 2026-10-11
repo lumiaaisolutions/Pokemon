@@ -661,50 +661,12 @@ static func light_style(border: Color = RED, radius: int = 18, border_width: int
 	return style
 
 
-## Botón en píldora con ícono + texto (decisión de Fernando, 2026-10-10: la Tienda y el
-## Centro Pokémon usan este estilo para sus acciones): color propio por tipo de acción,
-## con sombra; al pasar el mouse o enfocarlo se agranda un poco y brilla (más claro), con
-## el mismo sonido de la interfaz (_sounds). icon puede ser null (solo texto).
+## Botón en píldora de la Tienda y el Centro: alias de action_button (mismo estilo).
 static func pill_button(text: String, icon: Texture2D, color: Color, size: int = 20) -> Button:
-	var button := Button.new()
-	button.text = ("  " + text) if icon != null else text
-	if icon != null:
-		button.icon = icon
-		button.expand_icon = false
-		button.add_theme_constant_override("icon_max_width", 28)
-	button.add_theme_font_override("font", font(true))
+	# Un solo estilo de botón en todo el juego (Fernando, 2026-10-11): es el mismo
+	# action_button, solo con el tamaño de letra que pide la pantalla.
+	var button := action_button(text, icon, color)
 	button.add_theme_font_size_override("font_size", size)
-	button.custom_minimum_size.y = 46
-	button.pivot_offset = button.custom_minimum_size * 0.5
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = color
-	normal.set_corner_radius_all(23)
-	normal.content_margin_left = 18
-	normal.content_margin_right = 18
-	normal.content_margin_top = 8
-	normal.content_margin_bottom = 8
-	normal.shadow_size = 6
-	normal.shadow_color = Color(0, 0, 0, 0.25)
-	var glow := normal.duplicate() as StyleBoxFlat
-	glow.bg_color = color.lightened(0.28)
-	glow.shadow_size = 10
-	glow.shadow_color = color.lightened(0.2)
-	glow.shadow_color.a = 0.6
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", glow)
-	button.add_theme_stylebox_override("focus", glow)
-	button.add_theme_stylebox_override("pressed", glow)
-	var on_color := Color.WHITE if color.v < 0.75 else INK
-	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, on_color)
-	var grow := func(on: bool) -> void:
-		var tween := button.create_tween()
-		tween.tween_property(button, "scale", Vector2.ONE * (1.08 if on else 1.0), 0.12)
-	button.mouse_entered.connect(grow.bind(true))
-	button.mouse_exited.connect(grow.bind(false))
-	button.focus_entered.connect(grow.bind(true))
-	button.focus_exited.connect(grow.bind(false))
-	_sounds(button)
 	return button
 
 

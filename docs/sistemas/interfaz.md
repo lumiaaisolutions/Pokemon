@@ -80,3 +80,6 @@ Pedido de Fernando (2026-10-11): tapar la construcción del mundo con algo anima
 - **Se abre al terminar:** la mitad de abajo no se mueve; la de arriba se encoge hacia la línea central (bisagra) y se inclina, como si girara hacia atrás; un destello suave (sin rayos) sale del centro, chico al principio (como si brillara el botón) y crece. Luego toda la pantalla se desvanece y se ve el mundo.
 - **Barra y consejo, discretos:** barra delgada (6 px) con el progreso real (zonas cercanas construidas + navegación horneada) y un consejo chico abajo que cambia cada 3 s (24 consejos distintos sobre mecánicas del juego, algunos con el botón real de `InputHints`).
 - Prueba nueva `tests/test_loading.tscn` (añadida a `tools/run_tests.sh`): la pantalla aparece al iniciar, tapa el mundo, y se quita del árbol cuando la navegación está horneada y el jugador en el suelo.
+
+## Un solo estilo de botón (2026-10-11)
+`UiKit.pill_button` (Tienda y Centro) ahora llama a `UiKit.action_button`: todo el juego usa el mismo botón en píldora con ícono, color por acción, sombra, crecer y brillar al pasar, con sonido.
