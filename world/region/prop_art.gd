@@ -289,39 +289,78 @@ static func _fence() -> Image:
 	return image
 
 
-## Mata de flores: montículo de hojas con flores encima (sin tallos sueltos que se veían
-## cortados contra el suelo).
+## Mata de flores real de B2W2 (`art/world/b2w2_leaf/flower_real.png`, pedido de
+## Fernando 2026-10-11: "flores con flower_real.png"), recoloreada por tipo: el pétalo
+## (amarillo pálido en el sprite real) pasa al `color` pedido (rosa/azul/blanco...), la
+## hoja verde y el centro amarillo/anaranjado de cada flor se mantienen tal cual (las
+## flores de B2W2 siempre tienen el centro claro, no cambia con el color del pétalo).
+static var _flower_real_image: Image = null
+
+
+static func _real_flower_image() -> Image:
+	if _flower_real_image == null:
+		_flower_real_image = (load("res://art/world/b2w2_leaf/flower_real.png") as Texture2D).get_image()
+	return _flower_real_image
+
+
+## Luminancia real mín/máx del pétalo (sacada a ojo): normaliza el sombreado del pétalo
+## (más oscuro en el borde, blanco en el resalte) a 0..1 antes de mezclarlo con `color`.
+const PETAL_LUM_RANGE := Vector2(0.9, 0.97)
+
+
 static func _flowers(color: Color) -> Image:
-	var image := Image.create_empty(26, 16, false, Image.FORMAT_RGBA8)
-	var leaf := Color(0.32, 0.6, 0.3)
-	var leaf_dark := Color(0.24, 0.46, 0.24)
-	for y in 16:
-		var half := int(sqrt(maxf(0.0, 1.0 - pow((y - 15.0) / 10.0, 2.0))) * 12.0)
-		for x in range(13 - half, 13 + half):
-			image.set_pixel(x, y, leaf if (x + y * 3) % 7 else leaf_dark)
-	var spots := [Vector2i(5, 8), Vector2i(10, 6), Vector2i(15, 7), Vector2i(20, 9), Vector2i(8, 11), Vector2i(13, 10), Vector2i(18, 12)]
-	for spot: Vector2i in spots:
-		_rect(image, spot.x - 1, spot.y - 1, 3, 3, color)
-		image.set_pixel(spot.x, spot.y, Color(1.0, 0.9, 0.35))
-		image.set_pixel(spot.x - 1, spot.y - 1, color.lightened(0.3))
+	var src := _real_flower_image()
+	var image := Image.create_empty(src.get_width(), src.get_height(), false, Image.FORMAT_RGBA8)
+	var dark := color.darkened(0.25)
+	var light := color.lightened(0.2)
+	for y in src.get_height():
+		for x in src.get_width():
+			var px := src.get_pixel(x, y)
+			if px.a < 0.1:
+				continue
+			# Hoja (verde, canal G claramente por encima de R y B) o centro de la flor
+			# (naranja, R por encima de G): se quedan con su color real, sin recolorear.
+			var leafy := (px.g - px.r) > 0.15 and (px.g - px.b) > 0.15
+			var center := not leafy and (px.r - px.g) > 0.08
+			if leafy or center:
+				image.set_pixel(x, y, px)
+			else:
+				var t := clampf(inverse_lerp(PETAL_LUM_RANGE.x, PETAL_LUM_RANGE.y, px.get_luminance()), 0.0, 1.0)
+				image.set_pixel(x, y, Color(dark.lerp(light, t), px.a))
 	return image
 
 
-## Pasto menudo: hojas finas que se abren hacia los lados, base oscura y puntas claras
-## (sin contorno, para que se fundan con el suelo).
+## Mata de hierba real de B2W2 (`art/world/b2w2_leaf/tuft_real.png`, pedido de Fernando
+## 2026-10-11: "hierba alta y mechones de pasto con la textura real"), recoloreada por
+## bioma: cada píxel conserva su sombreado original (oscuro en la base, claro en la
+## punta) pero el matiz pasa a `color` (verde de pradera, más claro en flores, seco en
+## sabana...), igual idea que antes pero sobre el sprite real en vez de dibujado a mano.
+static var _tuft_real_image: Image = null
+
+
+static func _real_tuft_image() -> Image:
+	if _tuft_real_image == null:
+		_tuft_real_image = (load("res://art/world/b2w2_leaf/tuft_real.png") as Texture2D).get_image()
+	return _tuft_real_image
+
+
+## Luminancia mínima/máxima real del sprite (sacada a ojo de sus pocos tonos de verde):
+## normaliza el sombreado del dibujo original a 0..1 antes de mezclarlo con el color pedido.
+const TUFT_LUM_RANGE := Vector2(0.33, 0.71)
+
+
 static func _grass_tuft(color: Color) -> Image:
-	var image := Image.create_empty(16, 12, false, Image.FORMAT_RGBA8)
-	var blades := [[7, 11, 0.0], [5, 8, -0.45], [9, 9, 0.4], [3, 6, -0.8], [11, 6, 0.75], [8, 5, 0.15]]
-	for blade: Array in blades:
-		var base_x: float = blade[0]
-		var height: int = blade[1]
-		var lean: float = blade[2]
-		for step in height:
-			var t := float(step) / height
-			var x := int(round(base_x + lean * step * 0.6 + 0.5))
-			var y := 11 - step
-			if x >= 0 and x < 16 and y >= 0:
-				image.set_pixel(x, y, color.darkened(0.25).lerp(color.lightened(0.25), t))
+	var src := _real_tuft_image()
+	var image := Image.create_empty(src.get_width(), src.get_height(), false, Image.FORMAT_RGBA8)
+	var dark := color.darkened(0.3)
+	var light := color.lightened(0.3)
+	for y in src.get_height():
+		for x in src.get_width():
+			var px := src.get_pixel(x, y)
+			if px.a < 0.1:
+				continue
+			var t := clampf(inverse_lerp(TUFT_LUM_RANGE.x, TUFT_LUM_RANGE.y, px.get_luminance()), 0.0, 1.0)
+			image.set_pixel(x, y, Color(dark.lerp(light, t), px.a))
 	return image
 
 

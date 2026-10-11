@@ -236,8 +236,11 @@ static func _build_foliage(st: SurfaceTool, shape: String, width: float, height:
 				var w_frac := lerpf(1.6, 0.5, f)
 				_puff(st, Vector3(0.0, y, 0.0), hw * w_frac, tier_h, puff_uv, 6)
 		"acacia":
-			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.07], [0.42, 0.085]], 6, base_uv, base_uv)
-			_revolve(st, Vector3.ZERO, width, height, [[0.40, 0.25], [0.55, 0.85], [0.85, 0.95], [0.95, 0.55], [1.0, 0.0]], 8, Vector2(-1, -1), top_uv)
+			# Perfil de sabana (más parecido a B2W2/real que el domo redondo de antes,
+			# 2026-10-11): tronco expuesto más alto y copa aplastada en forma de sombrilla
+			# (ancha y baja, no un montículo redondo) montada arriba del todo.
+			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.06], [0.62, 0.075]], 6, base_uv, base_uv)
+			_revolve(st, Vector3.ZERO, width, height, [[0.58, 0.3], [0.68, 0.9], [0.82, 1.0], [0.93, 0.55], [1.0, 0.0]], 8, Vector2(-1, -1), top_uv)
 		"dead":
 			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.055], [0.85, 0.09]], 6, base_uv, base_uv)
 			_branch_cluster(st, Vector3(0.0, height * 0.78, 0.0), 4, height * 0.18, hw * 0.05, 0.55, accent_uv)
@@ -260,7 +263,12 @@ static func _build_foliage(st: SurfaceTool, shape: String, width: float, height:
 				_revolve(st, origin, width * 0.3, h, [[0.0, 0.16], [0.55, 0.2]], 5, base_uv, base_uv)
 				_revolve(st, origin, width * 0.3, h, [[0.5, 0.75], [0.62, 1.0], [0.8, 0.5], [1.0, 0.0]], 6, Vector2(-1, -1), top_uv)
 		"flower":
-			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.3], [0.45, 0.9], [0.8, 0.6], [1.0, 0.0]], 6, base_uv, base_uv)
+			# El color del pétalo (`top_uv`, ya recoloreado por PropArt._flowers según el
+			# tipo rosa/azul/blanco) va en los lados, que son la mayor parte de lo que se
+			# ve; la hoja verde (`base_uv`) queda solo en la tapa chica de abajo (pegada al
+			# suelo, casi no se ve) — antes era al revés y la mata entera salía verde sin
+			# importar el color pedido (2026-10-11).
+			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.3], [0.45, 0.9], [0.8, 0.6], [1.0, 0.0]], 6, base_uv, top_uv)
 			_mound_nubs(st, width, height, 5, accent_uv)
 		"bush_dry":
 			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.3], [0.35, 0.7], [0.7, 0.45], [1.0, 0.0]], 6, base_uv, base_uv)
@@ -274,13 +282,34 @@ static func _build_foliage(st: SurfaceTool, shape: String, width: float, height:
 		"crystal":
 			_branch_cluster(st, Vector3.ZERO, 4, height * 0.98, hw * 0.14, 0.08, top_uv)
 		_:
-			# "bush": montículo genérico (arbustos y matas de flor sin forma de PropArt, p.
-			# ej. las imágenes de BiomeConfig como bush.png/flower_bush_pink.png/lavender.png).
-			_revolve(st, Vector3.ZERO, width, height, [[0.0, 0.4], [0.4, 0.95], [0.75, 0.7], [1.0, 0.0]], 7, base_uv, base_uv)
+			# "bush": arbustos y matas de flor sin forma de PropArt (p. ej. bush.png/
+			# flower_bush_pink.png/lavender.png de BiomeConfig y las flores del pueblo).
+			# Pedido de Fernando, 2026-10-11: "burbujas de hoja como los árboles, más
+			# bajos" — igual idea que la copa "round" de los árboles (varios puffs
+			# achatados que se solapan, sin tronco), pero el sprite es un dibujo de
+			# frente (no redondo como un puff real de B2W2), así que cada burbuja usa
+			# el color real sacado de la textura (`solid_uv`) en vez de envolverla
+			# (se cortaría en tajadas, misma razón que cactus/acacia).
+			var lobe_h := height * 0.8
+			var base_y := height * 0.04
+			_revolve(st, Vector3(0.0, base_y, 0.0), hw * 1.6, lobe_h, PUFF_PROFILE, 6, Vector2(-1, -1), base_uv)
+			_revolve(st, Vector3(hw * 0.46, base_y + lobe_h * 0.14, hw * 0.16), hw * 1.05, lobe_h * 0.62, PUFF_PROFILE, 5, Vector2(-1, -1), accent_uv)
+			_revolve(st, Vector3(-hw * 0.44, base_y + lobe_h * 0.16, -hw * 0.18), hw * 1.0, lobe_h * 0.58, PUFF_PROFILE, 5, Vector2(-1, -1), base_uv)
+			_revolve(st, Vector3(hw * 0.08, base_y + lobe_h * 0.42, -hw * 0.06), hw * 0.68, lobe_h * 0.42, PUFF_PROFILE, 5, Vector2(-1, -1), accent_uv)
+
+
+## Luminancia por debajo de esto se considera el contorno oscuro de 1 px que `_outline`
+## pinta alrededor de cada sprite de PropArt (`Color(0.1, 0.08, 0.08)`, luminancia ~0.084),
+## no el color real del dibujo: `_sample_uv` lo salta (ver más abajo) para no terminar
+## pintando cactus/acacia/hongos/flores casi negros (el contorno rodea todo el perímetro,
+## así que scanear desde la esquina de la franja caía justo en él casi siempre, 2026-10-11).
+const OUTLINE_LUMINANCE := 0.15
 
 
 ## Color de un punto representativo de la textura real (no estirarla sobre tapas chicas):
-## primer píxel opaco en las filas entre y0_frac y y1_frac (0 = arriba de la imagen).
+## primer píxel opaco "de verdad" (no el contorno oscuro) en las filas entre y0_frac y
+## y1_frac (0 = arriba de la imagen); si la franja fuera solo contorno, se usa ese color
+## antes que quedarse sin nada.
 static func _sample_uv(image: Image, y0_frac: float, y1_frac: float) -> Vector2:
 	if image == null:
 		return Vector2(0.5, 0.9)
@@ -288,10 +317,19 @@ static func _sample_uv(image: Image, y0_frac: float, y1_frac: float) -> Vector2:
 	var h := image.get_height()
 	var y_start := clampi(int(h * y0_frac), 0, h - 1)
 	var y_end := clampi(maxi(y_start + 1, int(h * y1_frac)), y_start + 1, h)
+	var fallback := Vector2(-1, -1)
 	for y in range(y_start, y_end):
 		for x in w:
-			if image.get_pixel(x, y).a > 0.5:
-				return Vector2((float(x) + 0.5) / w, (float(y) + 0.5) / h)
+			var pixel := image.get_pixel(x, y)
+			if pixel.a <= 0.5:
+				continue
+			if pixel.get_luminance() < OUTLINE_LUMINANCE:
+				if fallback.x < 0.0:
+					fallback = Vector2((float(x) + 0.5) / w, (float(y) + 0.5) / h)
+				continue
+			return Vector2((float(x) + 0.5) / w, (float(y) + 0.5) / h)
+	if fallback.x >= 0.0:
+		return fallback
 	return Vector2(0.5, (y0_frac + y1_frac) * 0.5)
 
 
