@@ -109,13 +109,46 @@ func _run() -> void:
 	SaveSystem.pending_position = Vector3.INF
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.slot_path(3)))
 
-	# Menú: abre, pausa y construye todas las pestañas sin errores.
+	# Menú: abre, pausa y construye todas las pestañas sin errores, en 2 tamaños de
+	# ventana (responsivo: 1280×720 y 1920×1080).
 	var menu := _main.get_node("MenuLayer/GameMenu") as GameMenu
 	menu.open()
 	_check(menu.visible and get_tree().paused, "el menú se abre y pausa el juego")
-	for i in GameMenu.TABS.size():
-		menu.show_tab(i)
+	var original_size := get_window().size
+	for test_size in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		get_window().size = test_size
+		for i in GameMenu.TABS.size():
+			menu.show_tab(i)
+			await get_tree().process_frame
+	get_window().size = original_size
+
+	# Rotom Móvil: las apps abren con tarjetas y "Volver" regresa a la cuadrícula.
+	menu.show_tab(GameMenu.TABS.find("Rotom"))
+	await get_tree().process_frame
+	var tiles := get_tree().get_nodes_in_group(&"rotom_app_tile")
+	_check(tiles.size() == RotomTab.APPS.size(), "el Rotom Móvil debe tener %d apps (hay %d)" % [RotomTab.APPS.size(), tiles.size()])
+	for tile in tiles:
+		(tile as BaseButton).pressed.emit()
 		await get_tree().process_frame
+		var back_buttons := get_tree().get_nodes_in_group(&"rotom_back_button")
+		var app_screen := (back_buttons[0] as Control).get_parent().get_parent() as Control if not back_buttons.is_empty() else null
+		_check(app_screen != null and app_screen.visible, "una app del Rotom abre su pantalla completa")
+		(back_buttons[0] as BaseButton).pressed.emit()
+		await get_tree().process_frame
+
+	# Brújula de objetivos: marcar un objetivo (Territorio Alfa, siempre hay alguno) fija
+	# el waypoint que sigue la flecha del minimapa.
+	var compass_tile := tiles.filter(func(t: Button) -> bool: return t.tooltip_text == "Marca un lugar en el mapa")
+	if not compass_tile.is_empty():
+		(compass_tile[0] as BaseButton).pressed.emit()
+		await get_tree().process_frame
+		var targets := get_tree().get_nodes_in_group(&"rotom_compass_target")
+		_check(not targets.is_empty(), "la brújula ofrece al menos un objetivo para marcar (Territorio Alfa)")
+		if not targets.is_empty():
+			(targets[0] as BaseButton).pressed.emit()
+			var map_ui := _main.get_node("MapUi") as MapUi
+			_check(GameState.world_flags.has("waypoint_label") and map_ui.waypoint() != Vector3.INF, "marcar un objetivo en la brújula fija el waypoint del mapa")
+	menu.show_tab(GameMenu.HUB)
 	menu.close()
 	_check(not get_tree().paused, "al cerrar el menú el juego sigue")
 

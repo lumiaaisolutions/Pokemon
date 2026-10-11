@@ -394,7 +394,7 @@ func show_tab(index: int) -> void:
 		"Pokédex":
 			page = _dex_tab.build()
 		"Rotom":
-			page = RotomTab.build()
+			page = RotomTab.build(self)
 		"Caja":
 			page = BoxTab.build(self)
 		"Logros":
@@ -412,6 +412,7 @@ func show_tab(index: int) -> void:
 		"Guardar":
 			page = SaveTab.build(self)
 	_content.add_child(page)
+	UiKit.animate_in(page)
 	# Ayudas de botones en píldoras.
 	for child in _footer.get_children():
 		child.queue_free()

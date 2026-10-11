@@ -96,6 +96,14 @@ func _ready() -> void:
 		menu.show_tab(int(args[5].substr(5)))
 		for i in 20:
 			await get_tree().process_frame
+		# 7.º argumento "app:K": en el Rotom, abre la app K (0 Actividades, 1 Noticias…).
+		if args.size() > 6 and args[6].begins_with("app:"):
+			var tiles := get_tree().get_nodes_in_group(&"rotom_app_tile")
+			var index := int(args[6].substr(4))
+			if index >= 0 and index < tiles.size():
+				(tiles[index] as BaseButton).pressed.emit()
+				for i in 10:
+					await get_tree().process_frame
 	# "hora:H": pone el reloj a la hora H (p. ej. hora:22). También como 7.º argumento
 	# para combinarla con otra opción (p. ej. pueblo hora:21).
 	var hour_arg := args[5] if args.size() > 5 and args[5].begins_with("hora:") else (args[6] if args.size() > 6 and args[6].begins_with("hora:") else "")

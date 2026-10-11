@@ -131,6 +131,12 @@ func meteor_tonight() -> bool:
 	return int(_flags().get("meteor_night", -1)) == GameState.game_day() and GameState.is_night()
 
 
+## Igual que meteor_tonight() pero sin pedir que ya sea de noche (para avisar desde la
+## mañana en el Rotom: "Clima y calendario").
+func meteor_scheduled_today() -> bool:
+	return int(_flags().get("meteor_night", -1)) == GameState.game_day()
+
+
 func _update_meteors(day: int, _hour: float) -> void:
 	var active := meteor_tonight() and _player.global_position.x < WorldBuilder.INTERIOR_X
 	_meteor_sky.emitting = active
