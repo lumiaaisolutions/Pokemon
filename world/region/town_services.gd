@@ -227,6 +227,76 @@ func talk_resident(settlement: Dictionary, building: Dictionary, look: String = 
 	dialog.open("Vecino" if look == "" or NpcLooks.GENDER.get(look, "male") == "male" else "Vecina", [greeting, text], TownNPCs.portrait(look if look != "" else "joven_a"))
 
 
+## Decorar la casa comprada con muebles 3D (completar lo simplificado del mundo,
+## 2026-10-11): catálogo (ver HouseFurniture), comprar y colocar donde estés parado, y
+## mover/girar/quitar lo ya puesto; persiste en GameState.world_flags["house_furniture"].
+func decorate_furniture_menu(settlement: Dictionary, building: Dictionary, house_id: String, room_root: Node3D) -> void:
+	var dialog := _dialog()
+	if dialog == null:
+		return
+	var count := interiors.furniture_count(house_id)
+	dialog.open("Decorar muebles", ["Tienes %d muebles colocados aquí." % count], null,
+			["Comprar y colocar uno nuevo", "Mover, girar o quitar uno", "Salir"], func(choice: int) -> void:
+		if choice == 0:
+			_furniture_catalog(house_id, room_root)
+		elif choice == 1:
+			_furniture_pick(house_id, room_root))
+
+
+func _furniture_catalog(house_id: String, room_root: Node3D) -> void:
+	var dialog := _dialog()
+	if dialog == null:
+		return
+	var options: Array[String] = []
+	for item: String in HouseFurniture.ORDER:
+		options.append("%s ($%d)" % [HouseFurniture.display_name(item), HouseFurniture.price(item)])
+	options.append("Cancelar")
+	dialog.open("Catálogo de muebles", ["Elige un mueble; se coloca justo donde estés parado:"], null, options, func(choice: int) -> void:
+		if choice < 0 or choice >= HouseFurniture.ORDER.size():
+			return
+		var item: String = HouseFurniture.ORDER[choice]
+		var price := HouseFurniture.price(item)
+		if GameState.money < price:
+			GameState.notice.emit("Te falta dinero para %s ($%d)." % [HouseFurniture.display_name(item), price])
+			return
+		GameState.add_money(-price, "Mueble: %s" % HouseFurniture.display_name(item))
+		interiors.place_furniture(house_id, room_root, item)
+		AudioBus.play_jingle("me_item")
+		GameState.notice.emit("Colocaste %s. Puedes moverlo o girarlo luego en \"Decorar muebles\"." % HouseFurniture.display_name(item)))
+
+
+func _furniture_pick(house_id: String, room_root: Node3D) -> void:
+	var dialog := _dialog()
+	if dialog == null:
+		return
+	var count := interiors.furniture_count(house_id)
+	if count <= 0:
+		dialog.open("Decorar muebles", ["No tienes muebles colocados todavía."], null)
+		return
+	var placed: Array = GameState.world_flags.get("house_furniture", {}).get(house_id, [])
+	var options: Array[String] = []
+	for entry: Dictionary in placed:
+		options.append(HouseFurniture.display_name(String(entry["item"])))
+	options.append("Cancelar")
+	dialog.open("¿Qué mueble?", ["Elige uno de tus muebles:"], null, options, func(choice: int) -> void:
+		if choice < 0 or choice >= placed.size():
+			return
+		_furniture_options(house_id, room_root, choice))
+
+
+func _furniture_options(house_id: String, room_root: Node3D, index: int) -> void:
+	var dialog := _dialog()
+	if dialog == null:
+		return
+	dialog.open("Mueble", ["¿Qué quieres hacer con él?"], null, ["Moverlo aquí", "Girarlo 90°", "Quitarlo", "Cancelar"], func(choice: int) -> void:
+		if choice == 0:
+			interiors.move_furniture(house_id, room_root, index)
+		elif choice == 1:
+			interiors.rotate_furniture(house_id, room_root, index)
+		elif choice == 2:
+			interiors.remove_furniture(house_id, room_root, index))
+
+
 ## Profesor: entrega premios de investigación y comenta tu avance. Habla en la caja de
 ## diálogo con su nombre y retrato (antes salía como una serie de avisos sueltos).
 func talk_professor() -> void:
@@ -1378,7 +1448,7 @@ func villain_checkpoint_challenge(place: Dictionary, arena: Vector3) -> void:
 const WANDERER_ITEM_WANTED := ["pearl", "nugget", "star-piece", "great-ball"]
 
 
-func wanderer_talk(place: Dictionary, look: String) -> void:
+func wanderer_talk(place: Dictionary, look: String, root: Node3D) -> void:
 	var dialog := _dialog()
 	var index := absi(hash(place["id"])) % 4
 	var key := "wanderer:%d" % int(place["id"])
@@ -1391,9 +1461,21 @@ func wanderer_talk(place: Dictionary, look: String) -> void:
 		return
 	match index:
 		0:
-			# Niño perdido: ya está a salvo con solo hablarle (sin IA de escolta todavía,
-			# ver docs/decisiones_sin_preguntar.md).
-			_finish_wanderer(key, dialog, look, "¡Me perdí buscando a mi Pokémon! ¿Me acompañas al pueblo? ... ¡Ya veo el camino, gracias! Toma, esto es para ti.", 300)
+			# Niño perdido: te sigue de verdad hasta su casa en el pueblo (antes se
+			# resolvía solo con hablarle, ver docs/decisiones_sin_preguntar.md).
+			if structures.escort_active(key):
+				return
+			var lines := ["¡Me perdí buscando a mi Pokémon! ¿Me acompañas a mi casa en el pueblo? Si te alejas mucho te espero y te llamo."]
+			if dialog == null:
+				GameState.notice.emit(lines[0])
+				return
+			dialog.open("Niño perdido", lines, NpcLooks.portrait(look), ["Acompañarlo a casa", "Todavía no"], func(choice: int) -> void:
+				if choice == 0:
+					structures.start_child_escort(key, root, look, func() -> void:
+						_flags()[key] = true
+						GameState.add_money(300, "Familia agradecida")
+						GameState.add_item("rare-candy", 1)
+						AudioBus.play_jingle("me_item")))
 		1:
 			# Pokémon herido: pide una Poción.
 			if GameState.item_count("potion") <= 0:

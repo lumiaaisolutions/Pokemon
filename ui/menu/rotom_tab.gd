@@ -397,6 +397,13 @@ static func _app_weather(menu: GameMenu) -> Control:
 	var events := _group(menu, &"world_events") as WorldEvents
 	if events != null and events.meteor_scheduled_today():
 		today_text.add_child(MenuStyle.label("✨ Esta noche habrá lluvia de estrellas (después de las 20:00).", 15, Color(0.8, 0.85, 1.0)))
+	# Clima extremo real (completar lo simplificado del mundo, 2026-10-11): además del
+	# aviso del Rotom al amanecer, se ve aquí todo el día qué bioma lo tiene.
+	if events != null:
+		var extreme := events.extreme_weather_today()
+		if not extreme.is_empty():
+			var extreme_biome: String = RegionLayout.BIOME_NAMES[int(extreme["biome"])]
+			today_text.add_child(MenuStyle.label("⚠ %s hoy en zonas de %s." % [events.extreme_weather_name_today(), extreme_biome], 15, Color(1.0, 0.75, 0.4)))
 	box.add_child(today)
 	var world := menu.main.get_node_or_null("World") as WorldBuilder if menu.main != null else null
 	var player := menu.main.get_node_or_null("Player") as Node3D if menu.main != null else null

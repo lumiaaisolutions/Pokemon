@@ -233,11 +233,16 @@ const HUNGER_MAX := 10.0
 const HUNGER_EMPTY_SECONDS := DAY_SECONDS * 2.0
 const STARVE_SECONDS := 600.0
 var hunger: float = HUNGER_MAX
+## Multiplicador extra por frío (clima extremo real, completar lo simplificado del
+## mundo, 2026-10-11): 1.0 normal; más alto mientras estés en una ventisca extrema de
+## verdad (ver WorldEvents._update_extreme_effects). No se guarda: se recalcula cada
+## cuadro según dónde estés.
+var cold_hunger_multiplier: float = 1.0
 
 
 ## fast: corriendo, nadando moviéndose o peleando (la vacía ~40 % más rápido).
 func drain_hunger(delta: float, fast: bool = false) -> void:
-	var rate := HUNGER_MAX / HUNGER_EMPTY_SECONDS * (1.4 if fast else 1.0)
+	var rate := HUNGER_MAX / HUNGER_EMPTY_SECONDS * (1.4 if fast else 1.0) * cold_hunger_multiplier
 	hunger = maxf(hunger - rate * delta, 0.0)
 
 

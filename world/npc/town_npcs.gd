@@ -130,61 +130,83 @@ func _update_towns() -> void:
 func _populate(index: int, settlement: Dictionary) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(String(settlement["name"])) ^ _world.layout.seed
+	var total := int(PER_KIND.get(settlement["kind"], 3))
+	var npcs: Array = []
+	for i in total:
+		npcs.append(_spawn_npc(index, settlement, rng, i, total))
+	return npcs
+
+
+## Pueblo que crece de verdad en el momento (completar lo simplificado del mundo,
+## 2026-10-11): un vecino más llega ya mismo, con casa, rutina y espacio en la plaza,
+## sin esperar a recargar el mundo (antes solo aparecía un puesto en la próxima carga,
+## ver docs/decisiones_sin_preguntar.md).
+func add_grown_npc(index: int, settlement: Dictionary) -> void:
+	if not _towns.has(index):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(String(settlement["name"])) ^ _world.layout.seed ^ ((_towns[index] as Array).size() + 97)
+	var total := (_towns[index] as Array).size() + 1
+	var npc := _spawn_npc(index, settlement, rng, total - 1, total)
+	(_towns[index] as Array).append(npc)
+	GameState.notice.emit("¡%s le da la bienvenida a %s, un nuevo vecino!" % [String(settlement["name"]), npc["name"]])
+
+
+## Crea un habitante con casa, trabajo (según su oficio) y lugar propio en la plaza (en
+## círculo, repartido entre total vecinos, para no juntarse).
+func _spawn_npc(index: int, settlement: Dictionary, rng: RandomNumberGenerator, i: int, total: int) -> Dictionary:
 	var homes: Array = (settlement["buildings"] as Array).filter(func(b: Dictionary) -> bool: return b["kind"] in ["house", "cabin", "tent"])
 	var works: Array = (settlement["buildings"] as Array).filter(func(b: Dictionary) -> bool: return b["kind"] in ["center", "mart", "lab", "gym", "contest"])
 	var plaza := Vector2(float(settlement["x"]), float(settlement["z"]))
-	var npcs: Array = []
-	for i in int(PER_KIND.get(settlement["kind"], 3)):
-		var home: Dictionary = homes[rng.randi() % homes.size()] if not homes.is_empty() else {}
-		var work: Dictionary = works[rng.randi() % works.size()] if not works.is_empty() and rng.randf() < 0.6 else {}
-		var role: String = ROLES[rng.randi() % ROLES.size()] if work.is_empty() else {"center": "enfermera", "mart": "vendedor", "lab": "investigador", "gym": "entrenador", "contest": "coordinador"}[work["kind"]]
-		# Aspecto según su oficio (clases de BW2); su nombre, según el género del aspecto.
-		var look := NpcLooks.for_role(role, rng)
-		var npc := {
-			"look": look,
-			"name": name_for(NpcLooks.gender(look), rng),
-			"role": role,
-			"town": settlement["name"],
-			"town_index": index,
-			"home": _door(settlement, home) if not home.is_empty() else plaza + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)),
-			"work": _door(settlement, work) if not work.is_empty() else Vector2.INF,
-			"plaza": plaza,
-			# Su lugar propio en la plaza: repartidos en círculo para no juntarse.
-			"post": Vector2.ZERO,
-			"spot": plaza + Vector2.from_angle(TAU * i / float(PER_KIND.get(settlement["kind"], 3)) + rng.randf_range(-0.2, 0.2)) * rng.randf_range(6.0, 9.0),
-			"wake": rng.randf_range(7.0, 9.0),
-			"sleep": rng.randf_range(20.0, 22.5),
-			"route": [] as Array[Vector2],
-			"goal": "",
-			"wait": rng.randf_range(0.0, 4.0),
-		}
-		var node := Node3D.new()
-		node.name = "NPC_%s_%d" % [String(settlement["name"]).replace(" ", ""), i]
-		add_child(node)
-		var sprite := DirectionalSprite.new()
-		sprite.name = "Sprite"
-		sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
-		sprite.walk_fps = 5.0
-		node.add_child(sprite)
-		sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
-		sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
-		var label := Label3D.new()
-		label.text = npc["name"]
-		label.font_size = 32
-		label.pixel_size = 0.01
-		label.outline_size = 8
-		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label.position.y = 2.1
-		label.visibility_range_end = 14.0
-		node.add_child(label)
-		npc["node"] = node
-		if rng.randf() < 0.45:
-			npc["pet"] = _make_pet(rng)
-		var start: Vector2 = npc["home"]
-		node.global_position = Vector3(start.x, _world.surface_height_at(start.x, start.y), start.y)
-		npc["point"] = _world.structures.add_point(node.global_position, "Hablar con %s" % npc["name"], _talk.bind(npc), TALK_RADIUS)
-		npcs.append(npc)
-	return npcs
+	var home: Dictionary = homes[rng.randi() % homes.size()] if not homes.is_empty() else {}
+	var work: Dictionary = works[rng.randi() % works.size()] if not works.is_empty() and rng.randf() < 0.6 else {}
+	var role: String = ROLES[rng.randi() % ROLES.size()] if work.is_empty() else {"center": "enfermera", "mart": "vendedor", "lab": "investigador", "gym": "entrenador", "contest": "coordinador"}[work["kind"]]
+	# Aspecto según su oficio (clases de BW2); su nombre, según el género del aspecto.
+	var look := NpcLooks.for_role(role, rng)
+	var npc := {
+		"look": look,
+		"name": name_for(NpcLooks.gender(look), rng),
+		"role": role,
+		"town": settlement["name"],
+		"town_index": index,
+		"home": _door(settlement, home) if not home.is_empty() else plaza + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)),
+		"work": _door(settlement, work) if not work.is_empty() else Vector2.INF,
+		"plaza": plaza,
+		# Su lugar propio en la plaza: repartidos en círculo para no juntarse.
+		"post": Vector2.ZERO,
+		"spot": plaza + Vector2.from_angle(TAU * i / float(total) + rng.randf_range(-0.2, 0.2)) * rng.randf_range(6.0, 9.0),
+		"wake": rng.randf_range(7.0, 9.0),
+		"sleep": rng.randf_range(20.0, 22.5),
+		"route": [] as Array[Vector2],
+		"goal": "",
+		"wait": rng.randf_range(0.0, 4.0),
+	}
+	var node := Node3D.new()
+	node.name = "NPC_%s_%d" % [String(settlement["name"]).replace(" ", ""), i]
+	add_child(node)
+	var sprite := DirectionalSprite.new()
+	sprite.name = "Sprite"
+	sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
+	sprite.walk_fps = 5.0
+	node.add_child(sprite)
+	sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+	sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
+	var label := Label3D.new()
+	label.text = npc["name"]
+	label.font_size = 32
+	label.pixel_size = 0.01
+	label.outline_size = 8
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position.y = 2.1
+	label.visibility_range_end = 14.0
+	node.add_child(label)
+	npc["node"] = node
+	if rng.randf() < 0.45:
+		npc["pet"] = _make_pet(rng)
+	var start: Vector2 = npc["home"]
+	node.global_position = Vector3(start.x, _world.surface_height_at(start.x, start.y), start.y)
+	npc["point"] = _world.structures.add_point(node.global_position, "Hablar con %s" % npc["name"], _talk.bind(npc), TALK_RADIUS)
+	return npc
 
 
 ## Punto frente a la puerta de un edificio (las puertas miran a la plaza).

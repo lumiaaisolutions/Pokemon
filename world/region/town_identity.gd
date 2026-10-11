@@ -80,16 +80,24 @@ static func decorate(structures: Structures, parent: Node3D, settlement: Diction
 				# Colisión a la medida de la banca (hija del propio nodo: hereda su giro).
 				structures._collider(node, Vector3(bench_size.x * 0.85, bench_size.y, bench_size.z * 0.85), Vector3(0, bench_size.y * 0.5, 0), false)
 				structures._furniture(Vector2(cx, cz) + Vector2(at.x, at.z), maxf(bench_size.x, bench_size.z) * 0.55 + 0.2)
-	# Objetos del tema entre los edificios.
+	# Objetos del tema entre los edificios: con los pueblos ×2 (más grandes) 16 piezas
+	# fijas se veían como pasto liso con un edificio suelto (reportado por Fernando); la
+	# cantidad ahora escala con el área del pueblo y se reparte desde cerca de la plaza
+	# hasta el borde (antes solo en un aro delgado de afuera), con relleno genérico
+	# (faroles, bancas, cercas, flores) además del propio del tema para que no queden
+	# huecos vacíos.
 	var buildings: Array = settlement["buildings"]
-	for i in 16:
+	var prop_count := clampi(roundi(radius * radius / 85.0), 16, 70)
+	for i in prop_count:
 		var angle := rng.randf() * TAU
-		var distance := radius * rng.randf_range(0.55, 0.95)
+		var distance := radius * rng.randf_range(0.22, 0.95)
 		var local := Vector3(cos(angle), 0, sin(angle)) * distance
 		var world_x := cx + local.x
 		var world_z := cz + local.z
 		if structures.world.layout.road_info(world_x, world_z).x < RegionLayout.ROAD_WIDTH + 1.5:
 			continue
+		if Vector2(local.x, local.z).length() < 9.0:
+			continue # No tapar el monumento ni la plaza principal.
 		var blocked := false
 		for b: Dictionary in buildings:
 			if Vector2(float(b["x"]) - world_x, float(b["z"]) - world_z).length() < maxf(float(b["w"]), float(b["d"])) * 0.75 + 2.5:
@@ -97,7 +105,10 @@ static func decorate(structures: Structures, parent: Node3D, settlement: Diction
 				break
 		if blocked:
 			continue
-		_theme_prop(structures, root, theme, local, rng)
+		if rng.randf() < 0.3:
+			_filler_prop(structures, root, local, rng)
+		else:
+			_theme_prop(structures, root, theme, local, rng)
 	# Pueblos ×2 (2026-10-11): un segundo barrio con su propia plaza chica (aljibe y
 	# bancas), del otro lado del pueblo, y la parada de transporte junto a la principal.
 	if settlement["kind"] in ["city", "town"]:
@@ -274,6 +285,58 @@ static func _statue(structures: Structures, root: Node3D, color: Color) -> void:
 	structures._box(root, Vector3(2.0, 1.0, 2.0), Vector3(0, 0.5, 0), color.darkened(0.2))
 	structures._cylinder(root, 0.6, 2.0, Vector3(0, 2.0, 0), color)
 	structures._collider(root, Vector3(2.0, 3.0, 2.0), Vector3(0, 1.5, 0), false)
+
+
+## Relleno genérico entre los edificios (pueblos ×2 sin áreas vacías, pedido de
+## Fernando con captura: "llena calles, plazas y barrios... sin dejar áreas vacías"): un
+## farol, una banca, un tramo de cerca o flores, igual en cualquier pueblo sin depender
+## de su tema (el tema ya pone lo suyo en _theme_prop).
+static func _filler_prop(structures: Structures, root: Node3D, at: Vector3, rng: RandomNumberGenerator) -> void:
+	var world_xz := Vector2(root.position.x, root.position.z)
+	var pick := rng.randi() % 4
+	if pick == 0:
+		var lamp := BuildingModels.instance("lamp", rng.randi())
+		if lamp.is_empty():
+			return
+		var node: Node3D = lamp["node"]
+		node.position = at
+		root.add_child(node)
+		structures._collider(root, Vector3(0.4, 3.0, 0.4), at + Vector3(0, 1.5, 0), false)
+		structures._furniture(world_xz + Vector2(at.x, at.z), 0.5)
+		var light := OmniLight3D.new()
+		light.light_color = Color(1.0, 0.85, 0.55)
+		light.omni_range = 11.0
+		light.omni_attenuation = 1.1
+		light.light_specular = 0.0
+		light.light_energy = 0.0
+		light.position = at + Vector3(0, (lamp["size"] as Vector3).y, 0)
+		light.add_to_group(&"night_lights")
+		root.add_child(light)
+	elif pick == 1:
+		var bench := BuildingModels.instance("bench", rng.randi())
+		if bench.is_empty():
+			return
+		var node: Node3D = bench["node"]
+		node.position = at
+		node.rotation.y = rng.randf() * TAU
+		root.add_child(node)
+		var bench_size: Vector3 = bench["size"]
+		structures._collider(node, Vector3(bench_size.x * 0.85, bench_size.y, bench_size.z * 0.85), Vector3(0, bench_size.y * 0.5, 0), false)
+		structures._furniture(world_xz + Vector2(at.x, at.z), maxf(bench_size.x, bench_size.z) * 0.55 + 0.2)
+	elif pick == 2:
+		var fence := BuildingModels.instance("fence", rng.randi())
+		if fence.is_empty():
+			return
+		var node: Node3D = fence["node"]
+		node.position = at
+		node.rotation.y = rng.randf() * TAU
+		root.add_child(node)
+		var fence_size: Vector3 = fence["size"]
+		structures._collider(node, Vector3(fence_size.x, maxf(fence_size.y, 1.0), maxf(fence_size.z, 0.35)), Vector3(0, maxf(fence_size.y, 1.0) * 0.5, 0), false)
+		structures._furniture(world_xz + Vector2(at.x, at.z), maxf(fence_size.x, fence_size.z) * 0.5 + 0.2)
+	else:
+		var flowers: Array = [load("res://art/world/b2w2/flowers_yellow.png"), load("res://art/world/b2w2/flower_bush_pink.png"), load("res://art/world/b2w2/lavender.png")]
+		structures._decor_sprite(root, flowers[rng.randi() % flowers.size()], at)
 
 
 static func _theme_prop(structures: Structures, root: Node3D, theme: String, at: Vector3, rng: RandomNumberGenerator) -> void:

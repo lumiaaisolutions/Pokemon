@@ -34,6 +34,9 @@ func _ready() -> void:
 	weather.name = "Weather"
 	weather.world_path = NodePath("../World")
 	weather.player_path = NodePath("../Player")
+	# Clima extremo real (completar lo simplificado del mundo, 2026-10-11): Weather
+	# necesita a Events para forzar de verdad la tormenta/ventisca/sequía de hoy.
+	weather.events_path = NodePath("../Events")
 	add_child(weather)
 	var events := WorldEvents.new()
 	events.name = "Events"

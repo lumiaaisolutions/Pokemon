@@ -73,10 +73,10 @@ static func open_board(structures: Structures, settlement: Dictionary) -> void:
 	dialog.open("Tablón de encargos", lines, null, options, func(choice: int) -> void:
 		if choice < 0 or choice >= valid.size():
 			return
-		_fulfill(settlement, valid[choice]))
+		_fulfill(settlement, valid[choice], structures))
 
 
-static func _fulfill(settlement: Dictionary, index: int) -> void:
+static func _fulfill(settlement: Dictionary, index: int, structures: Structures) -> void:
 	var town: String = settlement["name"]
 	var state := _state(town)
 	var jobs: Array = state["jobs"]
@@ -93,6 +93,28 @@ static func _fulfill(settlement: Dictionary, index: int) -> void:
 	GameState.use_item(item, count)
 	GameState.add_money(int(job["reward"]), "Encargo de %s" % town)
 	job["done"] = true
+	var was_grown := grown(settlement)
 	state["done"] = int(state["done"]) + 1
 	AudioBus.play_jingle("me_item")
 	GameState.notice.emit("¡Encargo cumplido! +$%d. Ayuda a %s: %d/%d." % [int(job["reward"]), town, int(state["done"]), GOAL])
+	# Pueblo que crece de verdad en el momento (completar lo simplificado del mundo,
+	# 2026-10-11): al llegar justo a GOAL, aparece ya mismo (sin recargar) un puesto
+	# nuevo y un vecino más, con aviso; antes esperaba a la próxima carga del mundo
+	# (ver Structures.build(), docs/decisiones_sin_preguntar.md).
+	if not was_grown and grown(settlement):
+		_grow_now(settlement, structures)
+
+
+## Hace crecer al pueblo ya mismo: puesto nuevo en la plaza y un vecino más con rutina,
+## sin esperar a recargar el mundo.
+static func _grow_now(settlement: Dictionary, structures: Structures) -> void:
+	if structures == null or not is_instance_valid(structures):
+		return
+	structures.spawn_growth_now(settlement)
+	var npcs_raw: Variant = structures.get_tree().get_first_node_in_group(&"town_npcs")
+	if is_instance_valid(npcs_raw):
+		var npcs: TownNPCs = npcs_raw
+		var index := structures.world.layout.settlements.find(settlement)
+		if index >= 0:
+			npcs.add_grown_npc(index, settlement)
+	GameState.notice.emit("¡%s creció gracias a tu ayuda! Abrió un puesto nuevo en la plaza y llegó un vecino más." % String(settlement["name"]))

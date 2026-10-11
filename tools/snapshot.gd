@@ -13,6 +13,10 @@ func _ready() -> void:
 		GameState.character_id = args[3]
 		GameState.player_name = PlayerCharacters.find(args[3])["name"]
 	var scene := (load(scene_path) as PackedScene).instantiate()
+	# world/main.tscn: sin la ceremonia del inicial (igual que las pruebas), para
+	# capturar el mundo libre y no la cinemática de selección.
+	if "starter_ceremony" in scene:
+		scene.set("starter_ceremony", false)
 	add_child(scene)
 	if args.size() > 4 and scene.has_method("_show_step"):
 		await get_tree().process_frame
