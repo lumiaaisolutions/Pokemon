@@ -119,6 +119,7 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 ### Noche (reportado 2026-10-10)
 - Los faroles alumbran poco y muchas zonas se ven muy oscuras de noche: más luz de faroles (alcance y fuerza) y un mínimo de luz ambiente para que nunca se vea negro.
 - El molino (y cualquier modelo que no se oscurece) se ve de otro color de noche: debe seguir la luz del día y la noche como lo demás.
+- **Hecho (2026-10-10 noche):** el molino brillaba porque sus texturas `c7wind*` se tomaban como ventanas (contienen "win"); ahora solo `mado` o `win` seguido de número (`BuildingModels.is_window_texture`). Faroles: energía 0.75 → 2.4 y alcance 5 → 11 m (`DayNight.LAMP_ENERGY`); luna 0.2 → 0.3 y luz ambiente de noche 0.42 → 0.5.
 
 ### Casas y otros interiores (reportado 2026-10-10 noche)
 - Por dentro: sin iluminación, paredes oscuras, cosas desfasadas o incompletas (se ve como agua en el piso de una casa). Revisar que no pase en ningún interior ni estructura (misma decisión de luz propia cálida).

@@ -202,7 +202,8 @@ static func _fix_materials(mesh: MeshInstance3D) -> void:
 				var texture := base.albedo_texture
 				var path := texture.resource_path if texture != null else ""
 				# Ventanas ("mado", "win"): brillan cálidas de noche (DayNight las enciende).
-				if path.get_file().contains("mado") or path.get_file().contains("win"):
+				# Ojo: "c7wind*" es el molino, no ventanas (antes brillaba entero de noche).
+				if is_window_texture(path):
 					base.emission_enabled = true
 					base.emission = Color(1.0, 0.72, 0.38)
 					base.emission_texture = texture
@@ -220,3 +221,13 @@ static func _fix_materials(mesh: MeshInstance3D) -> void:
 				base.cull_mode = BaseMaterial3D.CULL_DISABLED
 			_materials[key] = fixed
 		mesh.set_surface_override_material(surface, _materials[key])
+
+
+## ¿La textura es de ventanas? ("mado" en japonés, o "win" seguido de número: pc_win1).
+static func is_window_texture(path: String) -> bool:
+	var file := path.get_file().to_lower()
+	if file.contains("mado"):
+		return true
+	var regex := RegEx.new()
+	regex.compile("(^|_)win[0-9]")
+	return regex.search(file) != null

@@ -10,14 +10,14 @@ extends Node
 
 ## [hora, color del sol, energía, cielo arriba, horizonte, tinte, ambiente]
 const KEYS := [
-	[0.0, Color(0.45, 0.55, 0.9), 0.2, Color(0.03, 0.05, 0.14), Color(0.08, 0.1, 0.22), Color(0.42, 0.48, 0.72), 0.42],
-	[5.0, Color(0.5, 0.55, 0.85), 0.22, Color(0.06, 0.08, 0.2), Color(0.2, 0.18, 0.3), Color(0.5, 0.52, 0.75), 0.42],
+	[0.0, Color(0.45, 0.55, 0.9), 0.3, Color(0.03, 0.05, 0.14), Color(0.08, 0.1, 0.22), Color(0.42, 0.48, 0.72), 0.5],
+	[5.0, Color(0.5, 0.55, 0.85), 0.3, Color(0.06, 0.08, 0.2), Color(0.2, 0.18, 0.3), Color(0.5, 0.52, 0.75), 0.5],
 	[6.5, Color(1.0, 0.6, 0.4), 0.55, Color(0.35, 0.45, 0.75), Color(0.95, 0.65, 0.45), Color(0.9, 0.78, 0.7), 0.45],
 	[9.0, Color(1.0, 0.96, 0.88), 1.0, Color(0.38, 0.6, 0.9), Color(0.75, 0.85, 0.95), Color(1, 1, 1), 0.55],
 	[16.5, Color(1.0, 0.95, 0.85), 0.95, Color(0.38, 0.6, 0.9), Color(0.75, 0.85, 0.95), Color(1, 1, 1), 0.55],
 	[18.5, Color(1.0, 0.55, 0.35), 0.55, Color(0.3, 0.35, 0.65), Color(0.98, 0.55, 0.4), Color(0.92, 0.72, 0.66), 0.42],
-	[20.0, Color(0.55, 0.5, 0.85), 0.25, Color(0.08, 0.08, 0.22), Color(0.3, 0.2, 0.35), Color(0.52, 0.52, 0.78), 0.42],
-	[24.0, Color(0.45, 0.55, 0.9), 0.2, Color(0.03, 0.05, 0.14), Color(0.08, 0.1, 0.22), Color(0.42, 0.48, 0.72), 0.42],
+	[20.0, Color(0.55, 0.5, 0.85), 0.3, Color(0.08, 0.08, 0.22), Color(0.3, 0.2, 0.35), Color(0.52, 0.52, 0.78), 0.5],
+	[24.0, Color(0.45, 0.55, 0.9), 0.3, Color(0.03, 0.05, 0.14), Color(0.08, 0.1, 0.22), Color(0.42, 0.48, 0.72), 0.5],
 ]
 
 ## Luz en interiores (Interiors): 1 afuera, menos en edificios y mazmorras.
@@ -29,6 +29,9 @@ var _sky: ProceduralSkyMaterial
 var _base_fog := 0.0
 var _lamps_on := false
 
+
+## Fuerza de los faroles encendidos (ver Structures: alcance LAMP_RANGE).
+const LAMP_ENERGY := 2.4
 
 func _ready() -> void:
 	_sun = get_node_or_null(sun_path) as DirectionalLight3D
@@ -70,12 +73,13 @@ func _apply(hour: float) -> void:
 		_environment.ambient_light_energy = lerpf(float(a[6]), float(b[6]), t) * (1.0 if interior_light >= 1.0 else 0.8)
 		_environment.fog_light_color = (a[4] as Color).lerp(b[4], t)
 		_environment.fog_density = _base_fog + Weather.fog_extra
-	# Faroles de los pueblos: se encienden de noche.
+	# Faroles de los pueblos: se encienden de noche (más fuertes desde el 2026-10-10:
+	# Fernando reportó que alumbraban poco).
 	var lamps_on := hour < 6.5 or hour >= 18.5
 	if lamps_on != _lamps_on:
 		_lamps_on = lamps_on
 		for light in get_tree().get_nodes_in_group(&"night_lights"):
-			(light as Light3D).light_energy = 0.75 if lamps_on else 0.0
+			(light as Light3D).light_energy = LAMP_ENERGY if lamps_on else 0.0
 		for material in BuildingModels.window_materials:
 			material.emission_energy_multiplier = 0.35 if lamps_on else 0.0
 	if _sky != null:

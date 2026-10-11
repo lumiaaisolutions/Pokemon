@@ -489,9 +489,10 @@ func _decorate(root: Node3D, kind: String, size: Vector3, settlement: Dictionary
 		_furniture(to_world.call(node.position.x, node.position.z), 0.5)
 		var light := OmniLight3D.new()
 		light.light_color = Color(1.0, 0.85, 0.55)
-		# Suave: antes la pared blanca del Centro se veía encendida de noche.
-		light.omni_range = 5.0
-		light.omni_attenuation = 1.6
+		# Alumbra la calle de verdad (Fernando, 2026-10-10); sin brillo especular para que
+		# las paredes blancas no se vean encendidas.
+		light.omni_range = 11.0
+		light.omni_attenuation = 1.1
 		light.light_specular = 0.0
 		light.light_energy = 0.0
 		light.position = node.position + Vector3(0, (lamp["size"] as Vector3).y, 0)
