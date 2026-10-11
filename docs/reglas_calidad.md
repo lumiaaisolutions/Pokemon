@@ -22,7 +22,16 @@
 13. **Nunca dejar al jugador sin saber qué hacer:** instrucciones claras en cada paso nuevo.
 14. **IA con estrategia:** los Pokémon en combate no solo persiguen y pegan; rodean, toman distancia, esquivan y atacan según su carácter.
 
+## Flujos e interfaz (agregadas 2026-10-10, noche)
+15. **Quien te ve, te reta de verdad:** entrenadores, viajeros y rival te detienen, sacan a tu compañero si estaba guardado y el combate es obligatorio; de un entrenador no se huye; si de verdad no se puede pelear, lo dicen (nunca desaparecen sin explicar).
+16. **Animaciones completas y física real en lo que lanzas:** la Poké Ball rebota, no atraviesa nada, alcanza a los posados y al atinar sale el rayo rojo antes de las sacudidas.
+17. **Los peligros del bioma tienen efecto y se ven:** pantano tóxico envenena (tinte, partículas, corazones del HUD), con su cura.
+18. **La interfaz siempre refleja el estado actual:** si algo se acaba, cambia o desaparece, su detalle y acciones se actualizan; categorías y etiquetas correctas (Rotom ≠ Misión).
+19. **Botones y menús visuales:** ícono + texto en píldora con color por acción; tarjetas visuales; nada amontonado; se entiende qué es cada cosa.
+20. **Mundo y pueblos con vida e identidad:** contenido cada ~300 m; pueblos distintos entre sí, con decoración y cosas que hacer, sin bugs visuales.
+
 ## Cómo se aplica
+- Las pruebas automáticas esperan cuadros reales (`process_frame` o `create_timer`), no cuadros de física: con el juego abierto la máquina va cargada y se adelantan.
 - Antes de dar algo por hecho: capturas desde varios ángulos (de día y de noche, por fuera y por dentro) y revisarlas.
 - Pruebas automáticas cuando se pueda (colisiones de edificios, nada flotando, luz mínima).
 - Cada problema nuevo que reporte Fernando se agrega aquí si es una regla general.
