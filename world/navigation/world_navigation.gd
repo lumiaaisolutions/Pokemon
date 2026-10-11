@@ -119,6 +119,11 @@ func is_area_baked(point: Vector3) -> bool:
 	return _regions.has(_world._chunk_key(point.x, point.z))
 
 
+## Cuántas zonas cercanas ya tienen su navegación horneada (barra de la pantalla de carga).
+func baked_near_count() -> int:
+	return _regions.size()
+
+
 ## Hornea la navegación de un interior (sus pisos y muros).
 func bake_interior(root: Node3D) -> void:
 	free_interior()

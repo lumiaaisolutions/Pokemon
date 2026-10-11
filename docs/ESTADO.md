@@ -25,6 +25,8 @@
 | 7 | Pendiente | — | Pulido y entrega |
 
 ## Pendientes técnicos
-- El mundo tarda ~2.7 s en construirse (antes 5–6.5 s): se puede agregar una pantalla de carga.
 - Aviso de Godot "edge error" de navegación en las esquinas donde se juntan 4 zonas: inofensivo (las regiones sí se conectan).
 - Medir FPS en el mundo grande en la Mac con calidad alta.
+
+## Pantalla de carga (2026-10-11)
+Código: `ui/loading/loading_screen.gd`, enganchada en `world/main.gd` (`LoadingScreen`), con `WorldNavigation.baked_near_count()` para la barra. Tapa el mundo al iniciar o cargar la partida y al llegar de un viaje entre regiones, hasta que las zonas cercanas están construidas, la navegación horneada y el jugador en el suelo (`WorldNavigation.is_baked` + `Player.is_on_floor()`). Detalle: [interfaz.md](sistemas/interfaz.md#pantalla-de-carga-2026-10-11). Prueba: `tests/test_loading.tscn`.
