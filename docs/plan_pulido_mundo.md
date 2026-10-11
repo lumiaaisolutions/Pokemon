@@ -138,3 +138,8 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 ### Gimnasios (reportado 2026-10-10 noche)
 - Mismo problema que la tienda y el centro: cosas incompletas, zonas negras y poca luz. Entra en el arreglo general de interiores (luz propia cálida, paredes y piso completos, nada flotando, nada fuera del cuarto).
 - **Se atraviesan las paredes de los edificios** por fuera (el jugador queda dentro del modelo). Prioridad alta en la rama fisica-edificios, con prueba que camine contra las 4 caras de cada edificio.
+
+### Todo en 3D estilo B2W2 (decisión de Fernando, 2026-10-10 noche)
+- Árboles, rocas y piedras, arbustos, flores, cactus **y la hierba alta** pasan a 3D, con **modelos reales de B2W2** (models.spriters-resource.com; permiso por cada descarga, Fernando pasa el Cloudflare si aparece).
+- Fernando preguntó qué más está en 2D: se revisa y se le presenta la lista.
+- Todas estas correcciones son reglas permanentes: [reglas_calidad.md](reglas_calidad.md).
