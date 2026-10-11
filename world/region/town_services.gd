@@ -40,6 +40,16 @@ var _trial: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 var _in_safari := false
 var _healing_notice := 0.0
+## Fila real de vecinos afuera de la Tienda antes de abrir (2026-10-11, completando la
+## simplificación anotada en docs/decisiones_sin_preguntar.md: antes solo era un aviso de
+## texto). Solo se arma para la tienda más cercana al jugador, mientras esté cerca.
+const MART_QUEUE_START := 8.5
+const MART_QUEUE_OPEN := 9.0
+const MART_QUEUE_SIZE := 3
+const MART_QUEUE_CLOSE_RANGE := 50.0
+var _mart_queue_nodes: Array[Node3D] = []
+var _mart_queue_key := ""
+var _mart_queue_entering := false
 
 
 func _ready() -> void:
@@ -131,10 +141,10 @@ func enter_interior(kind: String, settlement: Dictionary, data: Dictionary) -> v
 		return
 	var hour := GameState.clock_hour()
 	if not TownNPCs.is_open(kind, hour):
-		# Fila en la mañana (decisión de Fernando, 2026-10-10): media hora antes de abrir
-		# ya hay gente esperando en la puerta. Simplificado a un aviso (sin NPC extra en
-		# fila), anotado en docs/decisiones_sin_preguntar.md.
-		var queue_note := " Ya hay gente haciendo fila esperando a que abra." if kind == "mart" and hour >= 8.5 and hour < 9.0 else ""
+		# Fila en la mañana (decisión de Fernando, 2026-10-10 y completada 2026-10-11): ya
+		# hay vecinos reales en fila junto a la puerta (ver _update_mart_queue), no solo un
+		# aviso de texto.
+		var queue_note := " Ya hay gente haciendo fila esperando a que abra." if kind == "mart" and hour >= MART_QUEUE_START and hour < MART_QUEUE_OPEN else ""
 		GameState.notice.emit("%s está cerrado. Abre a las %s.%s" % [Structures.BUILDING_NAMES.get(kind, "El lugar"), "9:00" if kind == "mart" else "7:00", queue_note])
 		return
 	interiors.enter(kind, settlement, data, p.global_position + Vector3.UP * 0.3)
@@ -1015,3 +1025,100 @@ func _process(delta: float) -> void:
 			GameState.cycle_ball(1)
 		GameState.notice.emit("Saliste de la Zona Safari: devolviste las Safari Balls.")
 	_in_safari = inside
+	_update_mart_queue(p, delta)
+
+
+## Fila real afuera de la Tienda entre las 8:30 y las 9:00 (NPC parados junto a la
+## puerta, mirando hacia ella, con la Tienda real más cercana al jugador): al abrir,
+## caminan hasta la puerta y entran (en vez de desaparecer de golpe).
+func _update_mart_queue(p: Player, delta: float) -> void:
+	if interiors.is_inside():
+		return
+	var hour := GameState.clock_hour()
+	var building := structures.nearest_building("mart", p.global_position)
+	var has_door: bool = not building.is_empty() and building.has("door_world")
+	var close: bool = has_door and p.global_position.distance_to(building["door_world"]) < MART_QUEUE_CLOSE_RANGE
+	var in_window: bool = hour >= MART_QUEUE_START and hour < MART_QUEUE_OPEN
+	var key: String = "%.0f:%.0f" % [float(building.get("x", 0.0)), float(building.get("z", 0.0))] if has_door else ""
+	if in_window and close:
+		if key != _mart_queue_key or (_mart_queue_nodes.is_empty() and not _mart_queue_entering):
+			_spawn_mart_queue(building, key)
+	elif not in_window and not _mart_queue_nodes.is_empty() and not _mart_queue_entering:
+		# Ya abrió (o se pasó la hora): entran caminando a la tienda en vez de desaparecer.
+		_mart_queue_entering = true
+	elif in_window and not close and not _mart_queue_entering:
+		_clear_mart_queue()
+	if _mart_queue_entering:
+		_advance_mart_queue_entry(building if has_door and key == _mart_queue_key else {}, delta)
+
+
+func _spawn_mart_queue(building: Dictionary, key: String) -> void:
+	_clear_mart_queue()
+	_mart_queue_key = key
+	var door: Vector3 = building["door_world"]
+	var dir: Vector3 = building["door_dir"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([key, GameState.game_day()]) ^ 0x51a9
+	for i in MART_QUEUE_SIZE:
+		var look := NpcLooks.for_role("vecino", rng)
+		var sprite := DirectionalSprite.new()
+		sprite.name = "MartQueue_%d" % i
+		sprite.step_cycle = PackedInt32Array([0, 1, 0, 2])
+		sprite.walk_fps = 5.0
+		var side := Vector3(dir.z, 0, -dir.x) * (0.5 if i % 2 == 0 else -0.5) * float(i)
+		sprite.position = door + dir * (1.6 + float(i) * 0.9) + side
+		structures.add_child(sprite)
+		sprite.setup(NpcLooks.sheet(look), 3, 8, 0.057)
+		sprite.material_override = SpriteMaterials.for_texture(sprite.texture)
+		sprite.facing_world = -dir
+		sprite.animate(Vector3.ZERO, 0.0)
+		var point := structures.add_point(sprite.position + Vector3.UP * 0.5, "Hablar", _talk_mart_queue, 1.6)
+		sprite.set_meta("queue_point", point)
+		_mart_queue_nodes.append(sprite)
+
+
+func _talk_mart_queue() -> void:
+	var dialog := get_tree().get_first_node_in_group(&"dialog_box") as DialogBox
+	var lines := ["Ya quiero que abran la Tienda.", "Dicen que hoy hay oferta.", "Llevo un rato haciendo fila."]
+	var line: String = lines[_rng.randi() % lines.size()]
+	if dialog != null:
+		dialog.open("Vecino", [line])
+	else:
+		GameState.notice.emit("Vecino: %s" % line)
+
+
+## Al abrir, cada quien de la fila camina hasta la puerta de verdad y entra.
+func _advance_mart_queue_entry(building: Dictionary, delta: float) -> void:
+	var door: Vector3 = building.get("door_world", Vector3.INF)
+	for i in range(_mart_queue_nodes.size() - 1, -1, -1):
+		var sprite: Node3D = _mart_queue_nodes[i]
+		if not is_instance_valid(sprite):
+			_mart_queue_nodes.remove_at(i)
+			continue
+		var target := door if door != Vector3.INF else sprite.global_position
+		var to := target - sprite.global_position
+		to.y = 0.0
+		if door == Vector3.INF or to.length() < 0.3:
+			if sprite.has_meta("queue_point"):
+				structures.remove_point(sprite.get_meta("queue_point"))
+			sprite.queue_free()
+			_mart_queue_nodes.remove_at(i)
+			continue
+		var step := to.normalized() * minf(1.6 * delta, to.length())
+		sprite.global_position += step
+		if sprite is DirectionalSprite:
+			(sprite as DirectionalSprite).animate(step / maxf(delta, 0.0001), delta)
+	if _mart_queue_nodes.is_empty():
+		_mart_queue_entering = false
+		_mart_queue_key = ""
+
+
+func _clear_mart_queue() -> void:
+	for sprite: Node3D in _mart_queue_nodes:
+		if is_instance_valid(sprite):
+			if sprite.has_meta("queue_point"):
+				structures.remove_point(sprite.get_meta("queue_point"))
+			sprite.queue_free()
+	_mart_queue_nodes.clear()
+	_mart_queue_key = ""
+	_mart_queue_entering = false

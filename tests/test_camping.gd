@@ -250,12 +250,47 @@ func _test_camp_cutscenes() -> void:
 	_camp.commune(entry)
 	_check(float(GameState.party[0].get("bond_xp", 0.0)) == bond_after, "convivir solo sube el vínculo una vez al día")
 
-	# Mejorar el campamento: sube de nivel y cobra dinero.
-	GameState.money = 5000
+	# Mejorar el campamento: con materiales recolectados, no dinero (decisión de Fernando,
+	# completando la simplificación anotada en docs/decisiones_sin_preguntar.md).
 	var level_before := int(entry.get("level", 0))
+	var money_before := GameState.money
+	var recipe_needed := _camp.upgrade_recipe(entry)
 	_camp.upgrade_camp(entry)
-	_check(int(entry.get("level", 0)) == level_before + 1, "mejorar el campamento sube de nivel (%d)" % int(entry.get("level", 0)))
-	_check(GameState.money < 5000, "mejorar el campamento cuesta dinero")
+	_check(int(entry.get("level", 0)) == level_before, "sin materiales, mejorar el campamento no debe subir de nivel")
+	for id: String in recipe_needed:
+		GameState.add_item(id, int(recipe_needed[id]))
+	_check(_camp.has_materials(recipe_needed), "con los materiales de la receta, debe alcanzar para mejorar")
+	_camp.upgrade_camp(entry)
+	_check(int(entry.get("level", 0)) == level_before + 1, "con materiales, mejorar el campamento sube de nivel (%d)" % int(entry.get("level", 0)))
+	for id: String in recipe_needed:
+		_check(GameState.item_count(id) == 0, "mejorar el campamento debe gastar los materiales de la receta (%s)" % id)
+	_check(GameState.money == money_before, "mejorar el campamento no debe cobrar dinero")
+	# Al nivel 2 además hay un baúl funcional de verdad.
+	if _camp.can_upgrade(entry):
+		var recipe2 := _camp.upgrade_recipe(entry)
+		for id: String in recipe2:
+			GameState.add_item(id, int(recipe2[id]))
+		_camp.upgrade_camp(entry)
+		_check(int(entry.get("level", 0)) == 2, "con más materiales, el campamento llega al nivel máximo (%d)" % int(entry.get("level", 0)))
+
+	# Baúl del campamento (nivel 2, funcional de verdad): guardar y sacar objetos.
+	_check(_camp.has_chest(entry), "al nivel 2 el campamento debe tener baúl")
+	if _camp.has_chest(entry):
+		GameState.add_item("oran-berry", 3)
+		var bag_before := GameState.item_count("oran-berry")
+		_check(_camp.chest_store(entry, "oran-berry", 2), "debe poder guardarse un objeto en el baúl")
+		_check(GameState.item_count("oran-berry") == bag_before - 2, "guardar en el baúl debe sacarlo de la Mochila")
+		_check(int(_camp.chest_contents(entry).get("oran-berry", 0)) == 2, "el baúl debe quedarse con lo guardado")
+		_check(_camp.chest_take(entry, "oran-berry", 1), "debe poder sacarse un objeto del baúl")
+		_check(GameState.item_count("oran-berry") == bag_before - 1, "sacar del baúl debe devolverlo a la Mochila")
+		_check(not _camp.chest_take(entry, "oran-berry", 50), "no debe poder sacarse más de lo que hay guardado")
+
+	# Cocción real (tiempo real, con animación, más corta con la fogata mejorada).
+	_check(CampManager.cook_seconds(2) < CampManager.cook_seconds(0), "la fogata mejorada debe cocinar más rápido que la básica")
+	_check_real_cooking(entry)
+
+	# Visitante nocturno real: un PokemonActor camina de verdad hasta la fogata.
+	await _check_night_visitor(entry)
 
 	# Recoger (fogata apagándose con humo) y volver a armar (chispas al encenderla). La
 	# animación corre en cuadros reales (Tween), no de física: se espera con create_timer
@@ -272,6 +307,71 @@ func _test_camp_cutscenes() -> void:
 		_check(bool(pitch_result.get("ok", false)), "se puede volver a armar la tienda tras recogerla")
 		await get_tree().create_timer(1.6).timeout
 		_check(PixelBurst.spawned_total > before_pitch_fx, "armar la tienda anima chispas al encender la fogata")
+
+
+## Cocción real (tiempo real, con animación, acortada por la fogata mejorada): mientras
+## cocina no se aplica el efecto todavía; al terminar, sí (completando la simplificación
+## anotada en docs/decisiones_sin_preguntar.md: antes era instantáneo).
+func _check_real_cooking(entry: Dictionary) -> void:
+	var camp: Camp = entry["camp"]
+	var ui := CookingUI.new()
+	ui.main = _main
+	ui.camp = camp
+	add_child(ui)
+	ui.open()
+	var recipe: Dictionary = Items.cook_recipes()[0]
+	for id: String in recipe["needs"]:
+		GameState.add_item(id, int(recipe["needs"][id]) + 2)
+	GameState.hunger = 0.0
+	ui._start_cooking(recipe, true)
+	_check(ui._cooking, "cocinar debe empezar una cocción real, no aplicar el efecto al instante")
+	_check(GameState.hunger < 0.5, "mientras cocina, todavía no debe llenarse el hambre")
+	var waited := 0.0
+	while ui._cooking and waited < 12.0:
+		ui._process(0.2)
+		waited += 0.2
+	_check(not ui._cooking, "la cocción debe terminar en un tiempo razonable (%.1fs)" % waited)
+	_check(GameState.hunger > 0.5, "al terminar de cocinar, el hambre debe llenarse de verdad")
+	ui._close()
+
+
+## Visitante nocturno real (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md: antes solo una burbuja "¿?" sin nadie caminando): un
+## PokemonActor real camina hasta la fogata, se queda un rato, deja un objeto y se va.
+func _check_night_visitor(entry: Dictionary) -> void:
+	var camp: Camp = entry["camp"]
+	_camp._visitor = {}
+	var attempts := 0
+	while _camp._visitor.is_empty() and attempts < 60:
+		_camp._maybe_visit(camp)
+		attempts += 1
+	_check(not _camp._visitor.is_empty(), "el visitante nocturno debe aparecer tras suficientes intentos")
+	if _camp._visitor.is_empty():
+		return
+	var actor: PokemonActor = _camp._visitor["actor"]
+	_check(actor != null and is_instance_valid(actor), "el visitante debe ser un PokemonActor real, no solo una burbuja")
+	var fire: Vector3 = _camp._visitor["target"]
+	var gift_before := GameState.item_count("oran-berry") + GameState.item_count("pecha-berry") + GameState.item_count("nugget")
+	var waited := 0.0
+	while _camp._visitor.get("state", "") == "arrive" and waited < 20.0:
+		_camp._update_visitor(0.2)
+		waited += 0.2
+	_check(_camp._visitor.get("state", "") == "linger", "el visitante debe caminar de verdad hasta la fogata")
+	_check(is_instance_valid(actor) and actor.global_position.distance_to(fire) < 0.5, "el visitante debe llegar junto a la fogata de verdad")
+	var gift_after := GameState.item_count("oran-berry") + GameState.item_count("pecha-berry") + GameState.item_count("nugget")
+	_check(gift_after > gift_before, "el visitante debe dejar un objeto de verdad al llegar")
+	waited = 0.0
+	while _camp._visitor.get("state", "") == "linger" and waited < 10.0:
+		_camp._update_visitor(0.2)
+		waited += 0.2
+	_check(_camp._visitor.get("state", "") == "leave", "tras un rato junto a la fogata, el visitante debe irse caminando")
+	waited = 0.0
+	while not _camp._visitor.is_empty() and waited < 20.0:
+		_camp._update_visitor(0.2)
+		waited += 0.2
+	_check(_camp._visitor.is_empty(), "el visitante debe irse caminando por donde llegó")
+	await get_tree().process_frame
+	_check(not is_instance_valid(actor), "el visitante debe quedar liberado al irse")
 
 
 ## Busca un lugar fuera de los asentamientos, en tierra firme, para armar la tienda.

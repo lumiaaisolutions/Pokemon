@@ -176,6 +176,11 @@ func snap() -> void:
 	if _target != null:
 		global_position = _focus_point()
 	_arm.spring_length = _zoom
+	# El yaw y el pitch (p. ej. _set_indoor_look reiniciando el yaw al entrar a un
+	# interior) también deben verse ya en este mismo cuadro, no hasta el próximo
+	# _process (si no, el primer cuadro adentro aún mostraba el ángulo/dirección de
+	# afuera, a veces una pared en vez del cuarto completo).
+	_apply_rotation()
 
 
 ## Pitch actual en grados (hacia abajo). Lo usan las pruebas.

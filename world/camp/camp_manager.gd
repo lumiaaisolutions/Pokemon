@@ -4,9 +4,11 @@ extends Node3D
 ## el 2026-10-10): se arman desde la Mochila en un lugar plano fuera de los pueblos
 ## (reutiliza el campamento del viajero, ver world/npc/camp.gd). Junto a la tienda, E
 ## abre un menú (ui/camp/camp_menu_ui.gd): Dormir (solo de noche, hasta las 7:00; cura al
-## jugador y a su equipo, no el hambre), Cocinar (ver ui/camp/cooking_ui.gd), Recoger,
-## Convivir, Mejorar campamento, Ver las estrellas o Nada. Si no se recoge, se queda ahí:
-## persiste en GameState.world_flags["tents"] y se reconstruye al cargar.
+## jugador y a su equipo, no el hambre), Cocinar (tiempo real, ver ui/camp/cooking_ui.gd),
+## Recoger, Convivir, Mejorar campamento (con materiales, ver UPGRADE_RECIPES), Baúl del
+## campamento (funcional desde el nivel 2, ver chest_store/chest_take), Ver las estrellas
+## o Nada. Si no se recoge, se queda ahí: persiste en GameState.world_flags["tents"]
+## (posición, nivel y lo guardado en el baúl) y se reconstruye al cargar.
 ##
 ## Campamento animado (ronda 3, 2026-10-10): dormir, cocinar, recoger y armar tienen una
 ## escena corta (Nate entra a la tienda, el cielo amanece, vapor en la olla…) que no
@@ -16,35 +18,58 @@ extends Node3D
 @export var world_path: NodePath = NodePath("../World")
 @export var player_path: NodePath = NodePath("../Player")
 
-## Costo de mejorar el campamento (ver upgrade_camp): nivel 1 y nivel 2.
-const UPGRADE_COST := 800
+## Materiales para mejorar el campamento (decisión de Fernando: "con materiales", no
+## dinero; completando la simplificación anotada en docs/decisiones_sin_preguntar.md,
+## que pagaba con $UPGRADE_COST por no existir todavía un objeto "material de
+## construcción"). Minerales, bayas y bonguris que ya se recolectan en el mundo
+## (ver world/gathering/gather_manager.gd): nivel 1 y nivel 2.
+const UPGRADE_RECIPES := {
+	1: {"hard-stone": 6, "red-apricorn": 4, "oran-berry": 6},
+	2: {"hard-stone": 10, "blu-apricorn": 6, "sitrus-berry": 4, "nugget": 1},
+}
 ## Vínculo que sube Convivir con cada miembro del equipo (una vez al día; ver commune()).
 const COMMUNE_BOND_XP := 2.0
 ## Lo mismo que world/main.gd BOND_MINUTES_PER_LEVEL: minutos de vínculo por nivel.
 const BOND_MINUTES_PER_LEVEL := 20.0
+## Tiempo real de cocción en la fogata (con animación de vapor, ver CookingUI); la fogata
+## mejorada (nivel 2) cocina más rápido (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md: antes cocinar era instantáneo y no había nada que
+## acortar). Segundos base menos COOK_SECONDS_PER_LEVEL por cada nivel de campamento.
+const COOK_SECONDS_BASE := 6.0
+const COOK_SECONDS_PER_LEVEL := 2.0
+const COOK_SECONDS_MIN := 1.5
 
 var world: WorldBuilder
 var player: Player
 
-## Cada entrada: {"camp": Camp, "point": Dictionary, "pos": Vector3, "level": int}.
+## Cada entrada: {"camp": Camp, "point": Dictionary, "pos": Vector3, "level": int, "chest": Dictionary}.
 var _tents: Array[Dictionary] = []
 
 ## Cutscene en curso (si la hay): se puede saltar con E (ver _process).
 var _cutscene_skip: Callable
+
+## Visitante nocturno real (completando la simplificación anotada en
+## docs/decisiones_sin_preguntar.md: antes solo era una burbuja "¿?" sin nadie caminando):
+## {"actor": PokemonActor, "sprite": DirectionalSprite, "state", "target", "start", "wait"}.
+var _visitor: Dictionary = {}
+const VISITOR_WALK_SPEED := 1.6
+const VISITOR_GIFTS := ["oran-berry", "pecha-berry", "nugget"]
 
 
 func _ready() -> void:
 	world = get_node(world_path) as WorldBuilder
 	player = get_node(player_path) as Player
 	for saved: Array in GameState.world_flags.get("tents", []):
-		_spawn(Vector3(float(saved[0]), float(saved[1]), float(saved[2])), false, int(saved[3]) if saved.size() > 3 else 0)
+		var chest: Dictionary = saved[4] if saved.size() > 4 and saved[4] is Dictionary else {}
+		_spawn(Vector3(float(saved[0]), float(saved[1]), float(saved[2])), false, int(saved[3]) if saved.size() > 3 else 0, chest)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _cutscene_skip.is_valid() and Input.is_action_just_pressed("interact"):
 		var skip := _cutscene_skip
 		_cutscene_skip = Callable()
 		skip.call()
+	_update_visitor(delta)
 
 
 func tents() -> Array[Dictionary]:
@@ -74,9 +99,9 @@ func pitch_tent(near: Vector3) -> Dictionary:
 	return {"ok": true, "message": "¡Armaste tu tienda de campaña! Interactúa junto a ella para dormir, cocinar, recoger o convivir con tu equipo."}
 
 
-func _spawn(at: Vector3, animate: bool, level: int = 0) -> void:
+func _spawn(at: Vector3, animate: bool, level: int = 0, chest: Dictionary = {}) -> void:
 	var camp := Camp.create(self, at, _tents.size(), true)
-	var entry := {"camp": camp, "pos": at, "level": level}
+	var entry := {"camp": camp, "pos": at, "level": level, "chest": chest}
 	entry["point"] = world.structures.add_point(at + Vector3(0, 0.5, 1.6), "Usar la tienda de campaña", _open_menu.bind(entry), 2.6)
 	_tents.append(entry)
 	_save()
@@ -93,7 +118,7 @@ func _save() -> void:
 	var saved: Array = []
 	for entry: Dictionary in _tents:
 		var pos: Vector3 = entry["pos"]
-		saved.append([pos.x, pos.y, pos.z, int(entry.get("level", 0))])
+		saved.append([pos.x, pos.y, pos.z, int(entry.get("level", 0)), entry.get("chest", {})])
 	GameState.world_flags["tents"] = saved
 
 
@@ -190,18 +215,77 @@ func _finish_cutscene() -> void:
 	_cutscene_skip = Callable()
 
 
-## Visitante nocturno (extra, ronda 3): mientras duermes, con algo de suerte un salvaje
-## curioso se acerca a la fogata y deja un objeto pequeño (simplificación: no se modela su
-## caminata completa, solo una burbuja junto al fuego y el objeto al despertar; ver
-## docs/decisiones_sin_preguntar.md).
+## Visitante nocturno (extra, ronda 3; completado 2026-10-11): mientras duermes, con algo
+## de suerte un PokemonActor salvaje real camina de verdad hasta la fogata, se queda un
+## rato y luego se va por donde llegó (antes era solo una burbuja "¿?" sin nadie
+## caminando, anotado en docs/decisiones_sin_preguntar.md).
 func _maybe_visit(camp: Camp) -> void:
-	if randf() > 0.35:
+	if not _visitor.is_empty() or randf() > 0.35:
 		return
-	SpeechBubbles.say(camp, "¿?", 2.0)
-	var gifts: Array[String] = ["oran-berry", "pecha-berry", "nugget"]
-	var gift: String = gifts[randi() % gifts.size()]
-	GameState.add_item(gift, 1)
-	GameState.notice.emit("Un Pokémon salvaje curioso se acercó a tu fogata de noche y dejó %s." % Items.display_name(gift))
+	var main := get_parent()
+	var spawner := main.get_node_or_null("Spawner") as WildSpawner if main != null else null
+	if spawner == null or world == null:
+		return
+	var pool: Array[SpeciesData] = []
+	for species: SpeciesData in WildSpawner.ALL_SPECIES.species:
+		if not species.is_legendary and not species.is_mythical:
+			pool.append(species)
+	if pool.is_empty():
+		return
+	var species: SpeciesData = pool[randi() % pool.size()]
+	var start := camp.global_position + Vector3(5.0, 0, 5.0)
+	start.y = world.surface_height_at(start.x, start.z)
+	var actor := spawner.spawn_species(species, start, false, false)
+	if actor == null:
+		return
+	# Nada de IA salvaje mientras visita: lo mueve esta escena (ver _update_visitor).
+	actor.set_physics_process(false)
+	actor.set_process(false)
+	var fire := camp.global_position + Camp.FIRE_OFFSET + Vector3(1.3, 0, -0.5)
+	fire.y = world.surface_height_at(fire.x, fire.z)
+	var sprite := actor.get_node_or_null("Sprite") as DirectionalSprite
+	_visitor = {"actor": actor, "sprite": sprite, "state": "arrive", "target": fire, "start": start, "wait": 0.0}
+
+
+## Avanza al visitante nocturno un cuadro: camina a la fogata, se queda un rato (deja un
+## objeto y una burbuja) y se va caminando por donde llegó.
+func _update_visitor(delta: float) -> void:
+	if _visitor.is_empty():
+		return
+	var actor: PokemonActor = _visitor["actor"]
+	if not is_instance_valid(actor):
+		_visitor = {}
+		return
+	var sprite: DirectionalSprite = _visitor.get("sprite")
+	var state: String = _visitor["state"]
+	if state == "linger":
+		if sprite != null:
+			sprite.animate(Vector3.ZERO, delta)
+		_visitor["wait"] = float(_visitor["wait"]) - delta
+		if float(_visitor["wait"]) <= 0.0:
+			_visitor["state"] = "leave"
+			_visitor["target"] = _visitor["start"]
+		return
+	var target: Vector3 = _visitor["target"]
+	var to := target - actor.global_position
+	to.y = 0.0
+	if to.length() < 0.3:
+		if state == "arrive":
+			_visitor["state"] = "linger"
+			_visitor["wait"] = randf_range(3.0, 5.0)
+			SpeechBubbles.say(actor, "¿?", 2.0)
+			var gift: String = VISITOR_GIFTS[randi() % VISITOR_GIFTS.size()]
+			GameState.add_item(gift, 1)
+			GameState.notice.emit("¡%s se acercó de verdad a tu fogata de noche y dejó %s!" % [actor.species.display_name, Items.display_name(gift)])
+		else:
+			actor.queue_free()
+			_visitor = {}
+		return
+	var step := to.normalized() * minf(VISITOR_WALK_SPEED * delta, to.length())
+	actor.global_position += step
+	actor.global_position.y = world.surface_height_at(actor.global_position.x, actor.global_position.z)
+	if sprite != null:
+		sprite.animate(step / maxf(delta, 0.0001), delta)
 
 
 ## Sueño corto con una pista (extra, ronda 3): texto breve, a veces según el mundo (si
@@ -235,6 +319,13 @@ func open_cooking(entry: Dictionary = {}) -> void:
 func pack_tent(entry: Dictionary) -> void:
 	world.structures.remove_point(entry["point"])
 	(entry["camp"] as Camp).pack(player)
+	# Si tenía baúl con cosas guardadas, no se pierden: vuelven a la Mochila.
+	var chest: Dictionary = entry.get("chest", {})
+	for id: String in chest:
+		if int(chest[id]) > 0:
+			GameState.add_item(id, int(chest[id]))
+	if not chest.is_empty():
+		GameState.notice.emit("Sacaste del baúl todo lo que tenías guardado antes de recoger la tienda.")
 	_tents.erase(entry)
 	_save()
 	GameState.add_item("tent", 1)
@@ -269,20 +360,107 @@ func can_upgrade(entry: Dictionary) -> bool:
 	return int(entry.get("level", 0)) < 2
 
 
-## Mejora el campamento ($UPGRADE_COST, dos niveles): tienda más grande y de colores,
-## mesa y, al segundo nivel, un baúl (de momento decorativo; ver world/npc/camp.gd).
+## Receta de materiales para subir al siguiente nivel (o {} si ya está al máximo).
+func upgrade_recipe(entry: Dictionary) -> Dictionary:
+	return UPGRADE_RECIPES.get(int(entry.get("level", 0)) + 1, {})
+
+
+func has_materials(recipe: Dictionary) -> bool:
+	for id: String in recipe:
+		if GameState.item_count(id) < int(recipe[id]):
+			return false
+	return true
+
+
+## Texto de la receta con lo que ya tienes de cada material ("Piedra Dura 3/6, …"), para
+## el botón del menú y el aviso si faltan.
+func upgrade_cost_text(entry: Dictionary) -> String:
+	var recipe := upgrade_recipe(entry)
+	if recipe.is_empty():
+		return "máximo"
+	var parts: Array[String] = []
+	for id: String in recipe:
+		parts.append("%s %d/%d" % [Items.display_name(id), GameState.item_count(id), int(recipe[id])])
+	return ", ".join(parts)
+
+
+## Mejora el campamento con materiales recolectados (minerales, bayas y bonguris; decisión
+## de Fernando, completando la simplificación anotada en docs/decisiones_sin_preguntar.md):
+## tienda más grande y de colores, mesa y, al segundo nivel, un baúl de verdad (ver
+## chest_store/chest_take) y una fogata que cocina más rápido (ver cook_seconds).
 func upgrade_camp(entry: Dictionary) -> void:
 	if not can_upgrade(entry):
 		GameState.notice.emit("Tu campamento ya está al máximo.")
 		return
-	if GameState.money < UPGRADE_COST:
-		GameState.notice.emit("Necesitas $%d para mejorar el campamento." % UPGRADE_COST)
+	var recipe := upgrade_recipe(entry)
+	if not has_materials(recipe):
+		GameState.notice.emit("Te faltan materiales para mejorar el campamento: %s." % upgrade_cost_text(entry))
 		return
-	GameState.add_money(-UPGRADE_COST, "Mejora de campamento")
+	for id: String in recipe:
+		GameState.use_item(id, int(recipe[id]))
 	entry["level"] = int(entry.get("level", 0)) + 1
 	(entry["camp"] as Camp).upgrade(int(entry["level"]))
 	_save()
-	GameState.notice.emit("¡Mejoraste tu campamento! Se ve más grande y de colores.")
+	GameState.notice.emit("¡Mejoraste tu campamento con los materiales que recolectaste! Se ve más grande y de colores.")
+
+
+# --- Baúl del campamento (funcional desde el nivel 2) ------------------------------------
+
+func has_chest(entry: Dictionary) -> bool:
+	return int(entry.get("level", 0)) >= 2
+
+
+func chest_contents(entry: Dictionary) -> Dictionary:
+	return entry.get("chest", {})
+
+
+## Guarda amount unidades de id de la Mochila al baúl.
+func chest_store(entry: Dictionary, id: String, amount: int = 1) -> bool:
+	if not has_chest(entry) or GameState.item_count(id) < amount:
+		return false
+	GameState.use_item(id, amount)
+	var chest: Dictionary = entry.get("chest", {})
+	chest[id] = int(chest.get(id, 0)) + amount
+	entry["chest"] = chest
+	_save()
+	return true
+
+
+## Sacar amount unidades de id del baúl a la Mochila.
+func chest_take(entry: Dictionary, id: String, amount: int = 1) -> bool:
+	var chest: Dictionary = entry.get("chest", {})
+	if int(chest.get(id, 0)) < amount:
+		return false
+	chest[id] = int(chest[id]) - amount
+	if int(chest[id]) <= 0:
+		chest.erase(id)
+	entry["chest"] = chest
+	GameState.add_item(id, amount)
+	_save()
+	return true
+
+
+func open_chest(entry: Dictionary) -> void:
+	if not has_chest(entry):
+		return
+	var main := get_parent()
+	var layer := main.get_node_or_null("MenuLayer") as CanvasLayer if main != null else null
+	if layer == null or layer.has_node("CampChest"):
+		return
+	var ui := CampChestUI.new()
+	ui.name = "CampChest"
+	ui.camp_manager = self
+	ui.entry = entry
+	layer.add_child(ui)
+	ui.open()
+
+
+# --- Tiempo real de cocción (ver CookingUI) ------------------------------------------------
+
+## Segundos de espera para que esté lista una receta, según el nivel del campamento (la
+## fogata mejorada cocina más rápido).
+static func cook_seconds(level: int) -> float:
+	return maxf(COOK_SECONDS_BASE - float(level) * COOK_SECONDS_PER_LEVEL, COOK_SECONDS_MIN)
 
 
 ## Mirar las estrellas (extra, ronda 3): la cámara mira al cielo y se abre una capa con

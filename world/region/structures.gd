@@ -390,6 +390,11 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 		_decorate(root, kind, size, settlement, building, to_center)
 		if kind in ["center", "mart", "lab", "house", "cabin", "contest", "gym"]:
 			add_point(door_world + Vector3.UP * 0.5, "Entrar: %s" % model_title, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
+		if kind == "mart":
+			# Puerta real en el mundo (no una aproximación): la usa la fila de la mañana
+			# antes de abrir (ver TownServices._update_mart_queue).
+			building["door_world"] = door_world
+			building["door_dir"] = Vector3(to_center.x, 0, to_center.y)
 		return root
 	# Cimiento (cubre desniveles) y cuerpo.
 	_box(root, Vector3(w + 0.6, 3.0, d + 0.6), Vector3(0, -1.3, 0), Color(0.6, 0.58, 0.55))
@@ -425,6 +430,9 @@ func _building(settlement: Dictionary, building: Dictionary) -> Node3D:
 			add_point(door_world + Vector3.UP * 0.5, prompt, services.enter_interior.bind(kind, settlement, building), INTERACT_RADIUS, inward)
 		"tower_small":
 			add_point(door_world + Vector3.UP * 0.5, "Subir a la torre (vista del mapa)", services.reveal_area.bind(root.position, 600.0))
+	if kind == "mart":
+		building["door_world"] = door_world
+		building["door_dir"] = Vector3(to_center.x, 0, to_center.y)
 	return root
 
 

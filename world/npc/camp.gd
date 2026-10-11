@@ -141,9 +141,10 @@ func pack(actor: Node3D = null) -> void:
 
 ## Mejora el campamento (solo el tuyo; con materiales, ver CampManager.upgrade_camp):
 ## nivel 1 agranda la tienda y le cambia el color por uno festivo y pone una mesa; nivel 2
-## además añade un baúl junto a la mochila (de momento decorativo: guardar ahí de verdad
-## queda para cuando Fernando lo pida). "Cocina más rápido" es, por ahora, de palabra en
-## el aviso al mejorar: cocinar ya es instantáneo y no hay todavía un tiempo que acortar.
+## además añade un baúl junto a la mochila, funcional de verdad (guardar y sacar objetos,
+## ver CampManager.chest_store/chest_take y ui/camp/camp_chest_ui.gd). "Cocina más rápido"
+## también es real (CampManager.cook_seconds): la fogata mejorada acorta el tiempo real de
+## cocción que muestra ui/camp/cooking_ui.gd.
 func upgrade(new_level: int) -> void:
 	level = new_level
 	for child in _upgrade_extras.get_children():
@@ -175,7 +176,8 @@ static func _table(at: Vector3) -> Node3D:
 	return table
 
 
-## Baúl (mejora del campamento, nivel 2); de momento decorativo.
+## Baúl (mejora del campamento, nivel 2); el modelo 3D (funcional de verdad desde
+## CampManager, ver chest_store/chest_take y ui/camp/camp_chest_ui.gd).
 static func _chest(at: Vector3) -> Node3D:
 	var chest := Node3D.new()
 	chest.position = at
