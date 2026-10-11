@@ -5,7 +5,7 @@
 set -u
 cd "$(dirname "$0")/.."
 LIMIT="${1:-420}"
-TESTS=(--quit tests/smoke_test.tscn tests/test_world.tscn tests/test_player_movement.tscn tests/test_creatures.tscn tests/test_fights.tscn tests/test_battle.tscn tests/test_capture.tscn tests/test_starter.tscn tests/test_menu.tscn tests/test_town.tscn tests/test_interiors.tscn tests/test_regions.tscn tests/test_camping.tscn tests/test_rocks.tscn)
+TESTS=(--quit tests/smoke_test.tscn tests/test_world.tscn tests/test_player_movement.tscn tests/test_creatures.tscn tests/test_fights.tscn tests/test_battle.tscn tests/test_capture.tscn tests/test_starter.tscn tests/test_menu.tscn tests/test_town.tscn tests/test_interiors.tscn tests/test_regions.tscn tests/test_camping.tscn tests/test_rocks.tscn tests/test_no_flat_vegetation.tscn)
 LOG_DIR="${TMPDIR:-/tmp}/pokemon_tests"
 mkdir -p "$LOG_DIR"
 status=0

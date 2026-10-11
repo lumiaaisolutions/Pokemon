@@ -11,7 +11,7 @@ extends Node3D
 
 const TERRAIN_SHADER := preload("res://world/terrain/terrain_region.gdshader")
 const WATER_SHADER := preload("res://world/terrain/water_pixel.gdshader")
-const TALL_GRASS_SHADER := preload("res://world/terrain/tall_grass.gdshader")
+const TALL_GRASS_SHADER := preload("res://world/terrain/tall_grass_3d.gdshader")
 const WORLD_GROUP := &"world"
 ## Actores que apartan la hierba alta al pasar (el shader admite 16).
 const GRASS_PUSHERS_GROUP := &"grass_pushers"
@@ -1101,12 +1101,10 @@ func _instantiate(key: Vector2i, data: Dictionary) -> void:
 		var far: Dictionary = data["far_trees"]
 		for group: Array in far:
 			var texture: Texture2D = group[0]
-			var size := texture.get_size() * config.pixel_size * 1.6
-			var quad := QuadMesh.new()
-			quad.size = size
-			quad.center_offset = Vector3(0, size.y * 0.5, 0)
-			quad.material = SpriteMaterials.for_texture(texture, group[1], 0.0, true)
-			root.add_child(_multimesh("FarTrees", quad, far[group], 0.0))
+			var far_mesh := PropModels3D.cross_mesh(texture, config.pixel_size * 1.6)
+			var far_instance := _multimesh("FarTrees", far_mesh, far[group], 0.0)
+			far_instance.material_override = FoliageMaterials.for_texture(texture, group[1], true, texture == PropArt.texture("glow_mushroom"))
+			root.add_child(far_instance)
 	_chunks[key] = chunk
 	_rebuild_patch_lists()
 	if lod == 0:
@@ -1127,36 +1125,45 @@ func _build_props(root: Node3D, props: Dictionary, chunk: Dictionary) -> void:
 	var decor: Dictionary = props["decor"]
 	for group: Array in decor:
 		var texture: Texture2D = group[0]
-		var size := texture.get_size() * config.pixel_size
-		var quad := QuadMesh.new()
-		quad.size = size
-		quad.center_offset = Vector3(0, size.y * 0.5, 0)
-		quad.material = SpriteMaterials.for_texture(texture, group[1])
-		var instance := _multimesh("Decor", quad, decor[group], 0.0)
+		var visual := _decor_mesh(texture, group[1])
+		var instance := _multimesh("Decor", visual["mesh"], decor[group], 0.0)
 		instance.visibility_range_end = config.prop_view_distance
+		if visual["material"] != null:
+			instance.material_override = visual["material"]
 		root.add_child(instance)
 	for entry: Array in props["patches"]:
-		root.add_child(_multimesh("TallGrass", _grass_quad(entry[1]), entry[2], 1.0))
+		var grass := _grass_quad(entry[1])
+		var instance := _multimesh("TallGrass", grass["mesh"], entry[2], 1.0)
+		instance.material_override = grass["material"]
+		root.add_child(instance)
 		(chunk["patches"] as Array).append(entry[0])
 		(chunk["patch_biomes"] as Array).append(entry[3])
 
 
-func _grass_quad(style: BiomeConfig) -> QuadMesh:
+## Malla y material de una mata de hierba alta (cruz de 2 planos, 3D en vez del plano
+## billboard de antes) con viento y empuje (world/terrain/tall_grass_3d.gdshader).
+func _grass_quad(style: BiomeConfig) -> Dictionary:
 	if _grass_quads.has(style):
 		return _grass_quads[style]
+	var size := style.tall_grass_texture.get_size() * config.pixel_size
 	var material := ShaderMaterial.new()
 	material.shader = TALL_GRASS_SHADER
 	material.set_shader_parameter("blade_tex", style.tall_grass_texture)
 	material.set_shader_parameter("tint_bottom", Vector3(style.tall_grass_tint_bottom.r, style.tall_grass_tint_bottom.g, style.tall_grass_tint_bottom.b))
 	material.set_shader_parameter("tint_top", Vector3(style.tall_grass_tint_top.r, style.tall_grass_tint_top.g, style.tall_grass_tint_top.b))
+	material.set_shader_parameter("blade_height", size.y)
 	_grass_materials.append(material)
-	var size := style.tall_grass_texture.get_size() * config.pixel_size
-	var quad := QuadMesh.new()
-	quad.size = size
-	quad.center_offset = Vector3(0, size.y * 0.5, 0)
-	quad.material = material
-	_grass_quads[style] = quad
-	return quad
+	var mesh := PropModels3D.cross_mesh(style.tall_grass_texture, config.pixel_size)
+	var result := {"mesh": mesh, "material": material}
+	_grass_quads[style] = result
+	return result
+
+
+## Malla y material de un objeto de decoración del campo abierto: ver
+## PropModels3D.decor_visual (lo comparte con la decoración junto a los edificios del
+## pueblo, structures.gd _decor_sprite).
+func _decor_mesh(texture: Texture2D, tint: Color) -> Dictionary:
+	return PropModels3D.decor_visual(texture, tint, config.pixel_size)
 
 
 func _rebuild_patch_lists() -> void:
@@ -1397,13 +1404,14 @@ func _build_ponds(root: Node3D, key: Vector2i) -> void:
 			for i in rng.randi_range(3, 7):
 				var angle := rng.randf() * TAU
 				var r := sqrt(rng.randf()) * pond.z * 0.85
-				var pad := Sprite3D.new()
-				pad.texture = PropArt.texture("lily_flower" if rng.randf() < 0.3 else "lily_pad")
-				pad.pixel_size = config.pixel_size * 1.4
-				pad.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-				pad.rotation_degrees = Vector3(-90, rng.randf() * 360.0, 0)
-				pad.position = Vector3(pond.x + cos(angle) * r, pond.w + 0.03, pond.y + sin(angle) * r)
-				pad.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+				var texture := PropArt.texture("lily_flower" if rng.randf() < 0.3 else "lily_pad")
+				var pad := MeshInstance3D.new()
+				pad.name = "LilyPad"
+				pad.mesh = PropModels3D.pad_mesh(texture, config.pixel_size * 1.4)
+				pad.material_override = FoliageMaterials.for_texture(texture, Color.WHITE, true, false)
+				pad.rotation_degrees.y = rng.randf() * 360.0
+				pad.position = Vector3(pond.x + cos(angle) * r, pond.w, pond.y + sin(angle) * r)
+				pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				root.add_child(pad)
 		# Neblina baja sobre las charcas de los pantanos.
 		root.add_child(_mist(Vector3(pond.x, pond.w + 0.4, pond.y), pond.z + 3.0, Color(0.75, 0.6, 0.9, 0.25) if toxic else Color(0.85, 0.92, 0.85, 0.2)))
@@ -1560,8 +1568,12 @@ func _multimesh(instance_name: String, mesh: Mesh, positions: PackedVector3Array
 	return instance
 
 
-## Sprite apoyado en el suelo (posición ya con la altura) con sombra de contacto y
-## colisión en la capa de obstáculos.
+## Árbol o roca en 3D (de pocas caras, estilo B2W2) apoyado en el suelo (posición ya con
+## la altura), con sombra de contacto y colisión en la capa de obstáculos. Los árboles son
+## una cruz de 2 planos con su textura pixel (siguen la luz y, si son follaje, el tinte de
+## estación: PropModels3D.cross_mesh + FoliageMaterials); las rocas reusan la malla de
+## BreakableRock con color plano. Algunos troncos muertos usan el modelo real de B2W2
+## (regla 1 de docs/reglas_calidad.md, 2026-10-10: nada plano salvo Pokémon/personajes/NPC).
 func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, radius: float, position_3d: Vector3, tint: Color, foliage: bool = false) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = obstacle_name
@@ -1570,20 +1582,40 @@ func _obstacle(obstacle_name: String, texture: Texture2D, scale_factor: float, r
 	var height := texture.get_size().y * config.pixel_size * scale_factor
 	body.position = position_3d
 	body.add_child(_contact_shadow(width * 1.1))
-	var sprite := Sprite3D.new()
-	sprite.name = "Sprite"
-	sprite.texture = texture
-	sprite.pixel_size = config.pixel_size * scale_factor
-	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sprite.shaded = false
-	sprite.double_sided = true
-	sprite.layers = VISUAL_LAYER_SPRITES
-	SpriteMaterials.apply(sprite)
-	# Los hongos luminosos brillan de noche; el follaje cambia con la estación.
-	var glow := 1.0 if texture == PropArt.texture("glow_mushroom") else 0.0
-	sprite.material_override = SpriteMaterials.for_texture(texture, tint, glow, foliage and glow == 0.0 and texture != PropArt.texture("cactus"))
-	sprite.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
-	body.add_child(sprite)
+	var visual := Node3D.new()
+	visual.name = "Visual"
+	visual.scale = Vector3.ONE * scale_factor
+	body.add_child(visual)
+	if foliage:
+		var mesh_instance := MeshInstance3D.new()
+		mesh_instance.mesh = PropModels3D.cross_mesh(texture, config.pixel_size)
+		var glow := texture == PropArt.texture("glow_mushroom")
+		var seasonal := not glow and texture != PropArt.texture("cactus") and texture != PropArt.texture("palm")
+		mesh_instance.material_override = FoliageMaterials.for_texture(texture, tint, seasonal, glow)
+		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mesh_instance.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
+		visual.add_child(mesh_instance)
+		# El tronco muerto (pantano, pantano tóxico, bosque oscuro y volcán) usa el modelo
+		# real de B2W2 cuando existe: más variedad que la cruz genérica.
+		if texture == config.dead_tree_texture:
+			var model: Dictionary = PropModels3D.instance("dead_tree1" if hash(obstacle_name) % 2 == 0 else "dead_tree2")
+			if not model.is_empty():
+				mesh_instance.visible = false
+				var real := model["node"] as Node3D
+				var target_height: float = height
+				var model_size: Vector3 = model["size"]
+				if model_size.y > 0.01:
+					real.scale = Vector3.ONE * (target_height / model_size.y)
+				visual.add_child(real)
+	else:
+		var mesh_instance := MeshInstance3D.new()
+		mesh_instance.mesh = PropModels3D.rock_mesh("%s:%.1f:%.1f" % [obstacle_name, position_3d.x, position_3d.z], Vector3(width, height, width))
+		mesh_instance.material_override = PropModels3D.solid_material(tint * Color(0.62, 0.6, 0.58))
+		mesh_instance.position.y = height * 0.5
+		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mesh_instance.visibility_range_end = config.prop_view_distance * (1.5 if scale_factor > 1.0 else 1.0)
+		visual.add_child(mesh_instance)
+	body.set_meta("obstacle_height", height)
 	var shape := CylinderShape3D.new()
 	shape.radius = radius * scale_factor
 	shape.height = height

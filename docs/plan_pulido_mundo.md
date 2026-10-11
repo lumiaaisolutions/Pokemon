@@ -146,6 +146,7 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 - Todas estas correcciones son reglas permanentes: [reglas_calidad.md](reglas_calidad.md).
 - **Entrenadores que te ven (corregido 2026-10-10):** te podías ir caminando y saltarte el combate. Ahora al verte quedas quieto mirándolo hasta que llega (sale tu compañero si estaba guardado) y en combates contra entrenadores no se puede huir: tu Pokémon vuelve al círculo con el aviso "¡No puedes huir de un combate contra un entrenador!".
 - **Cofres en 2D** (y todo lo demás): regla ampliada en [reglas_calidad.md](reglas_calidad.md): todo en 3D salvo Pokémon, personajes y NPC.
+- **Hecho (2026-10-10, noche):** árboles, rocas, arbustos, flores, cactus, hongos, hierba alta, recolectables (arbusto de bayas, árbol de bonguri, roca con minerales), lugares de interés (campamento con cofre 3D en 3 niveles, pozo, ruinas, árbol grande, cueva chica, mirador) y las flores/arbustos junto a los edificios del pueblo, todos en 3D (`PropModels3D`, ver [arte](sistemas/arte.md#todo-el-mundo-en-3d-2026-10-10-noche)). Pendiente: revisión visual con capturas por bioma y ajustar proporciones a ojo si algo se ve raro.
 
 ### Más pedidos tras probar (2026-10-10, noche) — por diseñar con Fernando o por hacer
 - **Poké Ball (hecho):** atraviesa a los posados en árboles → ahora se les atina (caen al pie del árbol); rebota en lo que golpea; al atinar, rayo rojo que atrapa al Pokémon y luego las 3 sacudidas.
@@ -201,7 +202,7 @@ Fernando: los mapas aleatorios se ven vacíos y simples; los pueblos son pequeñ
 ## Plan de la noche (orden de trabajo)
 **Meta (Fernando):** el loop sigue hasta terminar el juego completo (fases 6 y 7 incluidas) y sin detalles como los reportados (ver [reglas_calidad.md](reglas_calidad.md)); al final, una revisión general con capturas de todo el juego buscando esos defectos.
 1. Integrar lo de los agentes en curso (IA salvaje y Poké Ball en mano; interiores base) con la batería completa.
-2. Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios.
+2. ~~Todo el mundo en 3D con los modelos de B2W2 (vegetación, rocas, objetos), cofres 3D propios~~ (**hecho** 2026-10-10, rama `mundo-3d`; pendiente revisión visual con capturas por bioma).
 3. Cinemática del profesor e inicio (pared invisible, tutorial paso a paso). **Hecho.**
 4. Faroles más fuertes de noche y el molino que cambiaba de color; Cilan y Volkner con sus sprites definitivos.
 5. Túneles-desfiladero tapados por rocas grandes.

@@ -5,6 +5,22 @@ extends RefCounted
 ## sombreado en 3 tonos y la misma escala de píxel que el resto (0.057 m/px).
 
 static var _cache := {}
+## Textura -> kind (para que PropModels3D sepa qué malla 3D de pocas caras armar, ver
+## world/region/prop_models.gd y _build_props en world/world_builder.gd).
+static var _kind_of := {}
+
+## Rocas: reusan la malla de BreakableRock.rock_mesh con color plano.
+const ROCK_KINDS := ["boulder", "mossy_rock", "lava_rock", "snow_pile"]
+## Troncos/madera: cilindro tumbado.
+const LOG_KINDS := ["log", "mossy_log", "driftwood"]
+const BONES_KINDS := ["bones"]
+const SHELL_KINDS := ["shell", "shell_blue"]
+## El resto (follaje, flores, hierba, cactus, hongos, coral, cristal...) usa la cruz de
+## 2 planos con su textura pixel (PropModels3D.cross_mesh).
+
+
+static func kind_of(texture_to_check: Texture2D) -> String:
+	return _kind_of.get(texture_to_check, "")
 
 
 static func texture(kind: String) -> Texture2D:
@@ -83,6 +99,7 @@ static func texture(kind: String) -> Texture2D:
 		_outline(image)
 	var result := ImageTexture.create_from_image(image)
 	_cache[kind] = result
+	_kind_of[result] = kind
 	return result
 
 

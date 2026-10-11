@@ -71,9 +71,10 @@ static func pokemon_height(species: SpeciesData) -> float:
 	return PokemonActor.PIXEL_SIZE * 32.0 * species.size_scale
 
 
+## Altura del árbol (m): la guarda _obstacle en world_builder.gd al crearlo (los árboles
+## ahora son una malla 3D, no un Sprite3D con su textura).
 static func tree_height(tree: Node3D) -> float:
-	var sprite := tree.get_node_or_null("Sprite") as Sprite3D
-	return sprite.texture.get_height() * sprite.pixel_size if sprite != null and sprite.texture != null else 0.0
+	return float(tree.get_meta("obstacle_height", 0.0))
 
 
 ## Bicho al pie del tronco (entre las raíces), como salvaje normal.

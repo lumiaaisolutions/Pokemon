@@ -64,7 +64,7 @@ const AMBUSH_SHY_FLEE_RADIUS := 4.0
 const AMBUSH_WINDUP := 0.5
 const DROP_SPEED := 14.0
 ## Cuánto se adelanta hacia la cámara el sprite de un Pokémon posado en un árbol.
-const PERCH_FRONT_OFFSET := 1.2
+const PERCH_FRONT_OFFSET := 0.35
 ## Altura de la rama de la que cuelga un Bicho (fracción del árbol) y largo del hilo.
 const PERCH_BRANCH_HEIGHT := 0.72
 const THREAD_LENGTH := 0.7
@@ -957,8 +957,7 @@ func perch_on(tree: Node3D, as_bird: bool) -> void:
 	collision_layer = 0
 	collision_mask = 0
 	($BlobShadow as Decal).visible = false
-	var sprite := tree.get_node("Sprite") as Sprite3D
-	var tree_height := sprite.texture.get_height() * sprite.pixel_size
+	var tree_height := AmbushManager.tree_height(tree)
 	# Ave: posada arriba de la copa. Bicho: colgado de una rama bajo la copa, con el
 	# hilo de seda de su cabeza a la rama.
 	var head := species.overworld_cell * world_pixel_size() * 0.85
@@ -1023,13 +1022,9 @@ func _process_perched(delta: float) -> void:
 				_sprite.animate(Vector3(to_target.x, 0, to_target.z), delta, true)
 
 
-## El árbol y el Pokémon son billboards en el mismo punto: sin separarlos se
-## pelean por la profundidad y parpadean. Adelanta el sprite (y el hilo) hacia la
-## cámara para que siempre quede delante de la copa.
-## El sprite de los árboles se inclina hacia atrás desde su base al mirar desde arriba
-## (shader sprite_billboard); el posado sigue esa misma inclinación en cada cuadro para
-## quedar pegado a su rama desde cualquier ángulo (pedido de Fernando, 2026-10-10), y un
-## poco hacia la cámara para dibujarse delante de la copa.
+## El árbol ya es una malla 3D real (no un billboard): basta un empujón fijo hacia la
+## cámara para que el sprite del Pokémon posado no quede clavado dentro de las hojas
+## (antes había que seguir la inclinación del árbol-billboard; ya no aplica, 2026-10-10).
 func _in_front_of_canopy() -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
@@ -1037,17 +1032,10 @@ func _in_front_of_canopy() -> void:
 	var back := camera.global_basis.z
 	var flat_back := Vector3(back.x, 0.0, back.z)
 	flat_back = flat_back.normalized() if flat_back.length() > 0.0001 else Vector3.BACK
-	# Misma fórmula que el shader (tilt_start 25°, tilt_amount 0.9, máximo 50°).
-	var pitch := rad_to_deg(asin(clampf(back.y, -1.0, 1.0)))
-	var tilt := deg_to_rad(clampf((pitch - 25.0) * 0.9, 0.0, 50.0))
-	var height := global_position.y - perch_tree.global_position.y if perch_tree != null and is_instance_valid(perch_tree) else 0.0
-	var offset := Vector3(0.0, height * (cos(tilt) - 1.0), 0.0) - flat_back * height * sin(tilt) + flat_back * PERCH_FRONT_OFFSET
-	_sprite.position = Vector3(offset.x, offset.y, offset.z)
+	var offset := flat_back * PERCH_FRONT_OFFSET
+	_sprite.position = offset
 	if _thread != null:
-		_thread.position = Vector3(offset.x, float(_thread.get_meta("base_y", _thread.position.y)) + offset.y, offset.z)
-		# El hilo se inclina como el árbol (cuelga de la rama inclinada).
-		_thread.rotation = Vector3.ZERO
-		_thread.rotate(flat_back.cross(Vector3.UP).normalized(), tilt)
+		_thread.position = Vector3(offset.x, float(_thread.get_meta("base_y", _thread.position.y)), offset.z)
 
 
 ## Aterriza: si cae sobre Nate lo golpea y empieza la pelea; si no, lo persigue.
@@ -1079,12 +1067,14 @@ func _tree_shake_cue(delta: float) -> void:
 	if _shake_timer > 0.0:
 		return
 	_shake_timer = _rng.randf_range(4.0, 7.0)
-	var sprite := perch_tree.get_node("Sprite") as Sprite3D
-	var base_x := sprite.position.x
+	var visual := perch_tree.get_node_or_null("Visual") as Node3D
+	if visual == null:
+		return
+	var base_x := visual.position.x
 	var tween := create_tween()
 	for k in 4:
-		tween.tween_property(sprite, "position:x", base_x + (0.06 if k % 2 == 0 else -0.06), 0.06)
-	tween.tween_property(sprite, "position:x", base_x, 0.06)
+		tween.tween_property(visual, "position:x", base_x + (0.06 if k % 2 == 0 else -0.06), 0.06)
+	tween.tween_property(visual, "position:x", base_x, 0.06)
 
 
 ## Signo de exclamación pixel art (rojo) sobre la cabeza.
