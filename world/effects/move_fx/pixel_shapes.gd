@@ -68,6 +68,26 @@ static func get_texture(name: String, base: Color = Color.WHITE, frame: int = 0)
 			image = _swirl(base, frame)
 		"icicle":
 			image = _icicle(base)
+		"sword":
+			image = _sword(base)
+		"heart":
+			image = _heart(base)
+		"note":
+			image = _note(base)
+		"moon":
+			image = _moon(base)
+		"eye":
+			image = _eye(base)
+		"cloud":
+			image = _powder(base)
+		"caltrop":
+			image = _caltrop(base)
+		"web":
+			image = _web()
+		"doll":
+			image = _doll()
+		"snow":
+			image = _snowflake(base)
 		_:
 			image = _orb(base)
 	var texture := ImageTexture.create_from_image(image)
@@ -406,3 +426,103 @@ static func _icicle(base: Color) -> Image:
 	_poly(image, PackedVector2Array([Vector2(0.5, 0), Vector2(6.5, 0), Vector2(3.5, 14.5)]), base)
 	_poly(image, PackedVector2Array([Vector2(2, 0.5), Vector2(3.5, 0.5), Vector2(3.5, 9)]), Color.WHITE)
 	return _outline(image, base.darkened(0.5))
+
+
+# --- Lote 3: estados, sonido, trampas, copias y firmas ---------------------------------
+
+static func _sword(base: Color) -> Image:
+	var image := _canvas(7, 19)
+	_poly(image, PackedVector2Array([Vector2(3.5, 0), Vector2(5, 3), Vector2(5, 13), Vector2(2, 13), Vector2(2, 3)]), Color(0.85, 0.9, 0.95))
+	for y in range(2, 13):
+		image.set_pixel(3, y, Color.WHITE)
+	_poly(image, PackedVector2Array([Vector2(0, 13), Vector2(7, 13), Vector2(7, 15), Vector2(0, 15)]), base)
+	_poly(image, PackedVector2Array([Vector2(2.5, 15), Vector2(4.5, 15), Vector2(4.5, 19), Vector2(2.5, 19)]), Color(0.45, 0.3, 0.2))
+	return _outline(image, Color(0.2, 0.2, 0.28))
+
+
+static func _heart(base: Color) -> Image:
+	var image := _canvas(11, 10)
+	_disc(image, 3.2, 3.2, 2.8, base)
+	_disc(image, 7.8, 3.2, 2.8, base)
+	_poly(image, PackedVector2Array([Vector2(0.6, 4), Vector2(10.4, 4), Vector2(5.5, 9.5)]), base)
+	image.set_pixel(3, 2, Color.WHITE)
+	return _outline(image, base.darkened(0.5))
+
+
+static func _note(base: Color) -> Image:
+	var image := _canvas(9, 12)
+	_disc(image, 2.8, 9.2, 2.3, base)
+	for y in range(1, 10):
+		image.set_pixel(4, y, base)
+	_poly(image, PackedVector2Array([Vector2(4, 1), Vector2(8.5, 3), Vector2(8.5, 5), Vector2(4, 3)]), base)
+	return _outline(image, base.darkened(0.5))
+
+
+static func _moon(base: Color) -> Image:
+	var image := _canvas(21, 21)
+	_disc(image, 10.5, 10.5, 9.5, Color(1.0, 0.85, 0.95))
+	_disc(image, 7.5, 8.5, 2.2, Color(0.92, 0.72, 0.86))
+	_disc(image, 13.5, 13.5, 1.6, Color(0.92, 0.72, 0.86))
+	return _outline(image, base.darkened(0.3))
+
+
+static func _eye(base: Color) -> Image:
+	var image := _canvas(13, 7)
+	_poly(image, PackedVector2Array([Vector2(0, 3.5), Vector2(6.5, 0), Vector2(13, 3.5), Vector2(6.5, 7)]), Color.WHITE)
+	_disc(image, 6.5, 3.5, 2.2, base)
+	_disc(image, 6.5, 3.5, 0.9, Color(0.05, 0.05, 0.05))
+	return _outline(image, Color(0.1, 0.05, 0.05))
+
+
+## Nube de polvo (Somnífero, Paralizador, Polvo Veneno).
+static func _powder(base: Color) -> Image:
+	var image := _canvas(24, 14)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	for i in 60:
+		var x := rng.randi_range(1, 22)
+		var y := rng.randi_range(1, 12)
+		if Vector2((x - 12) / 11.0, (y - 7) / 6.0).length() < 1.0:
+			image.set_pixel(x, y, base if i % 3 else base.lightened(0.4))
+	return image
+
+
+static func _caltrop(base: Color) -> Image:
+	var image := _canvas(9, 7)
+	_poly(image, PackedVector2Array([Vector2(4.5, 0), Vector2(8.5, 6.5), Vector2(0.5, 6.5)]), base)
+	return _outline(image, base.darkened(0.6))
+
+
+static func _web() -> Image:
+	var image := _canvas(21, 21)
+	for k in 8:
+		var angle := TAU * k / 8.0
+		for r in 10:
+			image.set_pixel(int(10.5 + cos(angle) * r), int(10.5 + sin(angle) * r), Color(0.95, 0.95, 0.95, 0.9))
+	for ring in [3.0, 6.0, 9.0]:
+		for i in 48:
+			var angle := TAU * i / 48.0
+			image.set_pixel(int(10.5 + cos(angle) * ring), int(10.5 + sin(angle) * ring), Color(0.95, 0.95, 0.95, 0.8))
+	return image
+
+
+## Muñeco de Sustituto.
+static func _doll() -> Image:
+	var image := _canvas(13, 15)
+	_disc(image, 6.5, 4.5, 4.0, Color(0.85, 0.75, 0.55))
+	_poly(image, PackedVector2Array([Vector2(3, 8), Vector2(10, 8), Vector2(11, 14.5), Vector2(2, 14.5)]), Color(0.85, 0.75, 0.55))
+	image.set_pixel(5, 4, Color(0.1, 0.1, 0.1))
+	image.set_pixel(8, 4, Color(0.1, 0.1, 0.1))
+	_poly(image, PackedVector2Array([Vector2(2, 1), Vector2(4, 0.5), Vector2(4, 3)]), Color(0.85, 0.75, 0.55))
+	_poly(image, PackedVector2Array([Vector2(9, 0.5), Vector2(11, 1), Vector2(9, 3)]), Color(0.85, 0.75, 0.55))
+	return _outline(image, Color(0.35, 0.25, 0.15))
+
+
+static func _snowflake(base: Color) -> Image:
+	var image := _canvas(7, 7)
+	for i in 7:
+		image.set_pixel(3, i, base)
+		image.set_pixel(i, 3, base)
+		image.set_pixel(i, i, base.lightened(0.3))
+		image.set_pixel(6 - i, i, base.lightened(0.3))
+	return image

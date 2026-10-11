@@ -90,6 +90,59 @@ const GUSTS := {
 const TWISTERS := ["twister", "hurricane", "whirlpool", "sand-tomb", "leaf-tornado"]
 
 
+# --- Lote 3 -------------------------------------------------------------------------
+
+## Drenaje: orbes verdes del rival al atacante.
+const DRAINS := ["absorb", "mega-drain", "giga-drain", "leech-life", "parabolic-charge", "draining-kiss", "oblivion-wing", "bitter-blade"]
+## Psíquico (levanta al rival con ondas) y Fantasma (sale de la sombra, lengua, sombra que avanza).
+const PSYCHIC := ["psychic", "confusion", "extrasensory", "psyshock", "stored-power", "psycho-boost", "expanding-force"]
+const GHOST := {"shadow-punch": "punch", "lick": "lick", "shadow-sneak": "sneak", "astonish": "sneak", "hex": "sneak", "poltergeist": "sneak", "spirit-shackle": "sneak"}
+## Hada y Hielo: [modo, color].
+const FAIRY_ICE := {
+	"dazzling-gleam": ["gleam", "ffa8d8"], "moonblast": ["moon", "ffb8e0"], "disarming-voice": ["gleam", "ffa8d8"],
+	"blizzard": ["snow", "e8f6ff"], "icy-wind": ["snow", "c8ecff"], "powder-snow": ["snow", "ffffff"], "frost-breath": ["snow", "c8ecff"],
+	"ice-shard": ["icicle", "a8e8ff"], "fairy-wind": ["gleam", "ffc8e8"], "play-rough": ["gleam", "ff90c8"],
+}
+## Auras de carga: embiste cubierto del color del tipo y deja estela.
+const CHARGES := ["flare-blitz", "wild-charge", "aqua-jet", "brave-bird", "quick-attack", "extreme-speed",
+		"flame-charge", "take-down", "head-charge", "wave-crash", "accelerock", "zen-headbutt", "iron-head", "dragon-rush", "gyro-ball", "rollout", "steel-roller"]
+## Saltos aplastantes: salta alto y cae sobre el rival con onda en el suelo.
+const SLAMS := ["body-slam", "high-jump-kick", "jump-kick", "stomp", "heavy-slam", "heat-crash", "double-edge", "crabhammer", "dragon-hammer", "wood-hammer", "ice-hammer"]
+## Explosiones: estallido en anillo con humo (alcanza a todos cerca).
+const EXPLOSIONS := ["explosion", "self-destruct", "misty-explosion", "lava-plume", "sludge-wave", "mind-blown", "steam-eruption"]
+## Sonido: ondas en arco y notas del atacante al rival.
+const SOUNDS := ["hyper-voice", "boomburst", "bug-buzz", "round", "uproar", "snarl", "echoed-voice", "overdrive", "clanging-scales", "relic-song"]
+## Ida y vuelta: golpea y vuelve a la ball; sale otro de tu equipo.
+const UTURNS := ["u-turn", "volt-switch", "flip-turn"]
+## Firmas de legendarios.
+const SIGNATURES := ["aeroblast", "roar-of-time", "spacial-rend", "origin-pulse", "precipice-blades", "dragon-ascent", "sacred-fire", "judgment", "blue-flare", "fusion-flare", "fusion-bolt"]
+## Definitivos de los iniciales.
+const ULTIMATES := ["frenzy-plant", "blast-burn", "hydro-cannon"]
+## Multigolpe que reutiliza golpes y cortes (se suman a MELEE).
+const MULTI := {"double-slap": ["fist", "", 3], "fury-attack": ["slash", "", 3], "arm-thrust": ["fist", "", 4], "double-kick": ["fist", "", 2], "triple-kick": ["fist", "", 3]}
+
+## Ataques de estado con animación: modo.
+const STATUS := {
+	# Mejoras.
+	"swords-dance": "swords", "nasty-plot": "aura", "calm-mind": "aura", "bulk-up": "aura", "dragon-dance": "aura",
+	"work-up": "aura", "growth": "aura", "iron-defense": "aura", "amnesia": "aura", "shell-smash": "aura", "quiver-dance": "aura",
+	"coil": "aura", "hone-claws": "aura", "agility": "speed", "rock-polish": "speed", "autotomize": "speed",
+	"protect": "shield", "detect": "shield", "kings-shield": "shield", "spiky-shield": "shield", "baneful-bunker": "shield", "reflect": "shield", "light-screen": "shield",
+	# Clima y terreno.
+	"rain-dance": "rain", "sunny-day": "sun", "hail": "hail", "snowscape": "hail", "sandstorm": "sand",
+	"grassy-terrain": "terrain", "electric-terrain": "terrain", "misty-terrain": "terrain", "psychic-terrain": "terrain",
+	# Estados alterados.
+	"poison-powder": "powder", "sleep-powder": "powder", "stun-spore": "powder", "spore": "powder", "toxic": "powder",
+	"thunder-wave": "zap", "will-o-wisp": "wisp", "hypnosis": "waves", "confuse-ray": "wisp", "glare": "eyes", "sing": "notes",
+	"yawn": "waves", "supersonic": "waves", "sweet-kiss": "hearts",
+	# Trampas.
+	"spikes": "hazard", "stealth-rock": "hazard", "toxic-spikes": "hazard", "sticky-web": "hazard",
+	# Bajar estadísticas y copias.
+	"leer": "eyes", "growl": "waves", "charm": "hearts", "scary-face": "eyes", "tail-whip": "waves", "screech": "waves",
+	"fake-tears": "waves", "baby-doll-eyes": "hearts", "feather-dance": "feathers", "string-shot": "web-shot",
+	"double-team": "clones", "substitute": "doll", "transform": "transform", "minimize": "speed",
+}
+
 ## Familia del ataque ("" si no tiene: animación de siempre).
 static func family(id: String) -> String:
 	if BURROW.has(id):
@@ -116,7 +169,36 @@ static func family(id: String) -> String:
 		return "gust"
 	if TWISTERS.has(id):
 		return "twister"
+	if MULTI.has(id):
+		return "melee"
+	if DRAINS.has(id):
+		return "drain"
+	if PSYCHIC.has(id):
+		return "psychic"
+	if GHOST.has(id):
+		return "ghost"
+	if FAIRY_ICE.has(id):
+		return "fairy_ice"
+	if CHARGES.has(id):
+		return "charge"
+	if SLAMS.has(id):
+		return "slam"
+	if EXPLOSIONS.has(id):
+		return "explosion"
+	if SOUNDS.has(id):
+		return "sound"
+	if UTURNS.has(id):
+		return "uturn"
+	if SIGNATURES.has(id):
+		return "signature"
+	if ULTIMATES.has(id):
+		return "ultimate"
 	return ""
+
+
+## Modo de la animación de un ataque de estado ("" si no tiene).
+static func status_mode(id: String) -> String:
+	return String(STATUS.get(id, ""))
 
 
 ## Ataque fuerte (temblor, destello y marca en el suelo): potencia 90 o más.

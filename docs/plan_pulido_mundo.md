@@ -76,5 +76,5 @@ En la hoja de BW2 reconozco con certeza a Brock, Misty, Lt. Surge, Whitney, Braw
 2. ~~Salvajes comunes que se repiten y raros escasos~~ (**hecho**) → [salvajes](sistemas/pokemon_salvajes.md).
 3. ~~Voladores y Bicho en árboles: tamaño, Bicho en el suelo, desfase desde arriba~~ (**hecho**) → [salvajes](sistemas/pokemon_salvajes.md).
 4. ~~Viaje entre regiones en 3D estilo BW2~~ (**hecho**) → [regiones](sistemas/regiones.md).
-5. Animaciones de ataques (25 familias) → [animaciones de ataques](sistemas/animaciones_ataques.md).
+5. ~~Animaciones de ataques (25 familias)~~ (**hecho**) → [animaciones de ataques](sistemas/animaciones_ataques.md).
 6. Campamento, comida y hambre → [jugador](sistemas/jugador.md).

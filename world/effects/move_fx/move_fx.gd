@@ -48,7 +48,7 @@ static func play(by: PokemonActor, to: Node3D, id: String, on_hit: Callable) -> 
 		"bolt":
 			fx._bolt(bool(MoveFamilies.BOLTS[id]))
 		"melee":
-			fx._melee(MoveFamilies.MELEE[id])
+			fx._melee(MoveFamilies.MELEE.get(id, MoveFamilies.MULTI.get(id, ["fist", "", 1])))
 		"sky":
 			fx._sky(MoveFamilies.SKY[id])
 		"ground":
@@ -57,6 +57,46 @@ static func play(by: PokemonActor, to: Node3D, id: String, on_hit: Callable) -> 
 			fx._gust(MoveFamilies.GUSTS[id])
 		"twister":
 			fx._twister()
+		"drain":
+			fx._drain()
+		"psychic":
+			fx._psychic()
+		"ghost":
+			fx._ghost(String(MoveFamilies.GHOST[id]))
+		"fairy_ice":
+			fx._fairy_ice(MoveFamilies.FAIRY_ICE[id])
+		"charge":
+			fx._charge()
+		"slam":
+			fx._slam()
+		"explosion":
+			fx._explosion()
+		"sound":
+			fx._sound(false)
+		"uturn":
+			fx._uturn()
+		"signature":
+			fx._signature()
+		"ultimate":
+			fx._ultimate()
+	return true
+
+
+## Ataques de estado (mejoras, clima, terreno, estados alterados, trampas, bajar
+## estadísticas y copias): solo la animación y, en clima, terreno y trampas, su efecto
+## en el mundo; lo demás lo sigue haciendo PokemonActor.use_move.
+static func play_status(by: PokemonActor, to: Node3D, id: String) -> bool:
+	var mode := MoveFamilies.status_mode(id)
+	if mode == "" or by == null or not is_instance_valid(by):
+		return false
+	var fx := MoveFx.new()
+	fx.attacker = by
+	fx.target = to
+	fx.move_id = id
+	by.get_parent().add_child(fx)
+	fx.global_position = by.global_position
+	fx._rng.randomize()
+	fx._status(mode)
 	return true
 
 
@@ -706,3 +746,708 @@ func _twister() -> void:
 			struck = true
 			_strike()
 	queue_free()
+
+
+# --- Lote 3 ------------------------------------------------------------------------------
+
+## Drenaje (Gigadrenado, Chupavidas…): golpe con destello verde y orbes que vuelven al atacante.
+func _drain() -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	PixelBurst.spawn(get_parent(), _center(target), PixelBurst.Kind.LEAVES, 0.7)
+	_strike()
+	var texture := PixelShapes.get_texture("orb", Color(0.55, 1.0, 0.45))
+	var orbs: Array[Sprite3D] = []
+	for k in 6:
+		orbs.append(_sprite(texture, 0.03))
+	var elapsed := 0.0
+	while elapsed < 0.9:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(attacker) or not _alive(target):
+			break
+		for k in orbs.size():
+			var t := clampf((elapsed - k * 0.06) / 0.6, 0.0, 1.0)
+			var swirl := Vector3(cos(k * 1.7 + elapsed * 6.0), sin(k * 1.3 + elapsed * 5.0), 0.0) * 0.4 * sin(t * PI)
+			orbs[k].global_position = _center(target).lerp(_center(attacker), t) + swirl
+			orbs[k].visible = t > 0.0 and t < 1.0
+	if _alive(attacker):
+		PixelBurst.spawn(get_parent(), _center(attacker), PixelBurst.Kind.HEAL, 0.8)
+	queue_free()
+
+
+## Psíquico: anillos morados alrededor del rival, que se eleva y cae.
+func _psychic() -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	var sprite := target.get("_sprite") as Sprite3D
+	var rings: Array[Sprite3D] = []
+	for k in 3:
+		rings.append(_sprite(PixelShapes.get_texture("ring", Color(1.0, 0.45, 0.8)), 0.08))
+	var elapsed := 0.0
+	var struck := false
+	while elapsed < 0.9:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(target):
+			break
+		var lift := sin(clampf(elapsed / 0.9, 0.0, 1.0) * PI) * 0.9
+		if sprite != null:
+			sprite.position.y = lift
+		for k in rings.size():
+			var phase := fmod(elapsed * 1.6 + k / 3.0, 1.0)
+			rings[k].global_position = _center(target) + Vector3.UP * lift
+			rings[k].scale = Vector3.ONE * (0.5 + phase * 1.5)
+			rings[k].modulate.a = 1.0 - phase
+		if not struck and elapsed > 0.45:
+			struck = true
+			_strike()
+	if _alive(target) and sprite != null:
+		sprite.position.y = 0.0
+	queue_free()
+
+
+## Fantasma: Puño Sombra sale de la sombra del rival; Lengüetazo con lengua; Sombra Vil
+## avanza como una sombra por el suelo y sale de golpe bajo el rival.
+func _ghost(mode: String) -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	match mode:
+		"punch":
+			var fist := _sprite(PixelShapes.get_texture("fist", Color(0.6, 0.45, 0.85)), 0.11)
+			var base := _ground(target.global_position)
+			fist.global_position = base
+			var rise := fist.create_tween()
+			rise.tween_property(fist, "global_position", _center(target), 0.18)
+			await rise.finished
+			_strike()
+			await _wait(0.2)
+		"lick":
+			if attacker.global_position.distance_to(target.global_position) > MELEE_REACH + 1.5:
+				queue_free()
+				return
+			var mesh := _ribbon_mesh()
+			var pink := _glow_material(Color(1.0, 0.45, 0.6), 1.0)
+			var elapsed := 0.0
+			while elapsed < 0.45:
+				await get_tree().process_frame
+				elapsed += get_process_delta_time()
+				if not _alive(attacker) or not _alive(target):
+					break
+				var reach := sin(clampf(elapsed / 0.45, 0.0, 1.0) * PI)
+				var points := PackedVector3Array()
+				for i in 10:
+					var t := i / 9.0 * reach
+					points.append(_center(attacker).lerp(_center(target), t) + Vector3.UP * sin(t * PI) * 0.3)
+				_draw_ribbon(mesh, points, 0.22, pink, true)
+				if elapsed > 0.2 and elapsed - get_process_delta_time() <= 0.2:
+					_strike()
+		_:
+			var shadow := _sprite(PixelShapes.get_texture("orb", Color(0.15, 0.1, 0.2)), 0.08)
+			var elapsed := 0.0
+			while elapsed < 0.5:
+				await get_tree().process_frame
+				elapsed += get_process_delta_time()
+				if not _alive(attacker) or not _alive(target):
+					break
+				shadow.global_position = _ground(attacker.global_position.lerp(target.global_position, elapsed / 0.5)) + Vector3.UP * 0.1
+				shadow.scale = Vector3(1.4, 0.4, 1.0)
+			PixelBurst.spawn(get_parent(), _center(target), PixelBurst.Kind.SMOKE, 0.9)
+			_strike()
+	queue_free()
+
+
+## Hada y Hielo: Brillo Mágico (destellos rosas en círculo), Fuerza Lunar (una luna cae),
+## Ventisca (cono de nieve), Canto Helado (carámbanos).
+func _fairy_ice(data: Array) -> void:
+	var mode: String = data[0]
+	var color := Color.html(data[1])
+	if not _alive(target):
+		queue_free()
+		return
+	match mode:
+		"gleam":
+			var stars: Array[Sprite3D] = []
+			for k in 10:
+				stars.append(_sprite(PixelShapes.get_texture("star", color), 0.06))
+			var elapsed := 0.0
+			var struck := false
+			while elapsed < 0.7:
+				await get_tree().process_frame
+				elapsed += get_process_delta_time()
+				if not _alive(attacker):
+					break
+				for k in stars.size():
+					var angle := TAU * k / stars.size() + elapsed * 3.0
+					var radius := 0.5 + elapsed * 6.0
+					stars[k].global_position = _center(attacker) + Vector3(cos(angle), 0.3 * sin(angle * 2.0), sin(angle)) * radius
+					stars[k].modulate.a = clampf((0.7 - elapsed) / 0.2, 0.0, 1.0)
+				if not struck and _alive(target) and 0.5 + elapsed * 6.0 >= attacker.global_position.distance_to(target.global_position):
+					struck = true
+					_strike()
+		"moon":
+			var moon := _sprite(PixelShapes.get_texture("moon", color), 0.09)
+			moon.global_position = _center(target) + Vector3(0, 7.0, 0)
+			var fall := moon.create_tween()
+			fall.tween_property(moon, "global_position", _center(target), 0.55).set_ease(Tween.EASE_IN)
+			await fall.finished
+			PixelBurst.spawn(get_parent(), _center(target), PixelBurst.Kind.HEAL, 1.2)
+			_strike("")
+			moon.queue_free()
+			await _wait(0.2)
+		"snow":
+			_stream_with(PixelShapes.get_texture("snow", color), 0.05, 0.9 if move_id == "blizzard" else 0.5, 1.2 if move_id == "blizzard" else 0.6)
+			return
+		"icicle":
+			_gust(["icicle", 3, 0.5, false])
+			return
+	queue_free()
+
+
+## Chorro genérico con textura propia (nieve de Ventisca y Viento Hielo).
+func _stream_with(texture: Texture2D, pixel_size: float, duration: float, spread: float) -> void:
+	var landed := false
+	var elapsed := 0.0
+	var drops: Array[Dictionary] = []
+	while elapsed < duration + 0.6:
+		await get_tree().process_frame
+		var delta := get_process_delta_time()
+		elapsed += delta
+		if not _alive(attacker):
+			break
+		var origin := _center(attacker)
+		var goal := _center(target) if _alive(target) else origin + Vector3.FORWARD * 6.0
+		if elapsed < duration:
+			for k in 2:
+				var drop := _sprite(texture, pixel_size)
+				drop.global_position = origin
+				drops.append({"node": drop, "t": 0.0, "wobble": Vector3(_rng.randf_range(-spread, spread), _rng.randf_range(-spread * 0.6, spread), _rng.randf_range(-spread, spread))})
+		for d in drops.duplicate():
+			var node: Sprite3D = d["node"]
+			d["t"] = float(d["t"]) + delta * 2.2
+			var t: float = d["t"]
+			node.global_position = origin.lerp(goal, minf(t, 1.0)) + (d["wobble"] as Vector3) * t
+			if t >= 1.0:
+				if not landed:
+					landed = true
+					_strike()
+				drops.erase(d)
+				node.queue_free()
+	for d in drops:
+		(d["node"] as Node).queue_free()
+	queue_free()
+
+
+## Auras de carga (Envite Ígneo, Voltio Cruel, Acua Jet, Pájaro Osado, Ataque Rápido…):
+## cubierto del color del tipo, embiste en línea recta dejando estela y golpea al llegar.
+func _charge() -> void:
+	if not _alive(target) or attacker.global_position.distance_to(target.global_position) > PokemonActor.RANGED_MAX:
+		queue_free()
+		return
+	var color := MoveFamilies.color_of(move_id, "")
+	var sprite := _attacker_sprite()
+	attacker.set_physics_process(false)
+	var start := attacker.global_position
+	var goal := target.global_position - (target.global_position - start).normalized() * 1.2
+	var texture := PixelShapes.get_texture("orb", color)
+	var elapsed := 0.0
+	var duration := 0.18 if move_id in ["quick-attack", "extreme-speed", "aqua-jet", "accelerock"] else 0.3
+	if sprite != null:
+		sprite.set_instance_shader_parameter("flash", 0.35)
+	while elapsed < duration:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(attacker):
+			queue_free()
+			return
+		attacker.global_position = start.lerp(goal, clampf(elapsed / duration, 0.0, 1.0))
+		var trail := _sprite(texture, 0.05)
+		trail.global_position = _center(attacker) + Vector3(_rng.randf_range(-0.3, 0.3), _rng.randf_range(-0.3, 0.3), 0)
+		trail.create_tween().tween_property(trail, "modulate:a", 0.0, 0.35)
+	if sprite != null:
+		sprite.set_instance_shader_parameter("flash", 0.0)
+	_strike("crack" if MoveFamilies.strong(move_id) else "")
+	PixelBurst.spawn(get_parent(), _center(target) if _alive(target) else goal, PixelBurst.Kind.DUST, 1.0)
+	attacker.set_physics_process(true)
+	await _wait(0.6)
+	queue_free()
+
+
+## Saltos aplastantes (Golpe Cuerpo, Patada Salto Alta, Pisotón…): salta alto y cae sobre
+## el rival con onda en el suelo.
+func _slam() -> void:
+	if not _alive(target) or attacker.global_position.distance_to(target.global_position) > PokemonActor.RANGED_MAX:
+		queue_free()
+		return
+	var sprite := _attacker_sprite()
+	attacker.set_physics_process(false)
+	var start := attacker.global_position
+	var goal := target.global_position - (target.global_position - start).normalized() * 0.8
+	var elapsed := 0.0
+	while elapsed < 0.55:
+		await get_tree().process_frame
+		elapsed += get_process_delta_time()
+		if not _alive(attacker):
+			queue_free()
+			return
+		var t := clampf(elapsed / 0.55, 0.0, 1.0)
+		attacker.global_position = start.lerp(goal, t)
+		if sprite != null:
+			sprite.position.y = sin(t * PI) * 3.0
+	if sprite != null:
+		sprite.position.y = 0.0
+	var ring := _sprite(PixelShapes.get_texture("ring", Color(0.8, 0.7, 0.5)), 0.06)
+	ring.global_position = _ground(goal) + Vector3.UP * 0.2
+	var grow := ring.create_tween()
+	grow.tween_property(ring, "scale", Vector3.ONE * 3.0, 0.3)
+	grow.parallel().tween_property(ring, "modulate:a", 0.0, 0.3)
+	PixelBurst.spawn(get_parent(), _ground(goal) + Vector3.UP * 0.3, PixelBurst.Kind.DUST, 1.2)
+	_strike("crack")
+	attacker.set_physics_process(true)
+	await _wait(0.4)
+	queue_free()
+
+
+## Explosiones (Explosión, Autodestrucción, Onda Tóxica…): estallido en anillo con humo y
+## temblor; alcanza al rival si está cerca.
+func _explosion() -> void:
+	var color := MoveFamilies.color_of(move_id, "")
+	var center := _center(attacker)
+	var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
+	if rig != null:
+		rig.shake(1.0)
+	for k in 3:
+		var ring := _sprite(PixelShapes.get_texture("ring", color), 0.08)
+		ring.global_position = center
+		var grow := ring.create_tween()
+		grow.tween_property(ring, "scale", Vector3.ONE * (3.0 + k), 0.45)
+		grow.parallel().tween_property(ring, "modulate:a", 0.0, 0.45)
+	for k in 6:
+		PixelBurst.spawn(get_parent(), center + Vector3(_rng.randf_range(-1.5, 1.5), _rng.randf_range(-0.3, 1.2), _rng.randf_range(-1.5, 1.5)), PixelBurst.Kind.SMOKE, 1.2)
+	await _wait(0.15)
+	if _alive(target) and attacker.global_position.distance_to(target.global_position) < PokemonActor.RANGED_MAX:
+		_strike("scorch")
+	await _wait(0.6)
+	queue_free()
+
+
+## Sonido (Vozarrón, Estruendo, Zumbido…): arcos de onda y notas que viajan al rival.
+func _sound(notes_only: bool) -> void:
+	var color := MoveFamilies.color_of(move_id, "")
+	var struck := false
+	var elapsed := 0.0
+	var waves: Array[Dictionary] = []
+	while elapsed < 0.9:
+		await get_tree().process_frame
+		var delta := get_process_delta_time()
+		elapsed += delta
+		if not _alive(attacker):
+			break
+		if waves.size() < 6 and int(elapsed * 10.0) >= waves.size() * 1.5:
+			var shape := "note" if notes_only or waves.size() % 2 == 1 else "ring"
+			var node := _sprite(PixelShapes.get_texture(shape, color), 0.07 if shape == "ring" else 0.07)
+			waves.append({"node": node, "t": 0.0})
+		var goal := _center(target) if _alive(target) else _center(attacker) + Vector3.FORWARD * 6.0
+		for w in waves:
+			w["t"] = float(w["t"]) + delta * 1.8
+			var t: float = w["t"]
+			var node: Sprite3D = w["node"]
+			node.global_position = _center(attacker).lerp(goal, minf(t, 1.0)) + Vector3.UP * sin(t * 6.0) * 0.2
+			node.scale = Vector3.ONE * (0.6 + t)
+			node.modulate.a = clampf(1.2 - t, 0.0, 1.0)
+			if t >= 1.0 and not struck and not notes_only:
+				struck = true
+				_strike()
+	queue_free()
+
+
+## Ida y Vuelta, Voltiocambio, Viraje: golpea y vuelve a la ball; si es tu compañero en un
+## combate, sale el siguiente de tu equipo.
+func _uturn() -> void:
+	var data: Array = ["slash" if move_id == "u-turn" else "fist", "", 1]
+	await _melee_hit_only(data)
+	if not _alive(attacker):
+		queue_free()
+		return
+	var battle := get_tree().get_first_node_in_group(&"battle") as BattleManager
+	if attacker.role == PokemonActor.Role.COMPANION and battle != null and battle.active and battle.next_healthy() >= 0:
+		battle.set("_switch_cooldown", 0.0)
+		battle.switch_to(battle.next_healthy())
+	else:
+		# Salvaje o sin cambio: salta hacia atrás como si regresara.
+		var back := attacker.global_position + (attacker.global_position - (target.global_position if _alive(target) else attacker.global_position)).normalized() * 3.0
+		attacker.create_tween().tween_property(attacker, "global_position", back, 0.25)
+	queue_free()
+
+
+func _melee_hit_only(data: Array) -> void:
+	await _wait(0.12)
+	if not _alive(attacker) or not _alive(target):
+		return
+	var sprite := _sprite(PixelShapes.get_texture(data[0], MoveFamilies.color_of(move_id, data[1])), 0.07)
+	sprite.global_position = _center(target)
+	_strike()
+	sprite.create_tween().tween_property(sprite, "modulate:a", 0.0, 0.3)
+	await _wait(0.3)
+
+
+## Firmas de legendarios: combinaciones únicas y más grandes.
+func _signature() -> void:
+	match move_id:
+		"aeroblast":
+			await _beam_wait(["e8eef8", 0.8, 0.9, true])
+		"roar-of-time":
+			await _rings_at(_center(attacker), Color(0.35, 0.55, 1.0), 5, 8.0)
+			_strike("crack")
+		"spacial-rend":
+			if _alive(target):
+				for k in 2:
+					var cut := _sprite(PixelShapes.get_texture("cross", Color(1.0, 0.5, 0.85)), 0.16)
+					cut.global_position = _center(target)
+					cut.create_tween().tween_property(cut, "modulate:a", 0.0, 0.5)
+					await _wait(0.12)
+				_strike("crack")
+		"origin-pulse":
+			for k in 5:
+				_sky_beam(Color(0.3, 0.6, 1.0))
+				await _wait(0.12)
+			_strike("puddle")
+		"precipice-blades":
+			await _sky_wait(["spike", 6, "crack"], Color(0.95, 0.35, 0.2))
+		"dragon-ascent":
+			await _charge_wait()
+		_:
+			await _sky_wait(["orb", 4, "scorch"], MoveFamilies.color_of(move_id, ""))
+	var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
+	if rig != null:
+		rig.shake(1.0)
+	await _wait(0.4)
+	queue_free()
+
+
+## Definitivos de los iniciales: Planta Feroz (raíces gigantes), Anillo Ígneo (columna de
+## fuego) e Hidrocañón (cañonazo de agua).
+func _ultimate() -> void:
+	if not _alive(target):
+		queue_free()
+		return
+	var rig := get_tree().get_first_node_in_group(CameraRig.CAMERA_GROUP) as CameraRig
+	match move_id:
+		"frenzy-plant":
+			var texture := PixelShapes.get_texture("vine")
+			for k in 6:
+				var angle := TAU * k / 6.0
+				var root := Vector3(cos(angle), 0, sin(angle)) * 2.0
+				for seg in 10:
+					var node := _sprite(texture, 0.09)
+					node.global_position = _ground(target.global_position + root * (1.0 - seg / 10.0)) + Vector3.UP * seg * 0.35
+					node.modulate.a = 0.0
+					var tween := node.create_tween()
+					tween.tween_interval(seg * 0.03)
+					tween.tween_property(node, "modulate:a", 1.0, 0.05)
+					tween.tween_interval(0.6)
+					tween.tween_property(node, "modulate:a", 0.0, 0.3)
+			await _wait(0.35)
+			_strike("crack")
+		"blast-burn":
+			for k in 14:
+				var flame := _sprite(PixelShapes.get_texture("flame"), 0.12)
+				flame.global_position = _ground(target.global_position) + Vector3(_rng.randf_range(-0.6, 0.6), k * 0.4, _rng.randf_range(-0.6, 0.6))
+				flame.scale = Vector3.ONE * (1.6 - k * 0.07)
+				var tween := flame.create_tween()
+				tween.tween_interval(0.6 + k * 0.02)
+				tween.tween_property(flame, "modulate:a", 0.0, 0.3)
+				await _wait(0.02)
+			_strike("scorch")
+		"hydro-cannon":
+			var ball := _sprite(PixelShapes.get_texture("orb", Color(0.3, 0.6, 1.0)), 0.18)
+			ball.global_position = _center(attacker)
+			var shot := ball.create_tween()
+			shot.tween_property(ball, "global_position", _center(target), 0.35)
+			await shot.finished
+			ball.queue_free()
+			for k in 3:
+				PixelBurst.spawn(get_parent(), _center(target) + Vector3(_rng.randf_range(-0.8, 0.8), _rng.randf_range(0, 1), 0), PixelBurst.Kind.SPLASH, 1.4)
+			_strike("puddle")
+	if rig != null:
+		rig.shake(1.0)
+	await _wait(0.8)
+	queue_free()
+
+
+# Variantes que esperan a terminar (para combinarlas en las firmas).
+
+func _beam_wait(data: Array) -> void:
+	var fx := MoveFx.new()
+	fx.attacker = attacker
+	fx.target = target
+	fx.move_id = move_id
+	fx.hit = hit
+	get_parent().add_child(fx)
+	fx._beam(data)
+	hit = Callable()
+	await _wait(float(data[2]))
+
+
+func _sky_wait(data: Array, color: Color) -> void:
+	var fx := MoveFx.new()
+	fx.attacker = attacker
+	fx.target = target
+	fx.move_id = move_id
+	fx.hit = hit
+	get_parent().add_child(fx)
+	fx._sky(data)
+	hit = Callable()
+	await _wait(0.6 * int(data[1]))
+
+
+func _charge_wait() -> void:
+	var fx := MoveFx.new()
+	fx.attacker = attacker
+	fx.target = target
+	fx.move_id = move_id
+	fx.hit = hit
+	get_parent().add_child(fx)
+	fx._charge()
+	hit = Callable()
+	await _wait(0.6)
+
+
+func _rings_at(at: Vector3, color: Color, count: int, size: float) -> void:
+	for k in count:
+		var ring := _sprite(PixelShapes.get_texture("ring", color), 0.08)
+		ring.global_position = at
+		var grow := ring.create_tween()
+		grow.tween_property(ring, "scale", Vector3.ONE * size, 0.6)
+		grow.parallel().tween_property(ring, "modulate:a", 0.0, 0.6)
+		await _wait(0.1)
+
+
+func _sky_beam(color: Color) -> void:
+	if not _alive(target):
+		return
+	var mesh := _ribbon_mesh()
+	var glow := _glow_material(color, 0.85)
+	var at := _ground(target.global_position + Vector3(_rng.randf_range(-1.5, 1.5), 0, _rng.randf_range(-1.5, 1.5)))
+	_draw_ribbon(mesh, PackedVector3Array([at + Vector3.UP * 14.0, at]), 0.5, glow, true)
+	var tween := mesh.create_tween()
+	tween.tween_interval(0.3)
+	tween.tween_callback(mesh.queue_free)
+
+
+# --- Estado ------------------------------------------------------------------------------
+
+func _status(mode: String) -> void:
+	var color := MoveFamilies.color_of(move_id, "")
+	match mode:
+		"swords":
+			var swords: Array[Sprite3D] = []
+			for k in 4:
+				swords.append(_sprite(PixelShapes.get_texture("sword", color), 0.06))
+			var elapsed := 0.0
+			while elapsed < 1.0:
+				await get_tree().process_frame
+				elapsed += get_process_delta_time()
+				if not _alive(attacker):
+					break
+				for k in swords.size():
+					var angle := TAU * k / 4.0 + elapsed * 6.0
+					swords[k].global_position = _center(attacker) + Vector3(cos(angle), 0.6, sin(angle)) * 1.1
+		"aura", "speed":
+			for k in 4:
+				if not _alive(attacker):
+					break
+				var ring := _sprite(PixelShapes.get_texture("ring", color), 0.04)
+				ring.global_position = _ground(attacker.global_position) + Vector3.UP * 0.2
+				var rise := ring.create_tween()
+				rise.tween_property(ring, "global_position:y", ring.global_position.y + 1.8, 0.5)
+				rise.parallel().tween_property(ring, "modulate:a", 0.0, 0.5)
+				if mode == "speed":
+					PixelBurst.spawn(get_parent(), attacker.global_position + Vector3.UP * 0.4, PixelBurst.Kind.DUST, 0.5)
+				await _wait(0.12)
+		"shield":
+			var shield := _sprite(PixelShapes.get_texture("ring", Color(0.6, 0.95, 0.6) if move_id == "protect" or move_id == "detect" else color), 0.07)
+			var elapsed := 0.0
+			while elapsed < 1.1:
+				await get_tree().process_frame
+				elapsed += get_process_delta_time()
+				if not _alive(attacker):
+					break
+				shield.global_position = _center(attacker)
+				shield.scale = Vector3.ONE * (1.0 + sin(elapsed * 12.0) * 0.05) * maxf(1.0, attacker.species.size_scale)
+				shield.modulate.a = clampf((1.1 - elapsed) / 0.3, 0.0, 1.0)
+		"rain", "sun", "hail", "sand":
+			var kinds := {"rain": Weather.Kind.RAIN, "sun": Weather.Kind.CLEAR, "hail": Weather.Kind.SNOW, "sand": Weather.Kind.SAND}
+			Weather.forced = int(kinds[mode])
+			GameState.notice.emit({"rain": "¡Empezó a llover!", "sun": "¡El sol pega fuerte!", "hail": "¡Empezó a granizar!", "sand": "¡Se levantó una tormenta de arena!"}[mode])
+			await _rings_at(_center(attacker), color, 2, 6.0)
+			# El clima dura unos minutos y luego vuelve el normal.
+			get_tree().create_timer(90.0).timeout.connect(func() -> void:
+				if Weather.forced == int(kinds[mode]):
+					Weather.forced = -1)
+		"terrain":
+			var ground := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = Vector2(16, 16)
+			ground.mesh = quad
+			var material := _glow_material(color, 0.35)
+			ground.material_override = material
+			ground.rotation.x = -PI * 0.5
+			get_parent().add_child(ground)
+			ground.global_position = _ground(attacker.global_position) + Vector3.UP * 0.05
+			var fade := ground.create_tween()
+			fade.tween_interval(20.0)
+			fade.tween_property(material, "albedo_color:a", 0.0, 2.0)
+			fade.tween_callback(ground.queue_free)
+		"powder":
+			await _over_target("cloud", color, "ZZZ" if move_id in ["sleep-powder", "spore"] else ("PAR" if move_id == "stun-spore" else "PSN"))
+		"zap":
+			if _alive(target):
+				var mesh := _ribbon_mesh()
+				var glow := _glow_material(Color(1.0, 0.9, 0.25), 0.9)
+				for k in 6:
+					var points := PackedVector3Array()
+					for i in 8:
+						points.append(_center(attacker).lerp(_center(target), i / 7.0) + Vector3(0, _rng.randf_range(-0.2, 0.2), 0))
+					_draw_ribbon(mesh, points, 0.15, glow, true)
+					await _wait(0.05)
+				_label_over(target, "PAR", Color(1.0, 0.9, 0.3))
+		"wisp":
+			if _alive(target):
+				var wisp := _sprite(PixelShapes.get_texture("orb", Color(0.55, 0.4, 1.0) if move_id == "will-o-wisp" else Color(1.0, 0.85, 0.3)), 0.06)
+				var tween := wisp.create_tween()
+				wisp.global_position = _center(attacker)
+				tween.tween_property(wisp, "global_position", _center(target), 0.5)
+				await tween.finished
+				_label_over(target, "BRN" if move_id == "will-o-wisp" else "¿?", Color(1.0, 0.5, 0.3))
+		"waves":
+			await _rings_toward(Color(0.85, 0.85, 1.0))
+		"notes":
+			await _sound_wait()
+			if _alive(target):
+				_label_over(target, "ZZZ", Color(0.8, 0.85, 1.0))
+		"eyes":
+			var eye := _sprite(PixelShapes.get_texture("eye", Color(0.85, 0.15, 0.15)), 0.05)
+			eye.global_position = _center(attacker) + Vector3.UP * 0.6
+			eye.create_tween().tween_property(eye, "modulate:a", 0.0, 0.8)
+			if _alive(target):
+				var sprite := target.get("_sprite") as Sprite3D
+				if sprite != null:
+					var shrink := sprite.create_tween()
+					shrink.tween_property(sprite, "scale", Vector3(0.9, 0.9, 1.0), 0.15)
+					shrink.tween_property(sprite, "scale", Vector3.ONE, 0.2)
+			await _wait(0.8)
+		"hearts", "feathers":
+			var shape := "heart" if mode == "hearts" else "feather"
+			for k in 5:
+				if not _alive(attacker) or not _alive(target):
+					break
+				var node := _sprite(PixelShapes.get_texture(shape, Color(1.0, 0.5, 0.7) if mode == "hearts" else Color(0.95, 0.95, 1.0)), 0.05)
+				node.global_position = _center(attacker)
+				var tween := node.create_tween()
+				tween.tween_property(node, "global_position", _center(target) + Vector3(_rng.randf_range(-0.5, 0.5), _rng.randf_range(0, 0.8), 0), 0.6)
+				tween.tween_property(node, "modulate:a", 0.0, 0.2)
+				await _wait(0.1)
+			await _wait(0.6)
+		"web-shot":
+			if _alive(target):
+				var web := _sprite(PixelShapes.get_texture("web"), 0.06)
+				web.global_position = _center(attacker)
+				var tween := web.create_tween()
+				tween.tween_property(web, "global_position", _center(target), 0.35)
+				tween.tween_interval(0.8)
+				tween.tween_property(web, "modulate:a", 0.0, 0.3)
+				await _wait(1.4)
+		"hazard":
+			_place_hazards()
+		"clones":
+			var sprite := _attacker_sprite()
+			if sprite != null:
+				for k in 3:
+					var clone := sprite.duplicate() as Sprite3D
+					add_child(clone)
+					clone.global_position = attacker.global_position + Vector3(cos(k * 2.1), 0, sin(k * 2.1)) * 1.4
+					clone.modulate.a = 0.5
+				await _wait(2.0)
+		"doll":
+			var doll := _sprite(PixelShapes.get_texture("doll"), 0.07)
+			doll.global_position = _ground(attacker.global_position) + attacker.global_basis.x * 1.2 + Vector3.UP * 0.5
+			PixelBurst.spawn(get_parent(), doll.global_position, PixelBurst.Kind.SMOKE, 0.6)
+			await _wait(3.0)
+		"transform":
+			for k in 8:
+				PixelBurst.spawn(get_parent(), _center(attacker) + Vector3(_rng.randf_range(-0.6, 0.6), _rng.randf_range(-0.4, 0.6), 0), PixelBurst.Kind.HEAL, 0.5)
+			await _wait(0.6)
+	queue_free()
+
+
+## Nube que cae sobre el rival y el ícono del estado sobre su cabeza.
+func _over_target(shape: String, color: Color, icon: String) -> void:
+	if not _alive(target):
+		return
+	var cloud := _sprite(PixelShapes.get_texture(shape, color), 0.13)
+	cloud.global_position = _center(target) + Vector3.UP * 2.0
+	var tween := cloud.create_tween()
+	tween.tween_property(cloud, "global_position", _center(target) + Vector3.UP * 0.4, 0.5)
+	tween.tween_property(cloud, "modulate:a", 0.0, 0.4)
+	await tween.finished
+	if _alive(target):
+		_label_over(target, icon, color.lightened(0.2))
+
+
+func _label_over(node: Node3D, text: String, color: Color) -> void:
+	if node is PokemonActor:
+		(node as PokemonActor).float_text(text, color, 0.6)
+
+
+func _rings_toward(color: Color) -> void:
+	for k in 3:
+		if not _alive(attacker):
+			break
+		var ring := _sprite(PixelShapes.get_texture("ring", color), 0.04)
+		ring.global_position = _center(attacker)
+		var goal := _center(target) if _alive(target) else _center(attacker) + Vector3.FORWARD * 4.0
+		var tween := ring.create_tween()
+		tween.tween_property(ring, "global_position", goal, 0.5)
+		tween.parallel().tween_property(ring, "scale", Vector3.ONE * 2.0, 0.5)
+		tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.5)
+		await _wait(0.15)
+	await _wait(0.4)
+
+
+func _sound_wait() -> void:
+	var fx := MoveFx.new()
+	fx.attacker = attacker
+	fx.target = target
+	fx.move_id = move_id
+	get_parent().add_child(fx)
+	fx._sound(true)
+	await _wait(0.9)
+
+
+## Trampas: de 3 a 5 alrededor del rival (Red Viscosa: una red).
+func _place_hazards() -> void:
+	var center := target.global_position if _alive(target) else attacker.global_position + Vector3.FORWARD * 3.0
+	var count := 1 if move_id == "sticky-web" else 4
+	for k in count:
+		var hazard := MoveHazard.new()
+		hazard.owner_actor = attacker
+		hazard.kind = move_id
+		var shape: String = {"stealth-rock": "rock", "toxic-spikes": "caltrop", "sticky-web": "web"}.get(move_id, "caltrop")
+		var look := Sprite3D.new()
+		look.texture = PixelShapes.get_texture(shape, Color(0.65, 0.3, 0.75) if move_id == "toxic-spikes" else Color(0.6, 0.55, 0.5))
+		look.pixel_size = 0.07 if shape != "web" else 0.09
+		look.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		look.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y if shape != "web" else BaseMaterial3D.BILLBOARD_DISABLED
+		look.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		look.shaded = false
+		if shape == "web":
+			look.rotation.x = -PI * 0.5
+		hazard.add_child(look)
+		get_parent().add_child(hazard)
+		var spot := center + Vector3(cos(TAU * k / count), 0, sin(TAU * k / count)) * (1.6 if count > 1 else 0.0)
+		hazard.global_position = _ground(spot) + Vector3.UP * (0.25 if shape != "web" else 0.05)
+	await _wait(0.2)

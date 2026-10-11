@@ -1311,6 +1311,9 @@ func use_move(id: String, target: Node3D, style: int = Moves.Style.NORMAL) -> vo
 	if not party_entry.is_empty():
 		Moves.register_use(party_entry, id)
 	var hit := func(node: Node3D) -> bool: return _apply_move_hit(node, id, style)
+	# Animación de los ataques de estado (mejoras, clima, estados, trampas…; ver MoveFx).
+	if move["class"] == "status":
+		MoveFx.play_status(self, target, id)
 	match Moves.effect(id):
 		"damage":
 			if target != null:
