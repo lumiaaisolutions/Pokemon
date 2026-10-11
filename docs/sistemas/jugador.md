@@ -48,6 +48,11 @@
 - Mientras Nate está desmayado, la cámara sigue al compañero.
 - Pokémon grandes que tapan a Nate se vuelven semitransparentes; la barra de vida de un salvaje se oculta si está a menos de 4.5 m de la cámara.
 
+## Guardar y sacar al compañero (Poké Ball en la mano)
+Código: `world/main.gd` (`_hand_position`, `_send_out_companion`, `_recall_companion`), `world/effects/recall_beam.gd`.
+- Con Q (△) la Poké Ball sale o regresa con un rayo rojo (como en el anime): al sacar, la ball se abre con un destello y el rayo forma al Pokémon, que crece; al guardar, el Pokémon se pone rojo, se encoge y viaja por el rayo hasta la ball.
+- **La ball sale de la mano de Nate**, no de su cabeza: `_hand_position()` usa la altura real de la mano del sprite (no el pecho), un poco adelantada hacia donde mira (`DirectionalSprite.facing_world`, no la cámara) y al costado, como si la sacara del cinturón y la mostrara al frente. **Arreglado (2026-10-10, pedido tras probar el juego):** antes usaba una altura fija relativa a la cámara (1 m, pensada para el pecho) que, con las proporciones chibi del sprite (cabeza grande, cuerpo corto), quedaba a la altura de la cara; se bajó a la altura real de la mano (0.5 m) y se verificó con capturas de pantalla (sonda temporal en `tests/_tmp/` con `godot --path . escena.tscn --resolution 1280x720 -- ruta.png`, borrada tras comprobar el resultado).
+
 ## Guía de botones
 - **Leyenda** abajo a la derecha con íconos (`ui/input_glyph.gd`): símbolos de PlayStation dibujados en pixel art (✕ ○ □ △ con sus colores), teclas como teclado y el mouse con el botón resaltado. Cambia según el contexto: explorar, apuntar, nadar, bucear o surfear.
 - **Tarjetas de tutorial** arriba a la izquierda la primera vez que algo es posible (moverse, apuntar y lanzar, nadar y surfear), una vez por partida (`GameState.tips_seen`).

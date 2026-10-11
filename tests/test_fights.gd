@@ -81,6 +81,73 @@ func _run() -> void:
 	_clear_wild()
 	await _frames(2)
 
+	# IA en combate "según su carácter" (Fernando, 2026-10-10): los veloces de ataque
+	# especial mantienen distancia media en vez de pegarse (kiting).
+	var jolteon := _spawner.spawn_species(_species("jolteon"), arena, false, false)
+	var dummy_kite := _spawner.spawn_species(_species("bidoof"), arena + Vector3(2, 0, 0), false, false)
+	dummy_kite.set_physics_process(false)
+	# Mucha vida: que no caiga a medio combate y se corte la medición.
+	dummy_kite.hp_max = 1000000.0
+	dummy_kite.hp = dummy_kite.hp_max
+	# Movimientos fijos: que tenga un ataque especial de verdad (Impactrueno), sin azar.
+	jolteon.moves.assign(["thunder-shock", "quick-attack", "sand-attack", "tail-whip"])
+	jolteon.start_fight(dummy_kite)
+	var distance_sum := 0.0
+	var distance_samples := 0
+	for i in 420:
+		await get_tree().physics_frame
+		if i >= 90 and jolteon.state == PokemonActor.State.FIGHT:
+			distance_sum += jolteon.global_position.distance_to(dummy_kite.global_position)
+			distance_samples += 1
+	var average_distance := distance_sum / maxf(float(distance_samples), 1.0)
+	_check(distance_samples > 0 and average_distance > 3.0, "Jolteon (veloz, especial) debe mantener distancia media > 3 m peleando (%.1f m)" % average_distance)
+	_clear_wild()
+	await _frames(2)
+
+	# Los fuertes cuerpo a cuerpo (Machamp) entran a golpear y se retiran (hit-and-run).
+	var machamp := _spawner.spawn_species(_species("machamp"), arena, false, false)
+	var dummy_bruiser := _spawner.spawn_species(_species("bidoof"), arena + Vector3(1, 0, 0), false, false)
+	dummy_bruiser.set_physics_process(false)
+	# Mucha vida: que no caiga a medio combate y se corte la medición.
+	dummy_bruiser.hp_max = 1000000.0
+	dummy_bruiser.hp = dummy_bruiser.hp_max
+	# Movimientos fijos: todos físicos, sin azar.
+	machamp.moves.assign(["karate-chop", "low-kick", "leer", "focus-energy"])
+	machamp.start_fight(dummy_bruiser)
+	var min_distance := INF
+	var max_distance := 0.0
+	for i in 420:
+		await get_tree().physics_frame
+		if machamp.state == PokemonActor.State.FIGHT:
+			var d := machamp.global_position.distance_to(dummy_bruiser.global_position)
+			min_distance = minf(min_distance, d)
+			max_distance = maxf(max_distance, d)
+	_check(min_distance <= PokemonActor.MELEE_RANGE + 0.6, "Machamp (fuerte cuerpo a cuerpo) debe acercarse a golpear (mínimo %.1f m)" % min_distance)
+	_check(max_distance >= PokemonActor.MELEE_RANGE * 2.0, "Machamp debe retirarse tras golpear, no quedarse pegado (máximo %.1f m)" % max_distance)
+	_clear_wild()
+	await _frames(2)
+
+	# Esquivar un ataque que se ve venir (dash corto), con probabilidad según la velocidad.
+	# Mucha vida en ambos: que la pelea dure lo suficiente para dar varias oportunidades
+	# de esquivar, sin cortarse porque alguno cae debilitado.
+	var dodger := _spawner.spawn_species(_species("jolteon"), arena, false, false)
+	var striker := _spawner.spawn_species(_species("absol"), arena + Vector3(2, 0, 0), false, false)
+	dodger.hp_max = 1000000.0
+	dodger.hp = dodger.hp_max
+	striker.hp_max = 1000000.0
+	striker.hp = striker.hp_max
+	dodger.start_fight(striker)
+	striker.start_fight(dodger)
+	var dash_seen := false
+	for i in 1800:
+		await get_tree().physics_frame
+		if (is_instance_valid(dodger) and dodger.is_dashing()) or (is_instance_valid(striker) and striker.is_dashing()):
+			dash_seen = true
+			break
+	_check(dash_seen, "en una pelea real, alguno debe esquivar al menos un ataque que vio venir")
+	_clear_wild()
+	await _frames(2)
+
 	# El agresivo ataca al más débil; el tímido no inicia peleas.
 	var absol := _spawner.spawn_species(_species("absol"), arena, false, false)
 	var bidoof := _spawner.spawn_species(_species("bidoof"), arena + Vector3(5, 0, 0), false, false)
