@@ -137,3 +137,4 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 
 ### Gimnasios (reportado 2026-10-10 noche)
 - Mismo problema que la tienda y el centro: cosas incompletas, zonas negras y poca luz. Entra en el arreglo general de interiores (luz propia cálida, paredes y piso completos, nada flotando, nada fuera del cuarto).
+- **Se atraviesan las paredes de los edificios** por fuera (el jugador queda dentro del modelo). Prioridad alta en la rama fisica-edificios, con prueba que camine contra las 4 caras de cada edificio.
