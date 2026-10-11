@@ -123,9 +123,9 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 
 ### Casas y otros interiores (reportado 2026-10-10 noche)
 - Por dentro: sin iluminación, paredes oscuras, cosas desfasadas o incompletas (se ve como agua en el piso de una casa). Revisar que no pase en ningún interior ni estructura (misma decisión de luz propia cálida). **Hecho (base, 2026-10-10, rama `interiores`):** mismo arreglo de cámara, techo, luz y contorno que la tienda y el Centro; revisado por capturas de día y de noche en casa, laboratorio y gimnasio.
-- Por fuera: la puerta de la casa no se ve (caja oscura en la fachada) y la cámara hace mucho zoom al estar cerca (choca con cercas y arbustos). Asignado al arreglo de edificios (rama fisica-edificios). **Sigue pendiente** (es por fuera, no es la rama `interiores`).
+- Por fuera: la puerta de la casa no se ve (caja oscura en la fachada) y la cámara hace mucho zoom al estar cerca (choca con cercas y arbustos). Asignado al arreglo de edificios (rama fisica-edificios). **Hecho** (rama fisica-edificios, fusionada el 2026-10-11).
 - Casa por dentro: objetos fuera del cuarto flotando en el vacío (ventana, cubeta) y zonas negras por donde se puede caminar (piso fuera de las paredes). Va con el arreglo de interiores. **Hecho:** no se vio ninguno de estos casos en las capturas; el contorno ahora tapa los huecos del modelo.
-- Por fuera se atraviesa la puerta/fachada; el laboratorio por fuera es una caja azul con techo (no parece laboratorio). Asignado a la rama fisica-edificios. **Sigue pendiente** (por fuera).
+- Por fuera se atraviesa la puerta/fachada; el laboratorio por fuera es una caja azul con techo (no parece laboratorio). Asignado a la rama fisica-edificios. **Hecho.** **Hecho** (rama fisica-edificios: colisión de todo el contorno y núcleo solo atrás).
 - Al hablar con un líder solo sale un aviso ("El líder del gimnasio de … usa Pokémon de un solo tipo") en vez de una conversación con él. Esto ya usaba `DialogBox` al revisar el código (`talk_leader`, `ask_leader`); con el arreglo de interiores también pasan a `DialogBox` el profesor, el entrenador del gimnasio ya vencido, el juez de la Sala de Concursos y el tutor de movimientos, que seguían con avisos sueltos.
 
 ### Centro Pokémon (pedido y decisiones de Fernando, 2026-10-10 noche)
@@ -138,7 +138,7 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 
 ### Gimnasios (reportado 2026-10-10 noche)
 - Mismo problema que la tienda y el centro: cosas incompletas, zonas negras y poca luz. Entra en el arreglo general de interiores (luz propia cálida, paredes y piso completos, nada flotando, nada fuera del cuarto). **Hecho (base, 2026-10-10, rama `interiores`):** mismo arreglo; además, uno de los gimnasios (hielo) tenía el piso mal detectado (confundía un plano de fondo decorativo con el piso real) y quedaba vacío y oscuro — ya corregido, revisado con los 6 modelos de gimnasio.
-- **Se atraviesan las paredes de los edificios** por fuera (el jugador queda dentro del modelo). Prioridad alta en la rama fisica-edificios, con prueba que camine contra las 4 caras de cada edificio. **Sigue pendiente** (por fuera, no es la rama `interiores`).
+- **Se atraviesan las paredes de los edificios** por fuera (el jugador queda dentro del modelo). Prioridad alta en la rama fisica-edificios, con prueba que camine contra las 4 caras de cada edificio. **Hecho** (rama fisica-edificios, fusionada el 2026-10-11).
 
 ### Todo en 3D estilo B2W2 (decisión de Fernando, 2026-10-10 noche)
 - Árboles, rocas y piedras, arbustos, flores, cactus **y la hierba alta** pasan a 3D, con **modelos reales de B2W2** (models.spriters-resource.com; permiso por cada descarga, Fernando pasa el Cloudflare si aparece).
@@ -150,16 +150,16 @@ Reportados por Fernando con capturas mientras avanzaba la fase 5.8.
 
 ### Más pedidos tras probar (2026-10-10, noche) — por diseñar con Fernando o por hacer
 - **Poké Ball (hecho):** atraviesa a los posados en árboles → ahora se les atina (caen al pie del árbol); rebota en lo que golpea; al atinar, rayo rojo que atrapa al Pokémon y luego las 3 sacudidas.
-- **Dormir en la tienda de campaña:** animación de entrar, "Zzz" y lo que hace mientras duerme (hoy solo pasa de noche a día de golpe). También animaciones para Cocinar y Recoger. **Por preguntar ideas.**
-- **Botones de todas las interfaces** (p. ej. Dormir/Cocinar/Recoger/Nada): mejor diseño, más visual. **Por preguntar.**
+- **Dormir en la tienda de campaña:** animación de entrar, "Zzz" y lo que hace mientras duerme (hoy solo pasa de noche a día de golpe). También animaciones para Cocinar y Recoger. **Decidido y hecho** (ver secciones de decisiones más abajo).
+- **Botones de todas las interfaces** (p. ej. Dormir/Cocinar/Recoger/Nada): mejor diseño, más visual. **Decidido y hecho** (ver secciones de decisiones más abajo).
 - **Rival:** apareció, retó y desapareció sin que se supiera si había que pelear. Bug por revisar (flujo claro: diálogo con opciones o combate obligatorio).
-- **Pueblos:** más grandes, más detalle y decoración (sin bugs visuales), más cosas que hacer, identidad propia y diferencias reales entre ellos (algunos sin cosas que otros sí tienen). **Por preguntar.**
+- **Pueblos:** más grandes, más detalle y decoración (sin bugs visuales), más cosas que hacer, identidad propia y diferencias reales entre ellos (algunos sin cosas que otros sí tienen). **Decidido y hecho** (ver secciones de decisiones más abajo).
 - **Vecino que solo da avisos:** corregido (hablan en la caja de diálogo); revisar que nadie más hable por avisos.
-- **Mapa y mundo:** pocos puntos de interés; más eventos aleatorios, misiones extra y zonas exclusivas (como se acordó). **Por preguntar.**
+- **Mapa y mundo:** pocos puntos de interés; más eventos aleatorios, misiones extra y zonas exclusivas (como se acordó). **Decidido y hecho** (ver secciones de decisiones más abajo).
 - **Pantano tóxico:** envenena progresivamente al jugador, a tu Pokémon fuera y a los salvajes que pasen; no afecta a los Pokémon tipo Veneno ni a los que el veneno no afecta (Acero; habilidades como Inmunidad).
 - **Mochila (hecho):** al acabarse un objeto, la descripción y las acciones de la derecha se quedaban; ahora desaparecen.
-- **Rotom Móvil:** rediseño más visual e intuitivo, con forma de Rotom Teléfono (naranja con ojos), interactivo y sin amontonar; todo lo del Rotom con ese estilo; recursos de estilo BW2 si se pueden descargar. **Por preguntar.**
-- **Todos los apartados del menú sin excepción** (Dinero, Equipo, Mochila, Pokédex, Cajas, Logros, Ficha, Mapa, Controles, Opciones, Guardar): responsivos, más interactivos, sin amontonar, más visuales y que se entienda cada cosa. **Por preguntar.**
+- **Rotom Móvil:** rediseño más visual e intuitivo, con forma de Rotom Teléfono (naranja con ojos), interactivo y sin amontonar; todo lo del Rotom con ese estilo; recursos de estilo BW2 si se pueden descargar. **Decidido y hecho** (ver secciones de decisiones más abajo).
+- **Todos los apartados del menú sin excepción** (Dinero, Equipo, Mochila, Pokédex, Cajas, Logros, Ficha, Mapa, Controles, Opciones, Guardar): responsivos, más interactivos, sin amontonar, más visuales y que se entienda cada cosa. **Decidido y hecho** (ver secciones de decisiones más abajo).
 
 ### Decisiones de Fernando (2026-10-10, noche, ronda 3)
 - **Veneno del pantano tóxico (hecho, `world/hazards/toxic_swamp.gd`):** estado que dura: pisar el agua morada envenena; pierdes vida poco a poco mientras sigues ahí y 20 s después de salir; igual tu Pokémon fuera y los salvajes que pasen; se cura con Antídoto, en el Centro Pokémon o al dormir; no afecta a tipo Veneno ni Acero. **Debe verse que está envenenado** (identificador visible en el jugador, en el Pokémon y en el HUD).
