@@ -135,6 +135,7 @@ func _check_room(kind: String, settlement: Dictionary, building: Dictionary) -> 
 
 	if kind in ["mart", "center"]:
 		await _check_stairs(kind, interiors)
+		await _check_stairs_walk(kind, interiors)
 
 	interiors.exit_to(interiors.current.get("return", _player.global_position))
 	await _wait_interior(interiors, false)
@@ -196,13 +197,70 @@ func _check_stairs(kind: String, interiors: Interiors) -> void:
 	var spawn: Vector3 = interiors.current.get("spawn", Vector3.ZERO)
 	var target := Interiors.ORIGIN + interiors.upper_point(Vector3(0, 0.3, 0))
 	await _frames(10)
-	var map := _player.get_world_3d().navigation_map
+	var map := (_main.get_node("Navigation") as WorldNavigation).interior_navigation_map()
 	var path := NavigationServer3D.map_get_path(map, spawn, target, true)
 	var reached_height := 0.0
 	for point: Vector3 in path:
 		reached_height = maxf(reached_height, point.y - spawn.y)
 	_check(not path.is_empty() and reached_height >= ceiling_y - 1.6,
 			"%s: la navegación horneada de la sala (misma colisión que las escaleras) debe llegar al segundo piso (subió %.1f de %.1f m, %d puntos)" % [kind, reached_height, ceiling_y, path.size()])
+
+
+## Camina de verdad (Player.move_and_slide(), nunca Input "jump") por la ruta horneada de
+## cada escalera real hasta llegar al segundo piso: pedido de Fernando el 2026-10-11
+## ("agrega una prueba automática que camine, sin saltar, por cada escalera de cada
+## interior de dos pisos y llegue arriba") para no quedarse solo con que la navegación
+## encuentre un camino (_check_stairs de arriba), sino confirmar que el jugador real, con
+## su _step_up (world/player/player.gd), sube sin atorarse ni necesitar saltar.
+func _check_stairs_walk(kind: String, interiors: Interiors) -> void:
+	if not interiors.has_upper_floor():
+		return
+	var ceiling_y: float = interiors.current.get("ceiling_y", 0.0)
+	var spawn: Vector3 = interiors.current.get("spawn", Vector3.ZERO)
+	var target := Interiors.ORIGIN + interiors.upper_point(Vector3(0, 0.3, 0))
+	var map := (_main.get_node("Navigation") as WorldNavigation).interior_navigation_map()
+	var path := NavigationServer3D.map_get_path(map, spawn, target, true)
+	print("DEBUG path ", kind, " spawn=", spawn, " target=", target, " n=", path.size(), " pts=", path)
+	if path.is_empty():
+		_check(false, "%s: sin ruta horneada para caminar hasta el segundo piso" % kind)
+		return
+	var rig := _main.get_node("CameraRig") as CameraRig
+	Input.action_release("jump")
+	_player.global_position = spawn
+	_player.velocity = Vector3.ZERO
+	await _frames(5)
+	var reached := 0.0
+	var stuck := false
+	for i in range(1, path.size()):
+		var waypoint: Vector3 = path[i]
+		var budget := 360  # 6 s a 60 fps por tramo: de sobra para un paso o un tramo de escalera.
+		while budget > 0:
+			var flat_pos := Vector3(_player.global_position.x, waypoint.y, _player.global_position.z)
+			if flat_pos.distance_to(Vector3(waypoint.x, waypoint.y, waypoint.z)) < 0.6:
+				break
+			var to_point := waypoint - _player.global_position
+			to_point.y = 0.0
+			if to_point.length() > 0.01:
+				# Nunca se salta (regla de Fernando): solo mover la cámara para que el
+				# "adelante" relativo a ella (Player._camera_relative) apunte al siguiente
+				# punto de la ruta, y mantener "move_forward"; si hay un borde bajo, lo sube
+				# solo Player._step_up(), igual que al jugar de verdad.
+				var yaw := rad_to_deg(Vector3.FORWARD.signed_angle_to(to_point.normalized(), Vector3.UP))
+				rig.set("_yaw_deg", yaw)
+				rig.rotation_degrees.y = yaw
+			Input.action_press("move_forward")
+			await get_tree().physics_frame
+			budget -= 1
+			if budget % 30 == 0:
+				print("DEBUG ", kind, " wp=", waypoint, " pos=", _player.global_position, " vel=", _player.velocity, " on_floor=", _player.is_on_floor(), " speed=", _player.get_ground_speed())
+			_check(not Input.is_action_pressed("jump"), "%s: la escalera no debe necesitar saltar" % kind)
+		reached = maxf(reached, _player.global_position.y - spawn.y)
+		if budget <= 0:
+			stuck = true
+			break
+	Input.action_release("move_forward")
+	_check(not stuck, "%s: el jugador se atoró caminando por la escalera cerca de %s (borde que obliga a saltar o atasco)" % [kind, path[path.size() - 1]])
+	_check(reached >= ceiling_y - 1.6, "%s: caminando sin saltar, el jugador debe llegar al segundo piso (subió %.1f de %.1f m)" % [kind, reached, ceiling_y])
 
 
 ## Clientes con rutina visible: entran por la puerta, caminan a un estante real, "compran"

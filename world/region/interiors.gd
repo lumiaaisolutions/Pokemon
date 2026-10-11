@@ -18,6 +18,13 @@ const ORIGIN := Vector3(20000.0, 0.0, 0.0)
 ## el tamaño de la sala (size.y se cancela). _model_room la usa para que la cámara nunca
 ## termine fuera del edificio, mirando hacia dentro por encima de ese muro.
 const ENTRANCE_CLEARANCE := 4.2
+## Altura extra que deben cubrir los muros y las lámparas sintéticas por encima del
+## segundo piso real (tienda y Centro) para que lo encierren del todo: antes el muro
+## sintético solo subía hasta un poco más del techo de la planta baja (pensado para una
+## sola planta) y, al subir al segundo piso, la cámara veía por encima de ese muro una
+## franja blanca plana (su tapa, sin textura) seguida de vacío negro (fondo sin nada
+## detrás), reportado por Fernando el 2026-10-11 ("ronda de capturas 360°").
+const UPPER_STORY_CLEARANCE := 3.6
 const CELL := 7.0
 ## Muros bajos y sin choque con la cámara: desde arriba se ve todo el interior (HD-2D).
 const WALL_H := 2.6
@@ -354,6 +361,10 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 		body.add_child(collision)
 		mesh.add_child(body)
 	var size := Vector2(floor_rect.size.x, floor_rect.size.z)
+	# Segundo piso (tienda y Centro): se calcula antes de los muros y las lámparas porque
+	# ambos deben cubrir también esa planta, no solo la de abajo (ver UPPER_STORY_CLEARANCE).
+	var upper_rect: AABB = ceiling_info["rect"]
+	var has_upper: bool = kind in ["mart", "center"] and upper_rect.size.x > 0.0
 	# Muros en todo el contorno: los modelos de la DS dejan abierto el lado de la entrada
 	# y zonas negras (se ve el vacío de fuera). Antes eran solo colisión; ahora también
 	# tapan la vista con un color parecido al de sus paredes (no hay textura real a mano).
@@ -361,13 +372,29 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	# pitch normal se veía un hueco negro grande arriba, reportado en la auditoría del
 	# 2026-10-11): se tapa completo y se le pinta encima el hueco de la puerta para que
 	# siga leyéndose como entrada, no como muro ciego.
+	# Con segundo piso, el muro sube lo bastante para encerrar también esa planta (si no,
+	# la cámara arriba veía por encima de su tapa: franja blanca plana + vacío negro).
 	var half := size * 0.5
-	var wall_height := maxf(ceiling + 1.5, 4.0)
+	# El segundo piso real (el landing/mezzanine del Centro, sobre todo) no siempre queda
+	# centrado igual que la planta baja ni dentro de su mismo contorno; si el muro solo
+	# cubre la planta baja, el jugador arriba puede terminar ya fuera de la caja, y la
+	# cámara con él (bug de Fernando 2026-10-11: vacío negro al fondo del segundo piso,
+	# incluso con el muro ya más alto). El lado de la entrada se deja igual: ahí está la
+	# puerta real y nunca lo pisa el segundo piso.
+	var back_z := -half.y
+	var left_x := -half.x
+	var right_x := half.x
+	if has_upper:
+		back_z = minf(back_z, upper_rect.position.z - center.z)
+		left_x = minf(left_x, upper_rect.position.x - center.x)
+		right_x = maxf(right_x, upper_rect.position.x + upper_rect.size.x - center.x)
+	var front_z := half.y
+	var wall_height := maxf(ceiling + (UPPER_STORY_CLEARANCE + 1.5 if has_upper else 1.5), 4.0)
 	var wall_material := _material(wall_color)
-	var walls := [[Vector3(size.x + 2.0, wall_height, 1.0), Vector3(0, wall_height * 0.5 - 0.3, -half.y - 0.5), false],
-			[Vector3(size.x + 2.0, wall_height, 1.0), Vector3(0, wall_height * 0.5 - 0.3, half.y + 0.5), true],
-			[Vector3(1.0, wall_height, size.y + 2.0), Vector3(-half.x - 0.5, wall_height * 0.5 - 0.3, 0), false],
-			[Vector3(1.0, wall_height, size.y + 2.0), Vector3(half.x + 0.5, wall_height * 0.5 - 0.3, 0), false]]
+	var walls := [[Vector3(right_x - left_x + 2.0, wall_height, 1.0), Vector3((left_x + right_x) * 0.5, wall_height * 0.5 - 0.3, back_z - 0.5), false],
+			[Vector3(size.x + 2.0, wall_height, 1.0), Vector3(0, wall_height * 0.5 - 0.3, front_z + 0.5), true],
+			[Vector3(1.0, wall_height, front_z - back_z + 2.0), Vector3(left_x - 0.5, wall_height * 0.5 - 0.3, (back_z + front_z) * 0.5), false],
+			[Vector3(1.0, wall_height, front_z - back_z + 2.0), Vector3(right_x + 0.5, wall_height * 0.5 - 0.3, (back_z + front_z) * 0.5), false]]
 	for wall: Array in walls:
 		var fence := StaticBody3D.new()
 		# También en la capa de cámara: son paredes grandes de verdad (reglas_calidad
@@ -406,23 +433,49 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 			var inward := 1.0 if (wall[1] as Vector3).z > 0.0 else -1.0
 			door_mesh.position = Vector3(0, door_height * 0.5 - 0.3, (wall[1] as Vector3).z - inward * 0.46)
 			root.add_child(door_mesh)
+	# Tapa de arriba: los 4 muros son una caja sin techo; con zoom al máximo y poco pitch
+	# (alcanzable a mano con el mando de la cámara, sobre todo en el segundo piso, más
+	# alto) la cámara podía terminar por encima del muro y asomarse al vacío de fuera
+	# (reportado el 2026-10-11, ronda de capturas 360°: franja blanca plana seguida de un
+	# vacío negro). También choca con la cámara, como los muros.
+	# Centro de la caja (puede no ser 0,0 si el segundo piso la ensanchó hacia atrás o a
+	# un lado) y su ancho/fondo totales, para la tapa de arriba, el piso y el faldón.
+	var box_center := Vector3((left_x + right_x) * 0.5, 0, (back_z + front_z) * 0.5)
+	var box_width := right_x - left_x
+	var box_depth := front_z - back_z
+	var roof := StaticBody3D.new()
+	roof.collision_layer = WorldBuilder.LAYER_OBSTACLES | WorldBuilder.LAYER_CAMERA
+	var roof_shape := BoxShape3D.new()
+	roof_shape.size = Vector3(box_width + 2.0, 0.3, box_depth + 2.0)
+	var roof_collision := CollisionShape3D.new()
+	roof_collision.shape = roof_shape
+	roof_collision.position = box_center + Vector3(0, wall_height - 0.15, 0)
+	roof.add_child(roof_collision)
+	root.add_child(roof)
+	var roof_mesh := MeshInstance3D.new()
+	var roof_box := BoxMesh.new()
+	roof_box.size = roof_shape.size
+	roof_mesh.mesh = roof_box
+	roof_mesh.material_override = wall_material
+	roof_mesh.position = roof_collision.position
+	root.add_child(roof_mesh)
 	var ground := StaticBody3D.new()
 	ground.collision_layer = WorldBuilder.LAYER_TERRAIN
 	var floor_shape := BoxShape3D.new()
-	floor_shape.size = Vector3(size.x + 4.0, 1.0, size.y + 4.0)
+	floor_shape.size = Vector3(box_width + 4.0, 1.0, box_depth + 4.0)
 	var floor_collision := CollisionShape3D.new()
 	floor_collision.shape = floor_shape
-	floor_collision.position.y = -0.5
+	floor_collision.position = box_center + Vector3(0, -0.5, 0)
 	ground.add_child(floor_collision)
 	root.add_child(ground)
 	# Faldón del piso (mismo tono del muro, más oscuro): cubre cualquier rendija de vacío
 	# que se asome bajo el modelo en los bordes.
 	var apron := MeshInstance3D.new()
 	var apron_mesh := BoxMesh.new()
-	apron_mesh.size = Vector3(size.x + 6.0, 0.4, size.y + 6.0)
+	apron_mesh.size = Vector3(box_width + 6.0, 0.4, box_depth + 6.0)
 	apron.mesh = apron_mesh
 	apron.material_override = _material(wall_color.darkened(0.3))
-	apron.position.y = -0.3
+	apron.position = box_center + Vector3(0, -0.3, 0)
 	root.add_child(apron)
 	# Cámara que cabe bajo el techo real (si no, se metía dentro del modelo o del piso de
 	# arriba) y lámparas de techo propias: los modelos de B2W2 no traen luces, solo
@@ -437,18 +490,22 @@ func _model_room(root: Node3D, kind: String, rng: RandomNumberGenerator, wall_co
 	var horizontal := clampf(minf(minf(size.x, size.y) * 0.45, ENTRANCE_CLEARANCE - 0.6), 2.5, ENTRANCE_CLEARANCE - 0.6)
 	current["cam_pitch"] = clampf(rad_to_deg(atan2(vertical, horizontal)), 14.0, 60.0)
 	current["cam_zoom"] = clampf(sqrt(vertical * vertical + horizontal * horizontal), 3.0, 11.0)
-	_ceiling_lamps(root, size, ceiling)
+	_ceiling_lamps(root, size, ceiling, Vector3.ZERO)
 	# Segundo piso (tienda y Centro, acordado con Fernando el 2026-10-10): si el techo
 	# detectado es en realidad la planta de arriba (losa ancha real, no el techo final del
 	# edificio), se guarda su desplazamiento en el espacio de la sala (mismo origen que la
 	# puerta y los puntos del piso de bajo) para que MartServices/CenterServices puedan
 	# poner ahí el segundo mostrador, la zona de descanso o el club de combate.
 	current["size"] = size
-	var upper_rect: AABB = ceiling_info["rect"]
-	if kind in ["mart", "center"] and upper_rect.size.x > 0.0:
+	if has_upper:
 		current["ceiling_y"] = ceiling
-		current["upper_offset"] = Vector3(upper_rect.get_center().x - center.x, ceiling, upper_rect.get_center().z - center.z)
+		var upper_offset := Vector3(upper_rect.get_center().x - center.x, ceiling, upper_rect.get_center().z - center.z)
+		current["upper_offset"] = upper_offset
 		current["upper_size"] = Vector2(upper_rect.size.x, upper_rect.size.z)
+		# Lámparas propias de la planta de arriba (reportado el 2026-10-11: sin esto solo
+		# había luz propia hasta el techo de la planta baja, que es justo el piso de esta
+		# planta, así que el segundo piso quedaba a oscuras salvo por la ambiental).
+		_ceiling_lamps(root, current["upper_size"], ceiling + UPPER_STORY_CLEARANCE, upper_offset * Vector3(1, 0, 1))
 	return size
 
 
@@ -610,15 +667,20 @@ func _ceiling_info(model: Node3D, meshes: Array, floor_rect: AABB) -> Dictionary
 
 ## Lámparas de techo cálidas: los modelos de B2W2 solo traen geometría y texturas, sin
 ## luces propias; sin esto el interior depende del sol (que de noche casi no ilumina).
-func _ceiling_lamps(root: Node3D, size: Vector2, ceiling: float) -> void:
-	var height := clampf(ceiling - 0.4, 1.6, 5.5)
+## offset desplaza la cuadrícula en X/Z (el segundo piso, tienda y Centro, no siempre
+## queda centrado igual que la planta baja): ver current["upper_offset"] en _model_room.
+func _ceiling_lamps(root: Node3D, size: Vector2, ceiling: float, offset: Vector3 = Vector3.ZERO) -> void:
+	# Sin tope fijo de 5.5 (pensado solo para una planta): el segundo piso real llama a
+	# esto con ceiling = techo de la planta baja + UPPER_STORY_CLEARANCE, que en edificios
+	# altos puede superarlo con facilidad y dejaba la lámpara metida en el piso de arriba.
+	var height := clampf(ceiling - 0.4, 1.6, ceiling + 1.0)
 	var cols := clampi(int(size.x / 7.0) + 1, 1, 4)
 	var rows := clampi(int(size.y / 7.0) + 1, 1, 4)
 	var range_m := maxf(size.x, size.y) / maxf(cols, rows) * 0.9 + 3.0
 	for cx in cols:
 		for cz in rows:
-			var x := (cx + 0.5) / cols * size.x - size.x * 0.5
-			var z := (cz + 0.5) / rows * size.y - size.y * 0.5
+			var x := offset.x + (cx + 0.5) / cols * size.x - size.x * 0.5
+			var z := offset.z + (cz + 0.5) / rows * size.y - size.y * 0.5
 			_light(root, Vector3(x, height, z), Color(1.0, 0.92, 0.78), range_m, 1.5)
 
 
@@ -836,14 +898,22 @@ func _build_room(root: Node3D, kind: String, settlement: Dictionary, building: D
 		"lab":
 			for i in 3:
 				_block(root, Vector3(3.0, 1.0, 1.2), Vector3(-5 + i * 5, 0.5, back + 1.5), Color(0.85, 0.88, 0.92))
-			# El profesor (de 8 a 19 h, si no salió de viaje) y su asistente (siempre).
+			# El profesor (de 8 a 19 h, si no salió de viaje) y su asistente (siempre). Con el
+			# modelo real de B2W2 (lab_fennel) hay una máquina/consola grande y ancha cerca
+			# del centro de la pared del fondo; a "back" (pegados a esa pared) quedaban casi
+			# tapados por ella (reportado el 2026-10-11: "sombra negra sólida que tapa la
+			# cara de la asistente"); moverlos solo un poco no bastó (la consola es ancha).
+			# Se paran cerca de la entrada, pegados a cada pared lateral, lejos del bulto
+			# de máquinas del fondo.
+			var lab_professor_at := Vector3(-(size.x * 0.5 - 2.2), 0, size.y * 0.5 - 4.4)
 			var professor := services.main().get_node_or_null("Professor") as Professor
 			if professor == null or professor.in_lab():
-				_npc(root, Vector3(0, 0, back + 3.2), Professor.look())
-				_point(Vector3(0, 0.5, back + 4.5), "Hablar con el Prof. %s" % GameState.professor, services.talk_professor)
-			_npc(root, Vector3(5.0, 0, back + 4.0), "doctor")
+				_npc(root, lab_professor_at, Professor.look())
+				_point(lab_professor_at + Vector3(0, 0.5, 1.3), "Hablar con el Prof. %s" % GameState.professor, services.talk_professor)
+			var lab_assistant_at := Vector3(size.x * 0.5 - 2.2, 0, size.y * 0.5 - 4.4)
+			_npc(root, lab_assistant_at, "doctor")
 			if professor != null:
-				_point(Vector3(5.0, 0.5, back + 5.3), "Hablar con la asistente", professor.talk_assistant.bind(services))
+				_point(lab_assistant_at + Vector3(0, 0.5, 1.3), "Hablar con la asistente", professor.talk_assistant.bind(services))
 		"gym":
 			_block(root, Vector3(size.x - 6, 0.05, size.y - 10), Vector3(0, 0.03, -1), Color(0.75, 0.75, 0.55), false)
 			# El líder de la región al fondo y 2 entrenadores del gimnasio a los lados.

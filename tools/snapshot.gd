@@ -116,7 +116,13 @@ func _ready() -> void:
 					await get_tree().process_frame
 	# "hora:H": pone el reloj a la hora H (p. ej. hora:22). También como 7.º argumento
 	# para combinarla con otra opción (p. ej. pueblo hora:21).
-	var hour_arg := args[5] if args.size() > 5 and args[5].begins_with("hora:") else (args[6] if args.size() > 6 and args[6].begins_with("hora:") else "")
+	# Antes solo se buscaba en args[5]/args[6]; con "piso:2"/"giro:N"/"pitch:N"/"zoom:N"
+	# agregados al final de "interior:tipo" (2026-10-11), "hora:H" puede caer más lejos.
+	var hour_arg := ""
+	for hour_candidate in args:
+		if hour_candidate.begins_with("hora:"):
+			hour_arg = hour_candidate
+			break
 	if hour_arg != "":
 		GameState.play_time = (float(hour_arg.substr(5)) - GameState.START_HOUR) * 60.0
 		if GameState.play_time < 0.0:
@@ -261,12 +267,50 @@ func _ready() -> void:
 			rig_back.snap()
 			for i in 20:
 				await get_tree().process_frame
+		# "piso:2": lleva al jugador al segundo piso real (tienda/Centro) usando el
+		# desplazamiento que detectó Interiors._model_room()/_ceiling_info(), para revisar esa
+		# planta sin subir la escalera a mano en cada captura.
+		if "piso:2" in args:
+			var interiors2 := services.interiors
+			if interiors2.has_upper_floor():
+				# Un poco lejos del centro exacto: algunos modelos reales tienen ahí mismo el
+				# hueco de la escalera (donut de piso), y el centro exacto cae en el vacío.
+				var up_size := interiors2.upper_size()
+				player.global_position = Interiors.ORIGIN + interiors2.upper_point(Vector3(up_size.x * 0.28, 0.5, up_size.y * 0.22))
+				player.velocity = Vector3.ZERO
+				var rig_up := scene.get_node("CameraRig") as CameraRig
+				rig_up.snap()
+				for i in 20:
+					await get_tree().process_frame
+				if not player.is_on_floor():
+					# Sigue en el vacío: prueba el lado opuesto antes de rendirse.
+					player.global_position = Interiors.ORIGIN + interiors2.upper_point(Vector3(-up_size.x * 0.28, 0.5, -up_size.y * 0.22))
+					player.velocity = Vector3.ZERO
+					rig_up.snap()
+					for i in 20:
+						await get_tree().process_frame
+			else:
+				print("este interior no tiene segundo piso detectado")
 		var rig := scene.get_node("CameraRig") as CameraRig
 		if not ("rawcam" in args):
 			rig.set("_pitch_deg", 50.0)
+		# "giro:N"/"pitch:N"/"zoom:N": ronda 360° (yaw, inclinación y distancia) sobre el
+		# interior ya cargado, igual que en "bioma:" más abajo, para revisar cada sala desde
+		# varios ángulos sin reconstruir el mundo en cada captura.
+		for extra in args.slice(6):
+			if extra.begins_with("giro:"):
+				rig.set("_yaw_deg", float(extra.substr(5)))
+			elif extra.begins_with("pitch:"):
+				rig.set("_pitch_deg", float(extra.substr(6)))
+			elif extra.begins_with("zoom:"):
+				rig.set("_zoom", float(extra.substr(5)))
 		for i in 30:
 			await get_tree().process_frame
 		print("interior en ", player.global_position)
+		var cam3d := get_viewport().get_camera_3d()
+		if cam3d != null:
+			var arm := rig.get_node("Pitch/SpringArm") as SpringArm3D
+			print("camara en ", cam3d.global_position, " arm_len=", arm.get_hit_length(), " size=", services.interiors.current.get("size"), " ceiling_y=", services.interiors.current.get("ceiling_y"))
 	# "clima:N": fuerza el clima N (0 despejado, 2 lluvia, 3 tormenta, 4 nieve, 6 arena, 8 niebla).
 	if args.size() > 5 and args[5].begins_with("clima:"):
 		Weather.forced = int(args[5].substr(6))
