@@ -33,3 +33,9 @@ gráficos son propiedad de Nintendo, Game Freak y The Pokémon Company.
 | Prof. Elm (HGSS, "Trainers (Overworld)") | https://www.spriters-resource.com/ds_dsi/pokemonheartgoldsoulsilver/asset/26955/ | Ripeado por Dragoon |
 | Retratos de profesores y de Hugh | Paquete de sprites de Pokémon Showdown (`sprites/trainers/`) | Comunidad de Pokémon Showdown |
 | Prof. Kukui, Prof. Sada y Prof. Turo (estilo DS) | DeviantArt: Zender1752 (assets 637796437, 918752899, 918752905) | Zender1752 |
+
+### Modelos 3D de naturaleza y objetos de mapa de B2W2 (descargados 2026-10-10, con permiso de Fernando)
+De The Models Resource (models.spriters-resource.com, Pokémon Black 2 / White 2), en `art/models/b2w2_nature/`:
+- Mapas: Desert Resort, Entree Forest, Floccesy Ranch, Lostlorn Forest (subidos por pentaenix), para extraer árboles, arbustos, flores, hierba y rocas.
+- Objetos de mapa: Blue Rock, Cave Rock, Dead Tree 01 y 02, Stump 1 y 2, White Forest Tree 2, Fence, Sign 01 a 04, Street Lamp 1 a 3, Shrine.
+De The Spriters Resource (Pokémon Black / White, "Overworld Entities", ripeado por Barubary): `sprites/overworld/bw_overworld_entities.png`, para el sprite definitivo de Cilan.
